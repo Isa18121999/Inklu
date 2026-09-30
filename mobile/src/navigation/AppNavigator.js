@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import WelcomeScreen from "../screens/WelcomeScreen";
+import AccessScreen from "../screens/AccessScreen";
 import LoginScreen from "../screens/LoginScreen";
 import CandidateRegister from "../screens/CandidateRegister";
 import CompanyRegister from "../screens/CompanyRegister";
@@ -24,6 +25,7 @@ export default function AppNavigator({ initialRouteName = "Welcome" }) {
     <NavigationContainer>
       <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
+        <Stack.Screen name="Access" component={AccessScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="CandidateRegister" component={CandidateRegister} />
         <Stack.Screen name="CompanyRegister" component={CompanyRegister} />
