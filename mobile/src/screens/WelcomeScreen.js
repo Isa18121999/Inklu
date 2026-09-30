@@ -14,31 +14,16 @@ export default function WelcomeScreen({ navigation }) {
         accessibilityLabel="Logo de Inklu"
       />
 
-      <Text style={styles.appName}>Inklu</Text>
+      <Text style={styles.appName} accessibilityRole="header">Inklu</Text>
 
-      <Text style={styles.title} accessibilityRole="header">
-        ¡Bienvenidos a Inklu!
-      </Text>
-
-      <Text style={styles.description}>
-        Conectamos talento con oportunidades laborales inclusivas mediante tecnología accesible e inteligencia artificial.
+      <Text style={styles.tagline}>
+        Oportunidades laborales inclusivas para todos.
       </Text>
 
       <AccessibleButton
-        title="Soy candidato"
-        accessibilityHint="Abre el registro de candidato."
-        onPress={() => navigation.navigate("CandidateRegister")}
-      />
-      <AccessibleButton
-        title="Soy empresa"
-        accessibilityHint="Abre el registro de empresa."
-        type="secondary"
-        onPress={() => navigation.navigate("CompanyRegister")}
-      />
-      <AccessibleButton
-        title="Iniciar sesión"
-        accessibilityHint="Abre el inicio de sesión."
-        onPress={() => navigation.navigate("Login")}
+        title="Empezar"
+        accessibilityHint="Continúa a las opciones de acceso de Inklu."
+        onPress={() => navigation.navigate("Access")}
       />
     </View>
   );
@@ -48,34 +33,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    padding: 24,
+    padding: 32,
     backgroundColor: colors.white,
   },
   logoImage: {
-    width: 190,
-    height: 190,
+    width: 220,
+    height: 220,
     alignSelf: "center",
-    marginBottom: 10,
+    marginBottom: 14,
   },
   appName: {
     textAlign: "center",
-    fontSize: 40,
+    fontSize: 46,
     fontWeight: "800",
     color: colors.primary,
     marginBottom: 12,
   },
-  title: {
+  tagline: {
     textAlign: "center",
-    fontSize: 28,
-    fontWeight: "800",
+    fontSize: 18,
+    lineHeight: 26,
     color: colors.text,
-  },
-  description: {
-    textAlign: "center",
-    marginTop: 14,
-    marginBottom: 20,
-    fontSize: 17,
-    lineHeight: 25,
-    color: colors.text,
+    marginBottom: 30,
   },
 });
