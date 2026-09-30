@@ -48,12 +48,18 @@ jobs:
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Verify release APK exists
+        working-directory: mobile/android
+        run: |
+          test -f app/build/outputs/apk/release/app-release.apk
+          unzip -l app/build/outputs/apk/release/app-release.apk | grep -E 'assets/index.android.bundle|index.android.bundle'
+
       - name: Publish APK release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk-latest --yes --cleanup-tag || true
-          gh release create apk-latest mobile/android/app/build/outputs/apk/debug/app-debug.apk             --title "Inklu APK"             --notes "APK generado automáticamente desde main. Backend permanece sin cambios."             --target "${{ github.sha }}"             --latest
+          gh release create apk-latest mobile/android/app/build/outputs/apk/release/app-release.apk             --title "Inklu APK"             --notes "APK instalable de Inklu con JavaScript bundle incluido. Backend permanece sin cambios."             --target "${{ github.sha }}"             --latest
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
