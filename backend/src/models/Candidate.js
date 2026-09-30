@@ -7,7 +7,7 @@ const CandidateSchema = new mongoose.Schema({
   phone: { type: String, required: true, trim: true, match: /^\d{7,15}$/ },
   country: String,
   accreditationType: String,
-  accreditationNumber: String,
+  accreditationNumber: { type: String, match: /^\d{6}$/ },
   professionalTitle: String,
   experience: { type: Number, min: 0, default: 0 },
   skills: { type: [String], default: [] },
