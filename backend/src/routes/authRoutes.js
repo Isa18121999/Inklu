@@ -38,7 +38,7 @@ router.post("/register", async (req, res) => {
     if (!validatePhone(normalizedPhone)) return res.status(400).json({ message: "El teléfono debe contener solo números (7 a 15 dígitos)" });
     if (!validatePassword(password)) return res.status(400).json({ message: "La contraseña debe tener 8 a 128 caracteres e incluir mayúscula, minúscula, número y carácter especial" });
     if (!["candidate", "company"].includes(role)) return res.status(400).json({ message: "Rol no válido" });
-    if (role === "candidate" && (!String(country || "").trim() || !String(accreditationType || "").trim() || !String(accreditationNumber || "").trim())) return res.status(400).json({ message: "Los candidatos deben registrar país y acreditación de discapacidad" });
+    if (role === "candidate" && (String(country || "").trim() !== "PE" || String(accreditationType || "").trim() !== "Carné CONADIS" || !/^\d{6}$/.test(String(accreditationNumber || "").trim()))) return res.status(400).json({ message: "Para registrarte como candidato debes contar con carné CONADIS de Perú y registrar un RUI de exactamente 6 dígitos numéricos" });
 
     if (await User.findOne({ email: normalizedEmail })) return res.status(409).json({ message: "El email ya está registrado" });
 
@@ -51,8 +51,8 @@ router.post("/register", async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
-        country: country.trim(),
-        accreditationType: accreditationType.trim(),
+        country: "PE",
+        accreditationType: "Carné CONADIS",
         accreditationNumber: accreditationNumber.trim()
       });
     } else {
