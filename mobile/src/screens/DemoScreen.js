@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, ScrollView, Text, View, StyleSheet } from "react-native";
+import { Pressable, ScrollView, Text, View, StyleSheet, TextInput } from "react-native";
 import AccessibleButton from "../components/AccessibleButton";
 import { colors } from "../theme/colors";
 
@@ -160,10 +160,61 @@ export function DemoApplicationsScreen({ navigation }) {
     <DemoLayout navigation={navigation} active="applications">
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Mis postulaciones</Text>
-        <View style={styles.card}><Text style={styles.jobTitle}>Asistente administrativo</Text><Text>Empresa Inclusiva Perú</Text><Text style={styles.scoreSmall}>Match: 92%</Text><Text style={styles.status}>Estado: CV visto</Text></View>
+        <View style={styles.card}><Text style={styles.jobTitle}>Asistente administrativo</Text><Text>Empresa Inclusiva Perú</Text><Text style={styles.scoreSmall}>Match: 92%</Text><Text style={styles.status}>Estado: CV visto</Text><AccessibleButton title="💬 Abrir chat" onPress={() => navigation.navigate("DemoChat")} /></View>
         <View style={styles.card}><Text style={styles.jobTitle}>Atención al cliente</Text><Text>Servicios Andinos</Text><Text style={styles.scoreSmall}>Match: 84%</Text><Text style={styles.status}>Estado: Postulado</Text></View>
         <AccessibleButton title="← Volver" type="secondary" onPress={() => navigation.goBack()} />
       </ScrollView>
+    </DemoLayout>
+  );
+}
+
+export function DemoChatScreen({ navigation }) {
+  const [message, setMessage] = React.useState("");
+  const [messages, setMessages] = React.useState([
+    { id: "1", from: "company", text: "Hola Isabella, revisamos tu CV. Nos gustaría conversar contigo sobre la vacante de Asistente administrativo." },
+    { id: "2", from: "candidate", text: "Hola, muchas gracias. Sí, estoy interesada en conocer más sobre la oportunidad." },
+    { id: "3", from: "company", text: "Perfecto. ¿Tendrías disponibilidad para una entrevista esta semana?" }
+  ]);
+
+  const sendMessage = () => {
+    const value = message.trim();
+    if (!value) return;
+    setMessages((current) => [...current, { id: String(Date.now()), from: "candidate", text: value }]);
+    setMessage("");
+  };
+
+  return (
+    <DemoLayout navigation={navigation} active="applications">
+      <View style={styles.chatScreen}>
+        <View style={styles.chatHeader}>
+          <View>
+            <Text style={styles.title}>Chat</Text>
+            <Text style={styles.chatCompany}>Empresa Inclusiva Perú</Text>
+          </View>
+          <Text style={styles.chatStatus}>● En línea</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.chatMessages} keyboardShouldPersistTaps="handled">
+          {messages.map((item) => (
+            <View key={item.id} style={[styles.messageBubble, item.from === "candidate" ? styles.messageCandidate : styles.messageCompany]}>
+              <Text style={styles.messageText}>{item.text}</Text>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.chatComposer}>
+          <TextInput
+            value={message}
+            onChangeText={setMessage}
+            placeholder="Escribe un mensaje..."
+            style={styles.chatInput}
+            multiline
+            maxLength={500}
+            accessibilityLabel="Mensaje"
+          />
+          <Pressable style={styles.sendButton} onPress={sendMessage} accessibilityRole="button" accessibilityLabel="Enviar mensaje">
+            <Text style={styles.sendButtonText}>Enviar</Text>
+          </Pressable>
+        </View>
+      </View>
     </DemoLayout>
   );
 }
@@ -212,6 +263,19 @@ const styles = StyleSheet.create({
   scoreSmall: { fontSize: 16, fontWeight: "800", color: colors.secondary, marginTop: 8 },
   label: { fontWeight: "800", color: colors.primary, marginTop: 12 },
   body: { fontSize: 16, lineHeight: 24, color: colors.text },
+  chatScreen: { flex: 1, backgroundColor: colors.white, paddingBottom: 82 },
+  chatHeader: { padding: 24, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "#E5E7EB", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  chatCompany: { fontSize: 16, color: colors.text, marginTop: -6 },
+  chatStatus: { color: colors.success, fontWeight: "700", marginBottom: 8 },
+  chatMessages: { padding: 18, paddingBottom: 24 },
+  messageBubble: { maxWidth: "82%", padding: 13, borderRadius: 16, marginBottom: 10 },
+  messageCompany: { alignSelf: "flex-start", backgroundColor: colors.background, borderBottomLeftRadius: 4 },
+  messageCandidate: { alignSelf: "flex-end", backgroundColor: "#E8F0FE", borderBottomRightRadius: 4 },
+  messageText: { fontSize: 16, lineHeight: 22, color: colors.text },
+  chatComposer: { flexDirection: "row", alignItems: "flex-end", padding: 10, borderTopWidth: 1, borderTopColor: "#E5E7EB", backgroundColor: colors.white },
+  chatInput: { flex: 1, minHeight: 48, maxHeight: 100, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, fontSize: 16, color: colors.text, marginRight: 8 },
+  sendButton: { minHeight: 48, paddingHorizontal: 14, borderRadius: 14, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center" },
+  sendButtonText: { color: colors.white, fontWeight: "800" },
   bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, height: 82, backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: "#E5E7EB", flexDirection: "row", paddingHorizontal: 4, paddingTop: 8, paddingBottom: 6, elevation: 12, shadowOpacity: 0.12, shadowRadius: 8 },
   tab: { flex: 1, alignItems: "center", justifyContent: "flex-start", minWidth: 56 },
   iconCircle: { width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", marginBottom: 3 },
