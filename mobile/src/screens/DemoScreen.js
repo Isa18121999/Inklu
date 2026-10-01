@@ -1,7 +1,30 @@
 import React from "react";
-import { ScrollView, Text, View, StyleSheet } from "react-native";
+import { Pressable, ScrollView, Text, View, StyleSheet } from "react-native";
 import AccessibleButton from "../components/AccessibleButton";
 import { colors } from "../theme/colors";
+
+function DemoBottomBar({ navigation, active = "search" }) {
+  const items = [
+    { key: "search", label: "Buscar", icon: "⌕", route: "DemoJobs" },
+    { key: "applications", label: "Postulaciones", icon: "➤", route: "DemoApplications" },
+    { key: "favorites", label: "Favoritos", icon: "♡", route: "DemoFavorites" },
+    { key: "alerts", label: "Alertas", icon: "♧", route: "DemoNotifications" },
+    { key: "menu", label: "Menú", icon: "☰", route: "DemoProfile" }
+  ];
+  return <View style={styles.bottomBar} accessibilityRole="tablist">
+    {items.map((item) => {
+      const selected = active === item.key;
+      return <Pressable key={item.key} style={styles.tab} onPress={() => navigation.navigate(item.route)} accessibilityRole="tab" accessibilityState={{ selected }} accessibilityLabel={item.label}>
+        <View style={[styles.iconCircle, selected && styles.iconCircleActive]}><Text style={[styles.icon, selected && styles.iconActive]}>{item.icon}</Text></View>
+        <Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{item.label}</Text>
+      </Pressable>;
+    })}
+  </View>;
+}
+
+function DemoLayout({ children, navigation, active }) {
+  return <View style={styles.screen}>{children}<DemoBottomBar navigation={navigation} active={active} /></View>;
+}
 
 const jobs = [
   { id: "demo-1", title: "Asistente administrativo", company: "Empresa Inclusiva Perú", score: 92, modality: "Híbrido" },
@@ -114,7 +137,7 @@ export function DemoNotificationsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container:{flexGrow:1,padding:24,backgroundColor:colors.white},
+  screen:{flex:1,backgroundColor:colors.white},\n  container:{flexGrow:1,padding:24,paddingBottom:120,backgroundColor:colors.white},
   title:{fontSize:30,fontWeight:"800",color:colors.primary,marginBottom:10},
   subtitle:{fontSize:16,lineHeight:23,color:colors.text,marginBottom:20},
   card:{padding:18,borderRadius:16,backgroundColor:colors.background,marginBottom:16},
