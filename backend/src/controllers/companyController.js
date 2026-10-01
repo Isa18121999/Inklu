@@ -17,9 +17,12 @@ const getRecommendedCandidates = async (req, res) => {
       return res.status(403).json({ message: "No puedes ver candidatos de esta oferta" });
     }
 
-    const candidates = await Candidate.find()
-      .select("name professionalTitle experience skills education modality accessibility");
     const applications = await Application.find({ jobId: job._id });
+    const candidateIds = applications.map((application) => application.candidateId);
+    const candidates = candidateIds.length
+      ? await Candidate.find({ _id: { $in: candidateIds } })
+        .select("name professionalTitle experience skills education modality accessibility")
+      : [];
 
     const recommendations = candidates.map((candidate) => {
       const match = calculateMatch(candidate, job);
