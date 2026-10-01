@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { Alert, View, Text, StyleSheet } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import AccessibleButton from "../components/AccessibleButton";
@@ -19,6 +20,18 @@ export default function CVUpload({ navigation, route }) {
   const [cvName, setCvName] = useState("");
   const [extractedFields, setExtractedFields] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const loadCvStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`${CV_URL}/me`, { headers: authHeaders() });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.hasCv) setCvName(data.fileName || "CV cargado");
+      else setCvName("");
+    } catch (_error) {}
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadCvStatus(); }, [loadCvStatus]));
 
   const chooseCV = async () => {
     try {
