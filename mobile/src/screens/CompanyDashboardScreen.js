@@ -116,6 +116,8 @@ export default function CompanyDashboardScreen({ navigation }) {
   };
 
   const selectedJob = jobs.find((job) => job._id === selectedJobId);
+  const handleLogout = async () => { const { clearSessionToken } = await import("../config/session"); await clearSessionToken(); navigation.replace("Welcome"); };
+  const confirmLogout = () => Alert.alert("Cerrar sesión", "¿Quieres cerrar tu sesión?", [{ text: "Cancelar", style: "cancel" }, { text: "Cerrar sesión", style: "destructive", onPress: handleLogout }]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -124,6 +126,7 @@ export default function CompanyDashboardScreen({ navigation }) {
 
       <AccessibleButton title="📌 Publicar oferta" onPress={() => navigation.navigate("CreateJob")} />
       <AccessibleButton title={`🔔 Notificaciones${unreadCount ? ` (${unreadCount})` : ""}`} type="secondary" onPress={() => navigation.navigate("Notifications")} />
+      <AccessibleButton title="🚪 Cerrar sesión" type="secondary" onPress={confirmLogout} />
 
       <Text style={styles.section}>💼 Mis ofertas</Text>
       {loadingJobs && <ActivityIndicator color={colors.primary} />}
