@@ -73,6 +73,17 @@ const validateCvSignature = async (filePath, extension) => {
   }
 };
 
+router.get("/me", requireAuth, requireRole("candidate"), async (req, res) => {
+  try {
+    const candidate = await Candidate.findOne({ userId: req.user.id }).select("cvUrl");
+    if (!candidate) return res.status(404).json({ message: "Candidato no encontrado" });
+    if (!candidate.cvUrl) return res.json({ hasCv: false });
+    return res.json({ hasCv: true, fileName: path.basename(candidate.cvUrl) });
+  } catch (error) {
+    return res.status(500).json({ message: "Error obteniendo el CV" });
+  }
+});
+
 router.post("/me", requireAuth, requireRole("candidate"), upload.single("cv"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "CV requerido" });
