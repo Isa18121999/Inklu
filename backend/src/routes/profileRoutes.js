@@ -51,6 +51,16 @@ router.patch("/me", requireAuth, async (req, res) => {
     if (changes.phone !== undefined && !validatePhone(changes.phone)) {
       return res.status(400).json({ message: "El teléfono debe contener solo números y tener entre 7 y 15 dígitos" });
     }
+    if (changes.professionalTitle !== undefined) {
+      const value = String(changes.professionalTitle).trim();
+      if (value.length > 120) return res.status(400).json({ message: "El cargo o profesión no puede superar 120 caracteres" });
+      changes.professionalTitle = value;
+    }
+    if (changes.education !== undefined) {
+      const value = String(changes.education).trim();
+      if (value.length > 200) return res.status(400).json({ message: "La formación académica no puede superar 200 caracteres" });
+      changes.education = value;
+    }
     if (changes.experience !== undefined) {
       const value = Number(changes.experience);
       if (!Number.isFinite(value) || value < 0 || value > 60) return res.status(400).json({ message: "La experiencia debe ser un número entre 0 y 60 años" });
