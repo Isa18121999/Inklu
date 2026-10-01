@@ -75,7 +75,7 @@ export default function CandidateRegister({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title} accessibilityRole="header">Registro de candidato</Text>
-      <Text style={styles.subtitle}>Para registrarte como candidato en Inklu debes contar con carné CONADIS.</Text>
+      <Text style={styles.subtitle}>Inklu funciona actualmente en Perú. Para registrarte como candidato debes contar con carné CONADIS.</Text>
       <TextInput style={styles.input} placeholder="Nombre completo" value={name} onChangeText={(value) => setName(sanitizeName(value))} autoCapitalize="words" accessibilityLabel="Nombre completo" />
       <TextInput style={styles.input} placeholder="Correo electrónico" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} accessibilityLabel="Correo electrónico" />
       <TextInput style={styles.input} placeholder="Teléfono (7 a 15 dígitos)" value={phone} onChangeText={(value) => setPhone(sanitizePhone(value))} keyboardType="phone-pad" accessibilityLabel="Teléfono" maxLength={15} />
