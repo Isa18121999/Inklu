@@ -28,6 +28,13 @@ export default function AccessScreen({ navigation }) {
       />
 
       <AccessibleButton
+        title="👀 Ver demo sin backend"
+        type="secondary"
+        accessibilityHint="Permite recorrer pantallas de ejemplo sin conexión al servidor."
+        onPress={() => navigation.navigate("Demo")}
+      />
+
+      <AccessibleButton
         title="Iniciar sesión"
         accessibilityHint="Abre el inicio de sesión."
         onPress={() => navigation.navigate("Login")}
