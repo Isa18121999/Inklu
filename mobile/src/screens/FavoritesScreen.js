@@ -1,37 +1,19 @@
-import React from "react";
-import { ScrollView, Text, View, StyleSheet } from "react-native";
+import React, { useCallback, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Text, View, StyleSheet } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import AccessibleButton from "../components/AccessibleButton";
 import CandidateBottomNav from "../components/CandidateBottomNav";
+import { API_URL } from "../config/api";
+import { authHeaders } from "../config/session";
 import { colors } from "../theme/colors";
 
 export default function FavoritesScreen({ navigation }) {
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title} accessibilityRole="header">Mis favoritos</Text>
-        <View style={styles.illustration} accessibilityLabel="No hay ofertas guardadas">
-          <Text style={styles.heart}>♡</Text>
-          <Text style={styles.illustrationText}>Guarda las ofertas que más te interesen</Text>
-        </View>
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>Todavía no tienes ofertas guardadas en Mis Favoritos</Text>
-          <Text style={styles.emptyText}>Marca con el ❤️ las ofertas que desees guardar para revisarlas después.</Text>
-        </View>
-        <AccessibleButton title="Buscar empleos" onPress={() => navigation.navigate("Jobs")} />
-      </ScrollView>
-      <CandidateBottomNav navigation={navigation} active="favorites" />
-    </View>
-  );
+  const [favorites, setFavorites] = useState([]); const [loading, setLoading] = useState(true);
+  const loadFavorites = useCallback(async () => { setLoading(true); try { const response = await fetch(`${API_URL}/profile/favorites`, { headers: authHeaders() }); const data = response.ok ? await response.json() : { favorites: [] }; setFavorites(data.favorites || []); } catch (_error) { setFavorites([]); } finally { setLoading(false); } }, []);
+  useFocusEffect(useCallback(() => { loadFavorites(); }, [loadFavorites]));
+  const removeFavorite = async (jobId) => { try { const response = await fetch(`${API_URL}/profile/favorites/${jobId}`, { method: "DELETE", headers: authHeaders() }); if (response.ok) setFavorites((items) => items.filter((job) => job._id !== jobId)); } catch (_error) {} };
+  return <View style={styles.screen}><ScrollView contentContainerStyle={styles.container}><Text style={styles.title} accessibilityRole="header">Mis favoritos</Text>{loading ? <ActivityIndicator size="large" color={colors.primary} style={styles.loader} /> : favorites.length === 0 ? <><View style={styles.illustration} accessibilityLabel="No hay ofertas guardadas"><Text style={styles.heart}>♡</Text><Text style={styles.illustrationText}>Guarda las ofertas que más te interesen</Text></View><View style={styles.emptyBox}><Text style={styles.emptyTitle}>Todavía no tienes ofertas guardadas en Mis Favoritos</Text><Text style={styles.emptyText}>Marca con el ❤️ las ofertas que desees guardar para revisarlas después.</Text></View><AccessibleButton title="Buscar empleos" onPress={() => navigation.navigate("Jobs")} /></> : <>{favorites.map((job) => <View key={job._id} style={styles.card}><View style={styles.cardHeader}><View style={styles.info}><Text style={styles.jobTitle}>{job.title}</Text><Text style={styles.company}>🏢 {job.companyId?.name || "Empresa"}</Text><Text style={styles.detail}>💼 {job.area} · 🏠 {job.modality || "Por definir"}</Text><Text style={styles.detail}>♿ {(job.accessibility || []).join(" · ") || "Ajustes por coordinar"}</Text></View><Pressable onPress={() => removeFavorite(job._id)} accessibilityRole="button" accessibilityLabel={`Quitar ${job.title} de favoritos`} hitSlop={10}><Text style={styles.heartActive}>♥</Text></Pressable></View><AccessibleButton title={`Ver oferta: ${job.title}`} onPress={() => navigation.navigate("JobDetail", { job })} /></View>)}</>}</ScrollView><CandidateBottomNav navigation={navigation} active="favorites" /></View>;
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  container: { flexGrow: 1, padding: 24, paddingBottom: 110, alignItems: "center", backgroundColor: colors.background },
-  title: { alignSelf: "stretch", textAlign: "center", fontSize: 28, fontWeight: "500", color: colors.white, backgroundColor: colors.secondary, marginHorizontal: -24, marginTop: -24, paddingVertical: 22, marginBottom: 32 },
-  illustration: { width: "90%", minHeight: 300, borderRadius: 28, backgroundColor: "#EAF2FF", alignItems: "center", justifyContent: "center", marginBottom: 28 },
-  heart: { fontSize: 110, color: colors.primary, fontWeight: "300" },
-  illustrationText: { fontSize: 18, fontWeight: "700", color: colors.secondary, textAlign: "center", paddingHorizontal: 30 },
-  emptyBox: { alignItems: "center", marginBottom: 28 },
-  emptyTitle: { fontSize: 24, lineHeight: 31, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 18 },
-  emptyText: { fontSize: 18, lineHeight: 27, color: colors.text, textAlign: "center", paddingHorizontal: 12 }
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: colors.background }, container: { flexGrow: 1, padding: 24, paddingBottom: 110, alignItems: "center", backgroundColor: colors.background }, title: { alignSelf: "stretch", textAlign: "center", fontSize: 28, fontWeight: "500", color: colors.white, backgroundColor: colors.secondary, marginHorizontal: -24, marginTop: -24, paddingVertical: 22, marginBottom: 32 }, loader: { marginTop: 80 }, illustration: { width: "90%", minHeight: 300, borderRadius: 28, backgroundColor: "#EAF2FF", alignItems: "center", justifyContent: "center", marginBottom: 28 }, heart: { fontSize: 110, color: colors.primary, fontWeight: "300" }, illustrationText: { fontSize: 18, fontWeight: "700", color: colors.secondary, textAlign: "center", paddingHorizontal: 30 }, emptyBox: { alignItems: "center", marginBottom: 28 }, emptyTitle: { fontSize: 24, lineHeight: 31, fontWeight: "800", color: colors.text, textAlign: "center", marginBottom: 18 }, emptyText: { fontSize: 18, lineHeight: 27, color: colors.text, textAlign: "center", paddingHorizontal: 12 }, card: { width: "100%", borderRadius: 18, padding: 18, marginBottom: 16, backgroundColor: colors.white, elevation: 3 }, cardHeader: { flexDirection: "row", alignItems: "flex-start" }, info: { flex: 1, paddingRight: 12 }, jobTitle: { fontSize: 20, fontWeight: "800", color: colors.text }, company: { fontSize: 16, marginTop: 8, color: colors.text }, detail: { fontSize: 15, marginTop: 5, color: colors.text }, heartActive: { fontSize: 34, color: colors.primary }
 });
