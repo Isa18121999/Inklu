@@ -1,95 +1,43 @@
-import React, { useCallback, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View, StyleSheet } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View, StyleSheet } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import AccessibleButton from "../components/AccessibleButton";
+import CandidateBottomNav from "../components/CandidateBottomNav";
 import { API_URL } from "../config/api";
 import { authHeaders } from "../config/session";
 import { colors } from "../theme/colors";
 
+const tabs = ["Todas", "Postulado", "CV Visto", "En proceso", "Finalista"];
+const normalizeStatus = (value) => String(value || "Postulado").toLowerCase();
+
 export default function ApplicationsScreen({ navigation }) {
   const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
+  const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [activeTab, setActiveTab] = useState("Todas");
   const loadApplications = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/applications`, { headers: authHeaders() });
-      if (!res.ok) throw new Error("No se pudieron obtener las postulaciones");
-      setApplications(await res.json());
-    } catch (error) {
-      if (!isRefresh) setApplications([]);
-    } finally {
-      if (isRefresh) setRefreshing(false);
-      else setLoading(false);
-    }
+    if (isRefresh) setRefreshing(true); else setLoading(true);
+    try { const res = await fetch(`${API_URL}/applications`, { headers: authHeaders() }); if (!res.ok) throw new Error(); setApplications(await res.json()); }
+    catch (_error) { if (!isRefresh) setApplications([]); }
+    finally { if (isRefresh) setRefreshing(false); else setLoading(false); }
   }, []);
+  useFocusEffect(useCallback(() => { loadApplications(); }, [loadApplications]));
+  const filtered = useMemo(() => activeTab === "Todas" ? applications : applications.filter((item) => normalizeStatus(item.status) === activeTab.toLowerCase()), [applications, activeTab]);
 
-  useFocusEffect(useCallback(() => {
-    loadApplications();
-  }, [loadApplications]));
-
-  return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadApplications(true)} />}
-    >
-      <Text style={styles.title} accessibilityRole="header">Mis postulaciones</Text>
-      {loading && <ActivityIndicator color={colors.primary} />}
-
-      {applications.map((application) => (
-        <View key={application._id} style={styles.card} accessible accessibilityLabel={`${application.jobId?.title || "Oferta"}, ${application.jobId?.companyId?.name || "Empresa"}, Match integral ${Number(application.matchScore ?? 0)}%, estado ${application.status || "Postulado"}`}>
-          <Text style={styles.job}>{application.jobId?.title || "Oferta"}</Text>
-          <Text style={styles.company}>{application.jobId?.companyId?.name || "Empresa"}</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>Match integral</Text>
-            <Text style={styles.match}>{Number(application.matchScore ?? 0)}%</Text>
-          </View>
-          {application.matchBreakdown && Object.keys(application.matchBreakdown).length > 0 && (
-            <View style={styles.breakdownBox}>
-              <Text style={styles.breakdownTitle}>Desglose del match</Text>
-              {Object.entries(application.matchBreakdown).map(([key, value]) => (
-                <Text key={key} style={styles.breakdown}>• {({ skills: "Habilidades", experience: "Experiencia", education: "Educación", modality: "Modalidad", accessibility: "Accesibilidad" })[key] || key}: {value}%</Text>
-              ))}
-            </View>
-          )}
-          {application.missingSkills?.length > 0 && (
-            <Text style={styles.warning}>⚠️ Habilidades faltantes: {application.missingSkills.join(" · ")}</Text>
-          )}
-          <View style={styles.statusBox}>
-            <Text style={styles.label}>Estado</Text>
-            <Text style={styles.status}>{application.status || "Postulado"}</Text>
-          </View>
-          {application.createdAt && (
-            <Text style={styles.date}>
-              Postulado: {new Date(application.createdAt).toLocaleDateString()}
-            </Text>
-          )}
-        </View>
-      ))}
-
-      {!loading && !applications.length && <Text style={styles.empty}>Aún no tienes postulaciones.</Text>}
-      <AccessibleButton title="Buscar empleos" onPress={() => navigation.navigate("Jobs")} />
+  return <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadApplications(true)} />}>
+      <Text style={styles.headerTitle} accessibilityRole="header">Mis postulaciones</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>{tabs.map((tab) => <Pressable key={tab} onPress={() => setActiveTab(tab)} style={[styles.tab, activeTab === tab && styles.tabActive]} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }}><Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text></Pressable>)}</ScrollView>
+      {loading && <ActivityIndicator color={colors.primary} style={{ marginTop: 18 }} />}
+      {!loading && filtered.map((application) => <View key={application._id} style={styles.card} accessible accessibilityLabel={`${application.jobId?.title || "Oferta"}, ${application.jobId?.companyId?.name || "Empresa"}, Match ${Number(application.matchScore ?? 0)}%, ${application.status || "Postulado"}`}>
+        <Text style={styles.job}>{application.jobId?.title || "Oferta"}</Text>
+        <Text style={styles.company}>{application.jobId?.companyId?.name || "Empresa"}</Text>
+        <View style={styles.statusRow}><View style={styles.ring}><Text style={styles.ringText}>{Number(application.matchScore ?? 0)}%</Text></View><View style={{ flex: 1, marginLeft: 18 }}><Text style={styles.status}>{application.status || "Postulado"}</Text><Text style={styles.date}>{application.createdAt ? new Date(application.createdAt).toLocaleDateString() : ""}</Text><Text style={styles.candidates}>{application.candidateCount ? `${application.candidateCount} candidatos postulados` : "Postulación registrada"}</Text></View></View>
+        {application.matchBreakdown && Object.keys(application.matchBreakdown).length > 0 && <View style={styles.breakdownBox}><Text style={styles.breakdownTitle}>Match integral: {Number(application.matchScore ?? 0)}%</Text>{Object.entries(application.matchBreakdown).map(([key, value]) => <Text key={key} style={styles.breakdown}>• {{ skills: "Habilidades", experience: "Experiencia", education: "Educación", modality: "Modalidad", accessibility: "Accesibilidad" }[key] || key}: {value}%</Text>)}</View>}
+      </View>)}
+      {!loading && !filtered.length && <View style={styles.empty}><Text style={styles.emptyTitle}>No tienes postulaciones en esta categoría</Text><Text style={styles.emptyText}>Explora las oportunidades disponibles y encuentra tu próximo empleo.</Text></View>}
     </ScrollView>
-  );
+    <CandidateBottomNav navigation={navigation} active="applications" />
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, backgroundColor: colors.white },
-  title: { fontSize: 28, fontWeight: "800", color: colors.primary, marginBottom: 20 },
-  card: { padding: 16, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, marginBottom: 12 },
-  job: { fontWeight: "800", fontSize: 18 },
-  company: { marginTop: 4 },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14 },
-  label: { fontWeight: "700" },
-  match: { fontSize: 20, fontWeight: "800", color: colors.primary },
-  breakdownBox: { marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#E2E8F0" },
-  breakdownTitle: { fontWeight: "800", marginBottom: 4 },
-  breakdown: { marginTop: 2, color: "#334155" },
-  warning: { marginTop: 8, color: "#92400E" },
-  statusBox: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: "#E2E8F0" },
-  status: { color: colors.secondary, marginTop: 4, fontWeight: "700" },
-  date: { marginTop: 10, color: "#64748B", fontSize: 13 },
-  empty: { marginBottom: 16 }
+  screen: { flex: 1, backgroundColor: colors.background }, container: { flexGrow: 1, paddingBottom: 105 }, headerTitle: { color: colors.white, backgroundColor: colors.secondary, textAlign: "center", fontSize: 28, paddingVertical: 22 }, tabs: { padding: 16, gap: 10 }, tab: { backgroundColor: "#E6EEF9", borderRadius: 28, paddingHorizontal: 22, paddingVertical: 12 }, tabActive: { backgroundColor: colors.secondary }, tabText: { fontSize: 17, color: colors.text }, tabTextActive: { color: colors.white, fontWeight: "800" }, card: { marginHorizontal: 18, marginBottom: 16, padding: 20, borderRadius: 20, backgroundColor: colors.white, elevation: 4 }, job: { fontWeight: "800", fontSize: 22, color: colors.text, lineHeight: 29 }, company: { fontSize: 18, color: "#64748B", marginTop: 8 }, statusRow: { flexDirection: "row", alignItems: "center", marginTop: 20 }, ring: { width: 82, height: 82, borderRadius: 41, borderWidth: 8, borderColor: colors.secondary, alignItems: "center", justifyContent: "center" }, ringText: { fontWeight: "800", color: colors.secondary }, status: { fontSize: 18, fontWeight: "800", color: colors.secondary }, date: { fontSize: 16, color: colors.text, marginTop: 4 }, candidates: { fontSize: 15, color: "#64748B", marginTop: 5 }, breakdownBox: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: "#E2E8F0" }, breakdownTitle: { fontWeight: "800", color: colors.primary, marginBottom: 5 }, breakdown: { color: colors.text, marginTop: 2 }, empty: { margin: 28, alignItems: "center" }, emptyTitle: { fontSize: 20, fontWeight: "800", color: colors.text, textAlign: "center" }, emptyText: { marginTop: 10, fontSize: 16, color: "#64748B", textAlign: "center" }
 });
