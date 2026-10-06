@@ -14,7 +14,8 @@ const CandidateSchema = new mongoose.Schema({
   education: String,
   modality: String,
   cvUrl: String,
-  accessibility: { type: [String], default: [] }
+  accessibility: { type: [String], default: [] },
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Job" }]
 }, { timestamps: true });
 
 module.exports = mongoose.model("Candidate", CandidateSchema);
