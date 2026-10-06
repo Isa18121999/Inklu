@@ -9,8 +9,21 @@ import { authHeaders, clearSessionToken } from "../config/session";
 const criteriaLabels = { skills: "Habilidades", experience: "Experiencia", education: "Educación", modality: "Modalidad", accessibility: "Accesibilidad" };
 
 export default function CandidateDashboard({ navigation }) {
+  const [profileName, setProfileName] = useState("");
   const [matches, setMatches] = useState([]); const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadProfileName = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/profile/me`, { headers: authHeaders() });
+      if (!response.ok) return;
+      const profile = await response.json();
+      setProfileName(String(profile.name || "").trim());
+    } catch (_error) {
+      setProfileName("");
+    }
+  }, []);
+
   const loadUnreadCount = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/notifications`, { headers: authHeaders() });
@@ -34,13 +47,14 @@ export default function CandidateDashboard({ navigation }) {
     }
   }, []);
   useFocusEffect(useCallback(() => {
+    loadProfileName();
     loadMatches();
     loadUnreadCount();
-  }, [loadMatches, loadUnreadCount]));
+  }, [loadProfileName, loadMatches, loadUnreadCount]));
   const handleLogout = async () => { await clearSessionToken(); navigation.replace("Welcome"); };
   const confirmLogout = () => Alert.alert("Cerrar sesión", "¿Quieres cerrar tu sesión?", [{ text: "Cancelar", style: "cancel" }, { text: "Cerrar sesión", style: "destructive", onPress: handleLogout }]);
   return <ScrollView contentContainerStyle={styles.container}>
-    <Text style={styles.title} accessibilityRole="header">Hola</Text><Text style={styles.status}>Acreditación registrada 🟢</Text>
+    <Text style={styles.title} accessibilityRole="header">Hola{profileName ? `, ${profileName}` : ""}</Text><Text style={styles.status}>Acreditación registrada 🟢</Text>
     <View style={styles.matchCard} accessible accessibilityLabel="Tus mejores coincidencias"><Text style={styles.matchTitle}>Tus mejores coincidencias</Text>
       {loading ? <ActivityIndicator color={colors.primary} /> : matches.length ? matches.map((job) => <View key={job._id} style={styles.matchRow}><View style={styles.matchInfo}><Text style={styles.jobTitle}>{job.title}</Text><Text>{job.companyId?.name || "Empresa"}</Text><Text style={styles.breakdownTitle}>Match integral</Text>{Object.entries(job.breakdown || {}).map(([key, value]) => <Text key={key} style={styles.breakdown}>• {criteriaLabels[key] || key}: {value}%</Text>)}{job.missingSkills?.length > 0 && <Text style={styles.warning}>⚠️ Faltan: {job.missingSkills.join(" · ")}</Text>}</View><Text style={styles.match}>{job.score}%</Text></View>) : <Text style={styles.caption}>Completa tus habilidades para encontrar coincidencias.</Text>}
     </View>
