@@ -18,7 +18,7 @@ export default function CandidateBottomNav({ navigation, active }) {
         return (
           <Pressable
             key={tab.key}
-            style={styles.tab}
+            style={[styles.tab, selected && styles.tabSelected]}
             onPress={() => navigation.navigate(tab.route)}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
@@ -34,8 +34,9 @@ export default function CandidateBottomNav({ navigation, active }) {
 }
 
 const styles = StyleSheet.create({
-  bar: { position: "absolute", left: 0, right: 0, bottom: 0, height: 78, backgroundColor: colors.secondary, flexDirection: "row", paddingHorizontal: 4, paddingTop: 8, paddingBottom: 6, elevation: 14 },
-  tab: { flex: 1, alignItems: "center", justifyContent: "center", minWidth: 56 },
+  bar: { position: "absolute", left: 0, right: 0, bottom: 0, height: 78, backgroundColor: colors.secondary, flexDirection: "row", paddingHorizontal: 4, paddingTop: 5, paddingBottom: 5, elevation: 14 },
+  tab: { flex: 1, alignItems: "center", justifyContent: "center", minWidth: 56, marginHorizontal: 2, borderRadius: 14 },
+  tabSelected: { backgroundColor: colors.primary, elevation: 5 },
   icon: { fontSize: 28, lineHeight: 31, color: "#E5E7EB" },
   iconSelected: { color: colors.white },
   label: { marginTop: 2, fontSize: 12, color: "#E5E7EB", textAlign: "center" },
