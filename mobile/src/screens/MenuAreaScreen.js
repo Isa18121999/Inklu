@@ -1,0 +1,116 @@
+import React, { useCallback, useState } from "react";
+import { Alert, ScrollView, Text, View, StyleSheet } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import CandidateBottomNav from "../components/CandidateBottomNav";
+import AccessibleButton from "../components/AccessibleButton";
+import { API_URL } from "../config/api";
+import { authHeaders, clearSessionToken } from "../config/session";
+import { colors } from "../theme/colors";
+
+export default function MenuAreaScreen({ navigation }) {
+  const [profile, setProfile] = useState({});
+  const [applications, setApplications] = useState([]);
+
+  const load = useCallback(async () => {
+    try {
+      const [profileRes, applicationsRes] = await Promise.all([
+        fetch(`${API_URL}/profile/me`, { headers: authHeaders() }),
+        fetch(`${API_URL}/applications`, { headers: authHeaders() })
+      ]);
+      if (profileRes.ok) setProfile(await profileRes.json());
+      if (applicationsRes.ok) setApplications(await applicationsRes.json());
+    } catch (_error) {}
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const completed = [profile.name, profile.phone, profile.professionalTitle, profile.experience !== undefined && profile.experience !== null, profile.skills?.length, profile.education, profile.modality, profile.accessibility?.length].filter(Boolean).length;
+  const completion = Math.round((completed / 8) * 100);
+  const submitted = applications.filter((item) => String(item.status || "").toLowerCase() === "postulado").length;
+  const cvViewed = applications.filter((item) => ["cv visto", "en proceso", "finalista"].includes(String(item.status || "").toLowerCase())).length;
+  const inProcess = applications.filter((item) => String(item.status || "").toLowerCase() === "en proceso").length;
+  const finalists = applications.filter((item) => String(item.status || "").toLowerCase() === "finalista").length;
+
+  const logout = () => Alert.alert("Cerrar sesión", "¿Quieres cerrar tu sesión?", [
+    { text: "Cancelar", style: "cancel" },
+    { text: "Cerrar sesión", style: "destructive", onPress: async () => { await clearSessionToken(); navigation.replace("Welcome"); } }
+  ]);
+
+  return (
+    <View style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.headerTitle} accessibilityRole="header">Mi área</Text>
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{String(profile.name || "U").trim().charAt(0).toUpperCase()}</Text></View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.name}>{profile.name || "Mi perfil"}</Text>
+            <Text style={styles.profession}>{profile.professionalTitle || "Completa tu profesión"}</Text>
+            <Text style={styles.completion}>Perfil completado <Text style={styles.completionValue}>{completion}%</Text></Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </View>
+
+        <AccessibleButton title="🎥  Video presentación   NUEVO" onPress={() => Alert.alert("Video presentación", "Esta función estará disponible próximamente.")} />
+        <View style={styles.menuCard}><Text style={styles.menuIcon}>▣</Text><Text style={styles.menuText}>Quién visita mi perfil</Text><Text style={styles.menuNumber}>—</Text><Text style={styles.chevron}>›</Text></View>
+
+        <View style={styles.tiles}>
+          <View style={styles.tile}><Text style={styles.tileTitle}>Planificador de <Text style={styles.emphasis}>carrera</Text></Text><Text style={styles.tileEmoji}>◎</Text></View>
+          <View style={styles.tile}><Text style={styles.tileTitle}><Text style={styles.emphasis}>Talentview</Text>{"\n"}3D</Text><Text style={styles.tileEmoji}>◇</Text></View>
+        </View>
+
+        <View style={styles.menuCard}>
+          <Text style={styles.menuIcon}>➤</Text><Text style={styles.menuText}>Mis postulaciones</Text><Text style={styles.chevron}>›</Text>
+        </View>
+        <View style={styles.statsBox}>
+          <Stat label="Postulado" value={submitted} /><Stat label="CV Visto" value={cvViewed} /><Stat label="En proceso" value={inProcess} /><Stat label="Finalista" value={finalists} />
+        </View>
+
+        <View style={styles.listCard}>
+          <MenuRow icon="▣" label="Mi Currículum" onPress={() => navigation.navigate("CV")} />
+          <MenuRow icon="◉" label="Ofertas ocultas" onPress={() => Alert.alert("Ofertas ocultas", "No tienes ofertas ocultas.")} />
+          <MenuRow icon="🚀" label="Desarrollo profesional" onPress={() => Alert.alert("Desarrollo profesional", "Próximamente encontrarás recursos para potenciar tu perfil.")} />
+          <MenuRow icon="⚙" label="Configuración" onPress={() => Alert.alert("Configuración", "Las opciones de configuración se habilitarán próximamente.")} />
+          <MenuRow icon="◉" label="Cerrar sesión" onPress={logout} last />
+        </View>
+      </ScrollView>
+      <CandidateBottomNav navigation={navigation} active="menu" />
+    </View>
+  );
+}
+
+function Stat({ label, value }) { return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue}>{value}</Text></View>; }
+function MenuRow({ icon, label, onPress, last }) { return <View style={[styles.listRow, !last && styles.listBorder]}><Text style={styles.rowIcon}>{icon}</Text><Text style={styles.rowLabel}>{label}</Text><Text style={styles.chevron}>›</Text><AccessibleButton title="" onPress={onPress} accessibilityLabel={label} /></View>; }
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  container: { flexGrow: 1, paddingBottom: 100 },
+  headerTitle: { color: colors.white, backgroundColor: colors.secondary, textAlign: "center", fontSize: 28, paddingVertical: 22, marginBottom: 12 },
+  profileCard: { marginHorizontal: 18, padding: 18, backgroundColor: colors.white, borderRadius: 22, flexDirection: "row", alignItems: "center", elevation: 4 },
+  avatar: { width: 82, height: 82, borderRadius: 41, backgroundColor: colors.success, alignItems: "center", justifyContent: "center", marginRight: 16 },
+  avatarText: { fontSize: 38, fontWeight: "800", color: colors.white },
+  profileInfo: { flex: 1 },
+  name: { fontSize: 23, fontWeight: "800", color: colors.text },
+  profession: { fontSize: 17, color: "#64748B", marginTop: 5 },
+  completion: { fontSize: 16, color: colors.text, marginTop: 8 },
+  completionValue: { color: colors.success, fontWeight: "800" },
+  chevron: { fontSize: 34, color: colors.text },
+  menuCard: { marginHorizontal: 18, marginTop: 18, padding: 20, backgroundColor: colors.white, borderRadius: 20, flexDirection: "row", alignItems: "center", elevation: 3 },
+  menuIcon: { fontSize: 25, color: colors.secondary, marginRight: 16 },
+  menuText: { flex: 1, fontSize: 20, color: colors.text },
+  menuNumber: { fontSize: 24, fontWeight: "800", color: colors.text, marginRight: 8 },
+  tiles: { flexDirection: "row", gap: 12, marginHorizontal: 18, marginTop: 18 },
+  tile: { flex: 1, minHeight: 160, backgroundColor: colors.white, borderRadius: 20, padding: 20, alignItems: "center", justifyContent: "center", elevation: 3 },
+  tileTitle: { fontSize: 21, textAlign: "center", color: colors.text },
+  emphasis: { color: colors.secondary, fontWeight: "800" },
+  tileEmoji: { fontSize: 55, color: colors.primary, marginTop: 12 },
+  statsBox: { marginHorizontal: 18, padding: 12, backgroundColor: colors.background, flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  stat: { width: "47%", backgroundColor: colors.white, borderRadius: 18, padding: 18, elevation: 2 },
+  statLabel: { fontSize: 16, color: colors.text },
+  statValue: { fontSize: 27, fontWeight: "800", color: colors.text, textAlign: "right" },
+  listCard: { marginTop: 14, backgroundColor: colors.white },
+  listRow: { minHeight: 70, flexDirection: "row", alignItems: "center", paddingHorizontal: 28, position: "relative" },
+  listBorder: { borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  rowIcon: { width: 40, fontSize: 24, color: colors.secondary },
+  rowLabel: { flex: 1, fontSize: 19, color: colors.text },
+  listRow: { minHeight: 70, flexDirection: "row", alignItems: "center", paddingHorizontal: 28, position: "relative" }
+});
