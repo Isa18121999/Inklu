@@ -17,6 +17,8 @@ import CreateJobScreen from "../screens/CreateJobScreen";
 import CandidateCVScreen from "../screens/CandidateCVScreen";
 import ApplicationsScreen from "../screens/ApplicationsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
+import FavoritesScreen from "../screens/FavoritesScreen";
+import MenuAreaScreen from "../screens/MenuAreaScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -39,6 +41,8 @@ export default function AppNavigator({ initialRouteName = "Welcome" }) {
         <Stack.Screen name="CandidateCV" component={CandidateCVScreen} />
         <Stack.Screen name="Applications" component={ApplicationsScreen} />
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
+        <Stack.Screen name="Favorites" component={FavoritesScreen} />
+        <Stack.Screen name="MenuArea" component={MenuAreaScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
