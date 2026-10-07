@@ -20,3 +20,5 @@ const styles = StyleSheet.create({
   title: { textAlign: "center", fontSize: 30, fontWeight: "800", color: colors.text, marginBottom: 10 },
   description: { textAlign: "center", fontSize: 17, lineHeight: 25, color: "#64748B", marginBottom: 28 }
 });
+
+// Flujo inicial: Empezar conserva la entrada al registro de Candidato o Empresa.
