@@ -9,6 +9,8 @@ const JobSchema = new mongoose.Schema({
   modality: { type: String, trim: true, enum: MODALITIES },
   experienceRequired: { type: Number, min: 0, max: 60, default: 0 },
   educationRequired: { type: String, trim: true, maxlength: 300, default: "" },
+  salaryMin: { type: Number, min: 0, max: 1000000 },
+  salaryMax: { type: Number, min: 0, max: 1000000 },
   requirements: {
     type: [String],
     default: [],
