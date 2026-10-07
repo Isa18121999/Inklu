@@ -13,9 +13,9 @@ export default function MenuAreaScreen({ navigation }) {
   const completed = [profile.name, profile.phone, profile.professionalTitle, profile.experience !== undefined && profile.experience !== null, profile.skills?.length, profile.education, profile.modality, profile.accessibility?.length].filter(Boolean).length;
   const completion = Math.round((completed / 8) * 100);
   const submitted = applications.filter((item) => String(item.status || "").toLowerCase() === "postulado").length;
-  const cvViewed = applications.filter((item) => ["cv visto", "en proceso", "finalista"].includes(String(item.status || "").toLowerCase())).length;
+  const cvViewed = applications.filter((item) => ["cv visto", "en proceso", "proceso finalizado"].includes(String(item.status || "").toLowerCase())).length;
   const inProcess = applications.filter((item) => String(item.status || "").toLowerCase() === "en proceso").length;
-  const finalists = applications.filter((item) => String(item.status || "").toLowerCase() === "finalista").length;
+  const finished = applications.filter((item) => String(item.status || "").toLowerCase() === "proceso finalizado").length;
   const logout = () => Alert.alert("Cerrar sesión", "¿Quieres cerrar tu sesión?", [{ text: "Cancelar", style: "cancel" }, { text: "Cerrar sesión", style: "destructive", onPress: async () => { await clearSessionToken(); navigation.replace("Welcome"); } }]);
 
   return <View style={styles.screen}><ScrollView contentContainerStyle={styles.container}>
@@ -31,7 +31,7 @@ export default function MenuAreaScreen({ navigation }) {
       <MenuRow icon="⚙" label="Configuración" onPress={() => Alert.alert("Configuración", "Las opciones de configuración se habilitarán próximamente.")} />
       <MenuRow icon="↪" label="Cerrar sesión" onPress={logout} last />
     </View>
-    <View style={styles.applicationSummary}><Text style={styles.summaryTitle}>Resumen de postulaciones</Text><View style={styles.summaryGrid}><StatSmall label="Postulado" value={submitted} /><StatSmall label="CV Visto" value={cvViewed} /><StatSmall label="En proceso" value={inProcess} /><StatSmall label="Finalista" value={finalists} /></View></View>
+    <View style={styles.applicationSummary}><Text style={styles.summaryTitle}>Resumen de postulaciones</Text><View style={styles.summaryGrid}><StatSmall label="Postulado" value={submitted} /><StatSmall label="CV Visto" value={cvViewed} /><StatSmall label="En proceso" value={inProcess} /><StatSmall label="Proceso finalizado" value={finished} /></View></View>
   </ScrollView><CandidateBottomNav navigation={navigation} active="menu" /></View>;
 }
 function Stat({ label, value }) { return <View style={styles.stat}><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>; }
