@@ -14,12 +14,11 @@ const verifyPassword = (password, storedPassword) => { const [salt, storedHash] 
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, phone, password, role, country, accreditationType, accreditationNumber, disabilityType } = req.body;
+    const { name, email, phone, password, role, country, accreditationType, accreditationNumber } = req.body;
     const normalizedName = String(name || "").trim();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const normalizedPhone = String(phone || "").trim();
     const normalizedConadis = String(accreditationNumber || "").trim();
-    const normalizedDisability = String(disabilityType || "").trim();
 
     if (!normalizedName || !normalizedEmail || !normalizedPhone || !password) return res.status(400).json({ message: "Nombre, email, teléfono y contraseña son obligatorios" });
     if (role === "candidate" && !validateName(normalizedName)) return res.status(400).json({ message: "El nombre solo puede contener letras, espacios, guiones y apóstrofes" });
@@ -32,7 +31,6 @@ router.post("/register", async (req, res) => {
     if (role === "candidate") {
       if (String(country || "").trim() !== "PE") return res.status(400).json({ message: "Inklu funciona actualmente en Perú" });
       if (String(accreditationType || "").trim() !== "Carné CONADIS" || !/^\d{6}$/.test(normalizedConadis)) return res.status(400).json({ message: "Registra el RUI de exactamente 6 dígitos numéricos de tu carné CONADIS" });
-      if (!normalizedDisability) return res.status(400).json({ message: "Indica tu tipo de discapacidad" });
     }
 
     if (await User.findOne({ email: normalizedEmail })) return res.status(409).json({ message: "El email ya está registrado" });
@@ -48,8 +46,7 @@ router.post("/register", async (req, res) => {
         country: "PE",
         candidateType: "CONADIS",
         accreditationType: "Carné CONADIS",
-        accreditationNumber: normalizedConadis,
-        disabilityType: normalizedDisability
+        accreditationNumber: normalizedConadis
       });
     } else {
       profile = await Company.create({ userId: user._id, name: user.name, email: user.email, phone: user.phone });
