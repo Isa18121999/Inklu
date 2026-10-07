@@ -12,6 +12,7 @@ const companyRoutes = require("./routes/companyRoutes");
 const cvRoutes = require("./routes/cvRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 const app = express();
 app.disable("x-powered-by");
@@ -35,32 +36,24 @@ app.use("/api/company", companyRoutes);
 app.use("/api/cv", cvRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/messages", messageRoutes);
 
 app.get("/", (_req, res) => {
-  res.json({
-    name: "Inklu API",
-    status: "running"
-  });
+  res.json({ name: "Inklu API", status: "running" });
 });
 
 app.get("/health", (_req, res) => {
   const databaseConnected = mongoose.connection.readyState === 1;
-  res.status(databaseConnected ? 200 : 503).json({
-    status: databaseConnected ? "ok" : "degraded",
-    database: databaseConnected ? "connected" : "disconnected"
-  });
+  res.status(databaseConnected ? 200 : 503).json({ status: databaseConnected ? "ok" : "degraded", database: databaseConnected ? "connected" : "disconnected" });
 });
 
 app.use((error, _req, res, _next) => {
-  if (error.code?.startsWith("LIMIT_") || error.code === "INVALID_FILE_TYPE") {
-    return res.status(400).json({ message: error.message || "Solicitud de archivo no válida" });
-  }
+  if (error.code?.startsWith("LIMIT_") || error.code === "INVALID_FILE_TYPE") return res.status(400).json({ message: error.message || "Solicitud de archivo no válida" });
   console.error("Unhandled request error", error);
   res.status(500).json({ message: "Error interno del servidor" });
 });
 
 const PORT = process.env.PORT || 3000;
-
 const startServer = async () => {
   try {
     if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is required");
@@ -71,5 +64,4 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
 startServer();
