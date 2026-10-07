@@ -8,9 +8,8 @@ export default function WelcomeScreen({ navigation }) {
     <Image source={require("../../assets/inklu-icon-512.png")} style={styles.logoImage} resizeMode="contain" accessibilityRole="image" accessibilityLabel="Logo de Inklu" />
     <Text style={styles.title} accessibilityRole="header">¡Bienvenido a Inklu!</Text>
     <Text style={styles.description}>Encuentra oportunidades de trabajo{`\n`}de forma inclusiva e inteligente.</Text>
-    <AccessibleButton title="Empezar" accessibilityHint="Comienza a usar Inklu y permite elegir cómo quieres registrarte." onPress={() => navigation.navigate("CreateAccount")} />
-    <AccessibleButton title="Iniciar sesión" accessibilityHint="Abre el inicio de sesión." onPress={() => navigation.navigate("Login")} />
-    <AccessibleButton title="Crear una cuenta" accessibilityHint="Permite elegir si deseas registrarte como candidato o empresa." type="secondary" onPress={() => navigation.navigate("CreateAccount")} />
+    <AccessibleButton title="Empezar" accessibilityHint="Comienza el registro y permite elegir entre candidato o empresa." onPress={() => navigation.navigate("CreateAccount")} />
+    <AccessibleButton title="Iniciar sesión" type="secondary" accessibilityHint="Abre el inicio de sesión." onPress={() => navigation.navigate("Login")} />
   </View>;
 }
 
@@ -20,5 +19,3 @@ const styles = StyleSheet.create({
   title: { textAlign: "center", fontSize: 30, fontWeight: "800", color: colors.text, marginBottom: 10 },
   description: { textAlign: "center", fontSize: 17, lineHeight: 25, color: "#64748B", marginBottom: 28 }
 });
-
-// Flujo inicial: Empezar conserva la entrada al registro de Candidato o Empresa.
