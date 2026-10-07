@@ -10,6 +10,7 @@ import CandidateRegister from "../screens/CandidateRegister";
 import CompanyRegister from "../screens/CompanyRegister";
 import CandidateDashboard from "../screens/CandidateDashboard";
 import CandidateProfileScreen from "../screens/CandidateProfileScreen";
+import CompanyProfileScreen from "../screens/CompanyProfileScreen";
 import CVUpload from "../screens/CVUpload";
 import JobsScreen from "../screens/JobsScreen";
 import JobDetailScreen from "../screens/JobDetailScreen";
@@ -35,6 +36,7 @@ export default function AppNavigator({ initialRouteName = "Welcome" }) {
         <Stack.Screen name="CompanyRegister" component={CompanyRegister} />
         <Stack.Screen name="CandidateDashboard" component={CandidateDashboard} />
         <Stack.Screen name="CandidateProfile" component={CandidateProfileScreen} />
+        <Stack.Screen name="CompanyProfile" component={CompanyProfileScreen} />
         <Stack.Screen name="CV" component={CVUpload} />
         <Stack.Screen name="Jobs" component={JobsScreen} />
         <Stack.Screen name="JobDetail" component={JobDetailScreen} />
