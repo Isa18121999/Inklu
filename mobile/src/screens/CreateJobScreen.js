@@ -9,80 +9,19 @@ const JOBS_URL = `${API_URL}/company/jobs`;
 const MODALITIES = ["remoto", "híbrido", "hibrido", "presencial"];
 
 export default function CreateJobScreen({ navigation }) {
-  const [title, setTitle] = useState("");
-  const [area, setArea] = useState("");
-  const [modality, setModality] = useState("");
-  const [experienceRequired, setExperienceRequired] = useState("");
-  const [educationRequired, setEducationRequired] = useState("");
-  const [requirements, setRequirements] = useState("");
-  const [accessibility, setAccessibility] = useState("");
-
+  const [title, setTitle] = useState(""); const [area, setArea] = useState(""); const [modality, setModality] = useState(""); const [experienceRequired, setExperienceRequired] = useState(""); const [educationRequired, setEducationRequired] = useState(""); const [salaryMin, setSalaryMin] = useState(""); const [salaryMax, setSalaryMax] = useState(""); const [requirements, setRequirements] = useState(""); const [accessibility, setAccessibility] = useState("");
   const publishJob = async () => {
-    const normalizedTitle = title.trim();
-    const normalizedArea = area.trim();
-    const normalizedModality = modality.trim().toLowerCase();
-    const experience = Number(experienceRequired);
-    const requirementList = requirements.split(",").map((item) => item.trim()).filter(Boolean);
-    const accessibilityList = accessibility.split(",").map((item) => item.trim()).filter(Boolean);
-
-    if (normalizedTitle.length < 2 || normalizedTitle.length > 300) {
-      Alert.alert("Cargo no válido", "El cargo debe tener entre 2 y 300 caracteres.");
-      return;
-    }
-    if (normalizedArea.length < 2 || normalizedArea.length > 300) {
-      Alert.alert("Área no válida", "El área profesional debe tener entre 2 y 300 caracteres.");
-      return;
-    }
-    if (!MODALITIES.includes(normalizedModality)) {
-      Alert.alert("Modalidad no válida", "Selecciona remoto, híbrido o presencial.");
-      return;
-    }
-    if (!Number.isFinite(experience) || experience < 0 || experience > 60) {
-      Alert.alert("Experiencia no válida", "Ingresa un número entre 0 y 60 años.");
-      return;
-    }
-    if (educationRequired.trim().length > 300) {
-      Alert.alert("Formación no válida", "La formación requerida no puede superar 300 caracteres.");
-      return;
-    }
-    if (requirementList.length > 30 || requirementList.some((item) => item.length > 100)) {
-      Alert.alert("Requisitos no válidos", "Puedes registrar hasta 30 requisitos de máximo 100 caracteres.");
-      return;
-    }
-    if (accessibilityList.length > 30 || accessibilityList.some((item) => item.length > 100)) {
-      Alert.alert("Accesibilidad no válida", "Puedes registrar hasta 30 requisitos de máximo 100 caracteres.");
-      return;
-    }
-
-    try {
-      const response = await fetch(JOBS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ title: normalizedTitle, area: normalizedArea, modality: normalizedModality, experienceRequired: experience, educationRequired: educationRequired.trim(), requirements: requirementList, accessibility: accessibilityList })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "No se pudo publicar la oferta");
-      Alert.alert("Oferta publicada", "La oferta laboral fue creada correctamente.", [{ text: "Continuar", onPress: () => navigation.goBack() }]);
-    } catch (error) { Alert.alert("Error", error.message || "No se pudo conectar con el servidor."); }
+    const normalizedTitle = title.trim(); const normalizedArea = area.trim(); const normalizedModality = modality.trim().toLowerCase(); const experience = Number(experienceRequired); const min = salaryMin === "" ? undefined : Number(salaryMin); const max = salaryMax === "" ? undefined : Number(salaryMax); const requirementList = requirements.split(",").map((item) => item.trim()).filter(Boolean); const accessibilityList = accessibility.split(",").map((item) => item.trim()).filter(Boolean);
+    if (normalizedTitle.length < 2 || normalizedTitle.length > 300) return Alert.alert("Cargo no válido", "El cargo debe tener entre 2 y 300 caracteres.");
+    if (normalizedArea.length < 2 || normalizedArea.length > 300) return Alert.alert("Área no válida", "El área profesional debe tener entre 2 y 300 caracteres.");
+    if (!MODALITIES.includes(normalizedModality)) return Alert.alert("Modalidad no válida", "Selecciona remoto, híbrido o presencial.");
+    if (!Number.isFinite(experience) || experience < 0 || experience > 60) return Alert.alert("Experiencia no válida", "Ingresa un número entre 0 y 60 años.");
+    if (min !== undefined && (!Number.isFinite(min) || min < 0 || min > 1000000) || max !== undefined && (!Number.isFinite(max) || max < 0 || max > 1000000) || min !== undefined && max !== undefined && max < min) return Alert.alert("Rango salarial no válido", "Revisa los montos mínimo y máximo.");
+    if (educationRequired.trim().length > 300) return Alert.alert("Formación no válida", "La formación requerida no puede superar 300 caracteres.");
+    if (requirementList.length > 30 || requirementList.some((item) => item.length > 100)) return Alert.alert("Requisitos no válidos", "Puedes registrar hasta 30 requisitos de máximo 100 caracteres.");
+    if (accessibilityList.length > 30 || accessibilityList.some((item) => item.length > 100)) return Alert.alert("Accesibilidad no válida", "Puedes registrar hasta 30 requisitos de máximo 100 caracteres.");
+    try { const response = await fetch(JOBS_URL, { method: "POST", headers: { "Content-Type": "application/json", ...authHeaders() }, body: JSON.stringify({ title: normalizedTitle, area: normalizedArea, modality: normalizedModality, experienceRequired: experience, educationRequired: educationRequired.trim(), salaryMin: min, salaryMax: max, requirements: requirementList, accessibility: accessibilityList }) }); const data = await response.json(); if (!response.ok) throw new Error(data.message || "No se pudo publicar la oferta"); Alert.alert("Oferta publicada", "La oferta laboral fue creada correctamente.", [{ text: "Continuar", onPress: () => navigation.goBack() }]); } catch (error) { Alert.alert("Error", error.message || "No se pudo conectar con el servidor."); }
   };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">Publicar oferta laboral</Text>
-      <TextInput style={styles.input} placeholder="Cargo" accessibilityLabel="Cargo de la oferta" accessibilityHint="Escribe el nombre del puesto." value={title} onChangeText={setTitle} maxLength={300} />
-      <TextInput style={styles.input} placeholder="Área profesional" accessibilityLabel="Área profesional" accessibilityHint="Escribe el área profesional." value={area} onChangeText={setArea} maxLength={300} />
-      <TextInput style={styles.input} placeholder="Modalidad: remoto, híbrido o presencial" accessibilityLabel="Modalidad laboral" accessibilityHint="Escribe remoto, híbrido o presencial." value={modality} onChangeText={setModality} maxLength={20} />
-      <TextInput style={styles.input} placeholder="Experiencia mínima en años" accessibilityLabel="Experiencia mínima en años" accessibilityHint="Escribe la cantidad de años." value={experienceRequired} onChangeText={(value) => setExperienceRequired(value.replace(/[^0-9]/g, ""))} keyboardType="numeric" maxLength={2} />
-      <TextInput style={styles.input} placeholder="Formación académica requerida" accessibilityLabel="Formación académica requerida" accessibilityHint="Escribe la formación solicitada." value={educationRequired} onChangeText={setEducationRequired} maxLength={300} />
-      <TextInput style={styles.input} placeholder="Requisitos / habilidades separados por coma" accessibilityLabel="Requisitos y habilidades" accessibilityHint="Escribe requisitos separados por comas." value={requirements} onChangeText={setRequirements} maxLength={3000} multiline />
-      <TextInput style={styles.input} placeholder="Accesibilidad requerida, separada por coma" accessibilityLabel="Requisitos de accesibilidad" accessibilityHint="Escribe ajustes de accesibilidad separados por comas." value={accessibility} onChangeText={setAccessibility} maxLength={3000} multiline />
-      <AccessibleButton title="Publicar oferta" accessibilityHint="Publica esta oferta laboral." onPress={publishJob} />
-    </ScrollView>
-  );
+  return <ScrollView contentContainerStyle={styles.container}><Text style={styles.title} accessibilityRole="header">Publicar oferta laboral</Text><TextInput style={styles.input} placeholder="Cargo" accessibilityLabel="Cargo de la oferta" value={title} onChangeText={setTitle} maxLength={300} /><TextInput style={styles.input} placeholder="Área profesional" accessibilityLabel="Área profesional" value={area} onChangeText={setArea} maxLength={300} /><TextInput style={styles.input} placeholder="Modalidad: remoto, híbrido o presencial" accessibilityLabel="Modalidad laboral" value={modality} onChangeText={setModality} maxLength={20} /><TextInput style={styles.input} placeholder="Experiencia mínima en años" accessibilityLabel="Experiencia mínima en años" value={experienceRequired} onChangeText={(value) => setExperienceRequired(value.replace(/[^0-9]/g, ""))} keyboardType="numeric" maxLength={2} /><TextInput style={styles.input} placeholder="Formación académica requerida" accessibilityLabel="Formación académica requerida" value={educationRequired} onChangeText={setEducationRequired} maxLength={300} /><TextInput style={styles.input} placeholder="Salario mínimo mensual (S/)" accessibilityLabel="Salario mínimo mensual" value={salaryMin} onChangeText={(value) => setSalaryMin(value.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" maxLength={8} /><TextInput style={styles.input} placeholder="Salario máximo mensual (S/)" accessibilityLabel="Salario máximo mensual" value={salaryMax} onChangeText={(value) => setSalaryMax(value.replace(/[^0-9.]/g, ""))} keyboardType="decimal-pad" maxLength={8} /><TextInput style={styles.input} placeholder="Requisitos / habilidades separados por coma" accessibilityLabel="Requisitos y habilidades" value={requirements} onChangeText={setRequirements} maxLength={3000} multiline /><TextInput style={styles.input} placeholder="Accesibilidad requerida, separada por coma" accessibilityLabel="Requisitos de accesibilidad" value={accessibility} onChangeText={setAccessibility} maxLength={3000} multiline /><AccessibleButton title="Publicar oferta" accessibilityHint="Publica esta oferta laboral." onPress={publishJob} /></ScrollView>;
 }
-
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, backgroundColor: colors.white },
-  title: { fontSize: 26, fontWeight: "800", color: colors.primary },
-  input: { borderWidth: 1, borderColor: "#CBD5E1", padding: 14, borderRadius: 12, marginTop: 16 }
-});
+const styles = StyleSheet.create({ container: { flexGrow: 1, padding: 24, backgroundColor: colors.white }, title: { fontSize: 26, fontWeight: "800", color: colors.primary }, input: { borderWidth: 1, borderColor: "#CBD5E1", padding: 14, borderRadius: 12, marginTop: 16 } });
