@@ -1,58 +1,20 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import AccessibleButton from "../components/AccessibleButton";
+import { View, Text, StyleSheet, Pressable } from "react-native";
 import { colors } from "../theme/colors";
 
 export default function CreateAccountScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">
-        Crear una cuenta
-      </Text>
-      <Text style={styles.description}>
-        Selecciona cómo quieres usar Inklu.
-      </Text>
-
-      <AccessibleButton
-        title="Soy candidato"
-        accessibilityHint="Crear una cuenta como candidato."
-        onPress={() => navigation.navigate("CandidateRegister")}
-      />
-      <AccessibleButton
-        title="Soy empresa"
-        accessibilityHint="Crear una cuenta como empresa."
-        type="secondary"
-        onPress={() => navigation.navigate("CompanyRegister")}
-      />
-      <AccessibleButton
-        title="Volver"
-        accessibilityHint="Volver a la pantalla de inicio."
-        type="secondary"
-        onPress={() => navigation.goBack()}
-      />
-    </View>
-  );
+  return <View style={styles.container}>
+    <Text style={styles.title} accessibilityRole="header">Crear una cuenta</Text>
+    <Text style={styles.description}>¿Cómo quieres usar Inklu?</Text>
+    <Pressable style={[styles.option, styles.candidate]} onPress={() => navigation.navigate("CandidateRegister")} accessibilityRole="button" accessibilityLabel="Soy candidato">
+      <View style={styles.iconCircle}><Text style={styles.iconText}>C</Text></View><View style={styles.optionText}><Text style={styles.optionTitle}>Soy candidato</Text><Text style={styles.optionDescription}>Busca y postula a empleos</Text></View><Text style={styles.chevron}>›</Text>
+    </Pressable>
+    <Pressable style={[styles.option, styles.company]} onPress={() => navigation.navigate("CompanyRegister")} accessibilityRole="button" accessibilityLabel="Soy empresa">
+      <View style={[styles.iconCircle, styles.companyIcon]}><Text style={[styles.iconText, styles.companyIconText]}>E</Text></View><View style={styles.optionText}><Text style={styles.optionTitle}>Soy empresa</Text><Text style={styles.optionDescription}>Publica y gestiona ofertas</Text></View><Text style={styles.chevron}>›</Text>
+    </Pressable>
+    <Pressable onPress={() => navigation.goBack()} accessibilityRole="button"><Text style={styles.back}>Volver</Text></Pressable>
+  </View>;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
-    backgroundColor: colors.white,
-  },
-  title: {
-    textAlign: "center",
-    fontSize: 30,
-    fontWeight: "800",
-    color: colors.text,
-    marginBottom: 16,
-  },
-  description: {
-    textAlign: "center",
-    fontSize: 17,
-    lineHeight: 25,
-    color: colors.text,
-    marginBottom: 24,
-  },
+const styles = StyleSheet.create({ container: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: colors.white }, title: { textAlign: "center", fontSize: 30, fontWeight: "800", color: colors.text, marginBottom: 8 }, description: { textAlign: "center", fontSize: 17, color: "#64748B", marginBottom: 32 }, option: { flexDirection: "row", alignItems: "center", padding: 20, borderRadius: 22, backgroundColor: colors.white, marginBottom: 16, borderWidth: 2 }, candidate: { borderColor: colors.primary }, company: { borderColor: colors.secondary }, iconCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#EDE9FE", alignItems: "center", justifyContent: "center", marginRight: 15 }, companyIcon: { backgroundColor: "#DBEAFE" }, iconText: { fontSize: 23, fontWeight: "800", color: colors.primary }, companyIconText: { color: colors.secondary }, optionText: { flex: 1 }, optionTitle: { fontSize: 21, fontWeight: "800", color: colors.text }, optionDescription: { fontSize: 14, color: "#64748B", marginTop: 4 }, chevron: { fontSize: 30, color: "#64748B" }, back: { textAlign: "center", color: colors.primary, fontWeight: "700", marginTop: 8 }
 });
