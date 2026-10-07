@@ -15,22 +15,16 @@ export default function AccessScreen({ navigation }) {
       </Text>
 
       <AccessibleButton
-        title="Soy candidato"
-        accessibilityHint="Abre el registro de candidato."
-        onPress={() => navigation.navigate("CandidateRegister")}
-      />
-
-      <AccessibleButton
-        title="Soy empresa"
-        accessibilityHint="Abre el registro de empresa."
-        type="secondary"
-        onPress={() => navigation.navigate("CompanyRegister")}
-      />
-
-      <AccessibleButton
         title="Iniciar sesión"
         accessibilityHint="Abre el inicio de sesión."
         onPress={() => navigation.navigate("Login")}
+      />
+
+      <AccessibleButton
+        title="Crear una cuenta"
+        accessibilityHint="Permite elegir si deseas registrarte como candidato o empresa."
+        type="secondary"
+        onPress={() => navigation.navigate("CreateAccount")}
       />
     </View>
   );
