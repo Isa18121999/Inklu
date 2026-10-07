@@ -24,35 +24,19 @@ export const isTokenExpired = (value = token) => {
 
 export const setSessionToken = (nextToken) => {
   token = nextToken || null;
-  if (token && !isTokenExpired(token)) {
-    SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
-  }
+  if (token && !isTokenExpired(token)) SecureStore.setItemAsync(TOKEN_KEY, token).catch(() => {});
 };
 
 export const restoreSessionToken = async () => {
   try {
     const storedToken = await SecureStore.getItemAsync(TOKEN_KEY);
-    if (!storedToken || isTokenExpired(storedToken)) {
-      await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
-      token = null;
-      return null;
-    }
+    if (!storedToken || isTokenExpired(storedToken)) { await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {}); token = null; return null; }
     token = storedToken;
     return token;
-  } catch (error) {
-    token = null;
-    return null;
-  }
+  } catch (error) { token = null; return null; }
 };
 
-export const clearSessionToken = async () => {
-  token = null;
-  await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
-};
-
+export const clearSessionToken = async () => { token = null; await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {}); };
 export const authHeaders = () => isTokenExpired() ? {} : { Authorization: `Bearer ${token}` };
-
-export const getSessionRole = () => {
-  if (isTokenExpired()) return null;
-  return decodePayload(token)?.role || null;
-};
+export const getSessionRole = () => isTokenExpired() ? null : decodePayload(token)?.role || null;
+export const getSessionUserId = () => isTokenExpired() ? null : decodePayload(token)?.id || decodePayload(token)?._id || null;
