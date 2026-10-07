@@ -6,10 +6,10 @@ import { API_URL } from "../config/api";
 import { authHeaders } from "../config/session";
 import { colors } from "../theme/colors";
 
-const tabs = ["Todas", "Postulado", "CV Visto", "En proceso", "Finalista"];
+const tabs = ["Todas", "Postulado", "CV visto", "En proceso", "Proceso finalizado"];
 const normalizeStatus = (value) => String(value || "Postulado").toLowerCase();
-const progressFor = (value) => { const status = normalizeStatus(value); if (status.includes("finalista")) return 100; if (status.includes("proceso")) return 75; if (status.includes("visto")) return 50; return 25; };
-const statusSteps = ["Postulado", "CV Visto", "En proceso", "Finalista"];
+const progressFor = (value) => { const status = normalizeStatus(value); if (status.includes("finalizado")) return 100; if (status.includes("proceso")) return 75; if (status.includes("visto")) return 50; return 25; };
+const statusSteps = ["Postulado", "CV visto", "En proceso", "Proceso finalizado"];
 
 export default function ApplicationsScreen({ navigation }) {
   const [applications, setApplications] = useState([]); const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [activeTab, setActiveTab] = useState("Todas");
@@ -21,7 +21,7 @@ export default function ApplicationsScreen({ navigation }) {
     <ScrollView contentContainerStyle={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadApplications(true)} />}>
       <Text style={styles.headerTitle} accessibilityRole="header">Mis postulaciones</Text>
       <Text style={styles.subtitle}>Sigue cada etapa de tu proceso y conoce tu Match integral.</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>{tabs.map((tab) => <Pressable key={tab} onPress={() => setActiveTab(tab)} style={[styles.tab, activeTab === tab && styles.tabActive]} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }}><Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text></Pressable>)}</ScrollView>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>{tabs.map((tab) => <Pressable key={tab} onPress={() => setActiveTab(tab)} style={[styles.tab, activeTab === tab && styles.tabActive]} accessibilityRole="tab" accessibilityState={{ selected: activeTab === tab }} accessibilityLabel={`Filtrar por ${tab}`}><Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text></Pressable>)}</ScrollView>
       {loading && <ActivityIndicator color={colors.primary} style={{ marginTop: 18 }} />}
       {!loading && filtered.map((application) => { const progress = progressFor(application.status); const currentStep = Math.max(0, Math.min(3, Math.ceil(progress / 25) - 1)); return <View key={application._id} style={styles.card} accessible accessibilityLabel={`${application.jobId?.title || "Oferta"}, ${application.jobId?.companyId?.name || "Empresa"}, Match ${Number(application.matchScore ?? 0)}%, ${application.status || "Postulado"}`}>
         <View style={styles.cardHeader}><View style={{ flex: 1 }}><Text style={styles.job}>{application.jobId?.title || "Oferta"}</Text><Text style={styles.company}>{application.jobId?.companyId?.name || "Empresa"}</Text></View><View style={styles.matchBadge}><Text style={styles.matchText}>{Number(application.matchScore ?? 0)}%</Text><Text style={styles.matchLabel}>MATCH</Text></View></View>
