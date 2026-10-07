@@ -77,3 +77,4 @@ jobs:
           retention-days: 14
 
       # APK build pipeline intentionally kept independent from the backend.
+      # Rebuild triggered for the current main UI version.
