@@ -42,6 +42,7 @@ export default function CompanyDashboardScreen({ navigation }) {
       <Text style={styles.subsection}>Habilidades</Text><Text>Coinciden: {candidate.matchedSkills?.length ? candidate.matchedSkills.join(" · ") : "Ninguna"}</Text><Text>Faltan: {candidate.missingSkills?.length ? candidate.missingSkills.join(" · ") : "Ninguna"}</Text>
       <Text style={styles.subsection}>Accesibilidad</Text><Text>Coinciden: {candidate.matchedAccessibility?.length ? candidate.matchedAccessibility.join(" · ") : "Ninguna"}</Text><Text>Faltan: {candidate.missingAccessibility?.length ? candidate.missingAccessibility.join(" · ") : "Ninguna"}</Text>
       <Text style={styles.status}>Estado: {candidate.status}</Text><AccessibleButton title="Revisar perfil" onPress={() => navigation.navigate("CandidateCV", { candidate })} />
+      {candidate.applicationId && candidate.status !== "Postulado" && <AccessibleButton title="💬 Abrir chat" type="secondary" accessibilityHint="Abre la conversación con este candidato." onPress={() => navigation.navigate("Chat", { applicationId: candidate.applicationId })} />}
       {candidate.applicationId && NEXT_STATUS[candidate.status] && <View style={styles.actions}><AccessibleButton title={NEXT_STATUS[candidate.status] === "CV visto" ? "👁 Marcar CV visto" : NEXT_STATUS[candidate.status] === "En proceso" ? "⏳ Pasar a proceso" : "✓ Finalizar proceso"} type="secondary" onPress={() => confirmStatus(candidate, NEXT_STATUS[candidate.status])} /></View>}
     </View>)}
   </ScrollView>;
