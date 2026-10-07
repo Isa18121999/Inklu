@@ -12,7 +12,6 @@ export default function CandidateRegister({ navigation }) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [hasConadis, setHasConadis] = useState(null);
   const [conadisNumber, setConadisNumber] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -26,12 +25,8 @@ export default function CandidateRegister({ navigation }) {
     const normalizedPhone = phone.trim();
     const normalizedConadis = conadisNumber.trim();
 
-    if (!normalizedName || !normalizedEmail || !normalizedPhone || !password || hasConadis === null) {
+    if (!normalizedName || !normalizedEmail || !normalizedPhone || !password || !normalizedConadis) {
       Alert.alert("Datos incompletos", "Completa todos los campos obligatorios.");
-      return;
-    }
-    if (hasConadis !== true) {
-      Alert.alert("Requisito de Inklu", "Para registrarte como candidato en Inklu debes contar con carné CONADIS.");
       return;
     }
     if (!/^\d{6}$/.test(normalizedConadis)) {
@@ -73,26 +68,18 @@ export default function CandidateRegister({ navigation }) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title} accessibilityRole="header">Registro de candidato</Text>
       <Text style={styles.subtitle}>Inklu funciona actualmente en Perú. Para registrarte como candidato debes contar con carné CONADIS.</Text>
       <TextInput style={styles.input} placeholder="Nombre completo" value={name} onChangeText={(value) => setName(sanitizeName(value))} autoCapitalize="words" accessibilityLabel="Nombre completo" />
       <TextInput style={styles.input} placeholder="Correo electrónico" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} accessibilityLabel="Correo electrónico" />
       <TextInput style={styles.input} placeholder="Teléfono (7 a 15 dígitos)" value={phone} onChangeText={(value) => setPhone(sanitizePhone(value))} keyboardType="phone-pad" accessibilityLabel="Teléfono" maxLength={15} />
+      <Text style={styles.label}>Número del carné CONADIS</Text>
+      <Text style={styles.helperText}>Obligatorio para registrarte como candidato. Solo números y exactamente 6 dígitos.</Text>
+      <TextInput style={styles.input} placeholder="Ej.: 392534" value={conadisNumber} onChangeText={handleConadisNumber} keyboardType="number-pad" maxLength={6} accessibilityLabel="Número del carné CONADIS" />
       <TextInput style={styles.input} placeholder="Contraseña" value={password} onChangeText={setPassword} secureTextEntry accessibilityLabel="Contraseña" />
       <Text style={styles.passwordHint}>8–128 caracteres · mayúscula · minúscula · número · carácter especial</Text>
-      <Text style={styles.label}>¿Cuentas con carné CONADIS?</Text>
-      <View style={styles.choiceRow}>
-        <View style={styles.choiceButton}><AccessibleButton title="Sí" type={hasConadis === true ? "primary" : "secondary"} onPress={() => setHasConadis(true)} disabled={loading} /></View>
-        <View style={styles.choiceButton}><AccessibleButton title="No" type={hasConadis === false ? "primary" : "secondary"} onPress={() => { setHasConadis(false); setConadisNumber(""); }} disabled={loading} /></View>
-      </View>
-      {hasConadis === false && <Text style={styles.blockMessage}>Para usar Inklu como candidato necesitas contar con carné CONADIS.</Text>}
-      {hasConadis === true && <>
-        <Text style={styles.label}>Número del carné CONADIS</Text>
-        <Text style={styles.helperText}>Ingresa el Registro Único de Inscripción (RUI), solo números y exactamente 6 dígitos.</Text>
-        <TextInput style={styles.input} placeholder="Ej.: 392534" value={conadisNumber} onChangeText={handleConadisNumber} keyboardType="number-pad" maxLength={6} accessibilityLabel="Número del carné CONADIS" />
-      </>}
-      <AccessibleButton title={loading ? "Registrando..." : "Crear cuenta"} onPress={submitRegistration} disabled={loading || hasConadis !== true} />
+      <AccessibleButton title={loading ? "Registrando..." : "Crear cuenta"} onPress={submitRegistration} disabled={loading} />
       <AccessibleButton title="Ya tengo una cuenta" type="secondary" onPress={() => navigation.navigate("Login")} disabled={loading} />
     </ScrollView>
   );
@@ -102,13 +89,8 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, padding: 24, backgroundColor: colors.white },
   title: { fontSize: 28, fontWeight: "800", color: colors.primary, marginBottom: 10 },
   subtitle: { fontSize: 16, lineHeight: 23, color: colors.text, marginBottom: 18 },
-  label: { marginTop: 12, marginBottom: 6, fontWeight: "700", color: colors.text },
-  input: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 16 },
+  label: { marginTop: 2, marginBottom: 5, fontWeight: "700", color: colors.text },
+  input: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 16, backgroundColor: colors.white },
   passwordHint: { marginTop: -6, marginBottom: 8, color: colors.text, fontSize: 13 },
-  readonlyBox: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 14, backgroundColor: "#F8FAFC", marginBottom: 12 },
-  readonlyText: { fontSize: 16, color: colors.text },
-  choiceRow: { flexDirection: "row", gap: 10, marginBottom: 6 },
-  choiceButton: { flex: 1 },
-  blockMessage: { marginTop: 8, marginBottom: 12, padding: 12, borderRadius: 10, backgroundColor: "#FEF2F2", color: "#991B1B", lineHeight: 20 },
   helperText: { marginBottom: 8, color: colors.text, fontSize: 13, lineHeight: 18 }
 });
