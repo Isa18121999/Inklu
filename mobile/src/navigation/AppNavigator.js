@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import WelcomeScreen from "../screens/WelcomeScreen";
 import AccessScreen from "../screens/AccessScreen";
 import LoginScreen from "../screens/LoginScreen";
+import CreateAccountScreen from "../screens/CreateAccountScreen";
 import CandidateRegister from "../screens/CandidateRegister";
 import CompanyRegister from "../screens/CompanyRegister";
 import CandidateDashboard from "../screens/CandidateDashboard";
@@ -29,6 +30,7 @@ export default function AppNavigator({ initialRouteName = "Welcome" }) {
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Access" component={AccessScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
         <Stack.Screen name="CandidateRegister" component={CandidateRegister} />
         <Stack.Screen name="CompanyRegister" component={CompanyRegister} />
         <Stack.Screen name="CandidateDashboard" component={CandidateDashboard} />
