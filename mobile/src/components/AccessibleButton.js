@@ -11,7 +11,7 @@ const getAccessibleLabel = (title, accessibilityLabel) => {
 export default function AccessibleButton({ title, onPress, type = "primary", disabled = false, accessibilityLabel, accessibilityHint }) {
   return (
     <TouchableOpacity
-      style={[styles.button, type === "secondary" && styles.secondary, disabled && styles.disabled]}
+      style={[styles.button, type === "secondary" && styles.secondary, type === "accent" && styles.accent, disabled && styles.disabled]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={disabled ? 1 : 0.7}
@@ -29,6 +29,7 @@ export default function AccessibleButton({ title, onPress, type = "primary", dis
 const styles = StyleSheet.create({
   button: { backgroundColor: colors.primary, minHeight: rs(52, 48, 56), paddingHorizontal: horizontalPadding, borderRadius: rs(12, 10, 14), alignItems: "center", justifyContent: "center", marginVertical: rs(8, 6, 10) },
   secondary: { backgroundColor: colors.success },
+  accent: { backgroundColor: colors.secondary },
   disabled: { opacity: 0.5 },
   text: { color: colors.white, fontSize: font(18), fontWeight: "700" },
 });
