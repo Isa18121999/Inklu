@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { colors } from "../theme/colors";
+import { font, horizontalPadding, rs } from "../theme/responsive";
 
 export default function CreateAccountScreen({ navigation }) {
   return <View style={styles.container}>
@@ -16,5 +17,12 @@ export default function CreateAccountScreen({ navigation }) {
   </View>;
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: colors.white }, title: { textAlign: "center", fontSize: 30, fontWeight: "800", color: colors.primary, marginBottom: 8 }, description: { textAlign: "center", fontSize: 17, color: "#64748B", marginBottom: 32 }, option: { flexDirection: "row", alignItems: "center", padding: 20, borderRadius: 22, backgroundColor: colors.white, marginBottom: 16, borderWidth: 2 }, candidate: { borderColor: colors.primary }, company: { borderColor: colors.secondary }, iconCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: "#EDE9FE", alignItems: "center", justifyContent: "center", marginRight: 15 }, companyIcon: { backgroundColor: "#DBEAFE" }, iconText: { fontSize: 23, fontWeight: "800", color: colors.primary }, companyIconText: { color: colors.secondary }, optionText: { flex: 1 }, optionTitle: { fontSize: 21, fontWeight: "800", color: colors.text }, optionDescription: { fontSize: 14, color: "#64748B", marginTop: 4 }, chevron: { fontSize: 30, color: "#64748B" }, back: { textAlign: "center", color: colors.primary, fontWeight: "700", marginTop: 8 }
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: "center", paddingHorizontal: horizontalPadding, backgroundColor: colors.white },
+  title: { textAlign: "center", fontSize: font(30), fontWeight: "800", color: colors.primary, marginBottom: rs(8, 6, 10) },
+  description: { textAlign: "center", fontSize: font(17), color: "#64748B", marginBottom: rs(32, 24, 36) },
+  option: { flexDirection: "row", alignItems: "center", padding: rs(20, 15, 22), borderRadius: rs(22, 18, 24), backgroundColor: colors.white, marginBottom: rs(16, 12, 18), borderWidth: 2 },
+  candidate: { borderColor: colors.primary }, company: { borderColor: colors.secondary },
+  iconCircle: { width: rs(52, 44, 56), height: rs(52, 44, 56), borderRadius: rs(26, 22, 28), backgroundColor: "#EDE9FE", alignItems: "center", justifyContent: "center", marginRight: rs(15, 11, 17) },
+  companyIcon: { backgroundColor: "#DBEAFE" }, iconText: { fontSize: font(23), fontWeight: "800", color: colors.primary }, companyIconText: { color: colors.secondary }, optionText: { flex: 1 }, optionTitle: { fontSize: font(21), fontWeight: "800", color: colors.text }, optionDescription: { fontSize: font(14), color: "#64748B", marginTop: 4 }, chevron: { fontSize: font(30), color: "#64748B" }, back: { textAlign: "center", color: colors.primary, fontWeight: "700", marginTop: 8 }
 });
