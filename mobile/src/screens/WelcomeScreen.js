@@ -11,7 +11,6 @@ export default function WelcomeScreen({ navigation }) {
     <Text style={styles.description}>Encuentra oportunidades de trabajo{`\n`}de forma inclusiva e inteligente.</Text>
     <AccessibleButton title="Empezar" accessibilityHint="Comienza el registro y permite elegir entre candidato o empresa." onPress={() => navigation.navigate("CreateAccount")} />
     <AccessibleButton title="Iniciar sesión" type="accent" accessibilityHint="Abre el inicio de sesión." onPress={() => navigation.navigate("Login")} />
-    <AccessibleButton title="Crear una cuenta" type="secondary" accessibilityHint="Abre la selección de tipo de cuenta." onPress={() => navigation.navigate("CreateAccount")} />
   </View>;
 }
 
