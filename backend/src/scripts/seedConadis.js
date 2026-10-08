@@ -12,6 +12,12 @@ const departments = [
 const disabilityTypes = ["MOTORA", "VISUAL", "AUDITIVA", "INTELECTUAL", "HABLA", "DEFICIENCIA", "OTROS"];
 const severities = ["LEVE", "MODERADA", "SEVERA"];
 const sexes = ["MASCULINO", "FEMENINO", "NO_ESPECIFICADO"];
+const professions = [
+  "Administración", "Contabilidad", "Abogacía", "Ingeniería de Sistemas", "Ingeniería Industrial",
+  "Educación", "Enfermería", "Psicología", "Diseño Gráfico", "Comunicación",
+  "Marketing", "Programación", "Técnico en Computación", "Comercio", "Emprendimiento",
+  "Artesanía", "Cocina", "Costura", "Carpintería", "Otra ocupación"
+];
 
 function pick(list, index, offset = 0) { return list[(index * 17 + offset) % list.length]; }
 function pad6(value) { return String(value).padStart(6, "0"); }
@@ -39,6 +45,7 @@ function buildRecords(total = 1000) {
       ubigeo,
       tipoDiscapacidad: pick(disabilityTypes, index, 2),
       nivelGravedad: pick(severities, index, 1),
+      profesionOcupacion: pick(professions, index, 3),
       fechaInscripcion,
       fechaActualizacion: new Date(Date.UTC(2026, (index * 3) % 12, ((index * 5) % 27) + 1)),
       tieneCarneConadis: true,
