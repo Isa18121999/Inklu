@@ -9,6 +9,7 @@ const CandidateSchema = new mongoose.Schema({
   candidateType: { type: String, enum: ["CONADIS"], default: "CONADIS" },
   accreditationType: { type: String, enum: ["Carné CONADIS"], default: "Carné CONADIS" },
   accreditationNumber: { type: String, required: true, match: /^\d{6}$/ },
+  disabilityType: { type: String, enum: ["INTELECTUAL", "DEFICIENCIA", "HABLA", "AUDITIVA", "VISUAL", "MOTORA", "OTROS"] },
   supportNeeds: { type: [String], default: [] },
   supportOfferings: { type: [String], default: [] },
   professionalTitle: String,
