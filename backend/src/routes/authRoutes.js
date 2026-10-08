@@ -5,6 +5,7 @@ const router = express.Router();
 const User = require("../models/User");
 const Candidate = require("../models/Candidate");
 const Company = require("../models/Company");
+const { verifyRui } = require("../services/conadisService");
 const { validateName, validateEmail, validatePhone, validatePassword } = require("../validation");
 
 const publicUser = (user) => ({ id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, active: user.active });
@@ -28,9 +29,12 @@ router.post("/register", async (req, res) => {
     if (!validatePassword(password)) return res.status(400).json({ message: "La contraseña debe tener 8 a 128 caracteres e incluir mayúscula, minúscula, número y carácter especial" });
     if (!["candidate", "company"].includes(role)) return res.status(400).json({ message: "Rol no válido" });
 
+    let conadisRecord = null;
     if (role === "candidate") {
       if (String(country || "").trim() !== "PE") return res.status(400).json({ message: "Inklu funciona actualmente en Perú" });
       if (String(accreditationType || "").trim() !== "Carné CONADIS" || !/^\d{6}$/.test(normalizedConadis)) return res.status(400).json({ message: "Registra el RUI de exactamente 6 dígitos numéricos de tu carné CONADIS" });
+      conadisRecord = await verifyRui(normalizedConadis);
+      if (!conadisRecord.valid) return res.status(422).json({ message: "El RUI no pudo ser validado en el registro CONADIS." });
     }
 
     if (await User.findOne({ email: normalizedEmail })) return res.status(409).json({ message: "El email ya está registrado" });
@@ -46,13 +50,14 @@ router.post("/register", async (req, res) => {
         country: "PE",
         candidateType: "CONADIS",
         accreditationType: "Carné CONADIS",
-        accreditationNumber: normalizedConadis
+        accreditationNumber: normalizedConadis,
+        disabilityType: conadisRecord.tipoDiscapacidad
       });
     } else {
       profile = await Company.create({ userId: user._id, name: user.name, email: user.email, phone: user.phone });
     }
 
-    res.status(201).json({ message: "Registro correcto", user: publicUser(user), token: issueToken(user), profileId: profile._id });
+    res.status(201).json({ message: "Registro correcto", user: publicUser(user), token: issueToken(user), profileId: profile._id, ...(role === "candidate" ? { conadisVerified: true, disabilityType: conadisRecord.tipoDiscapacidad } : {}) });
   } catch (error) {
     console.error("Registration error", error.message);
     res.status(500).json({ message: "Error registrando usuario" });
