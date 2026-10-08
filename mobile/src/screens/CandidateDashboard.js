@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { ActivityIndicator, Alert, ScrollView, View, Text, StyleSheet } from "react-native";
 import AccessibleButton from "../components/AccessibleButton";
 import CandidateBottomNav from "../components/CandidateBottomNav";
