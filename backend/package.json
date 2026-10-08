@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "check": "node --check src/server.js && node --check src/routes/*.js && node --check src/controllers/*.js",
-    "test": "node --test test/*.test.js"
+    "check": "node --check src/server.js && node --check src/routes/*.js && node --check src/controllers/*.js && node --check src/models/*.js && node --check src/services/*.js && node --check src/scripts/*.js",
+    "test": "node --test test/*.test.js",
+    "seed:conadis": "node src/scripts/seedConadis.js"
   },
   "engines": {
     "node": ">=20"
