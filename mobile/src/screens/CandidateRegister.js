@@ -5,6 +5,7 @@ import { API_URL } from "../config/api";
 import { colors } from "../theme/colors";
 import { setSessionToken } from "../config/session";
 import { sanitizeName, sanitizePhone, validateName, validateEmail, validatePhone, validatePassword } from "../config/validation";
+import { font, horizontalPadding, rs } from "../theme/responsive";
 
 const AUTH_URL = `${API_URL}/auth`;
 
@@ -85,10 +86,10 @@ export default function CandidateRegister({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 24, backgroundColor: colors.white },
-  title: { fontSize: 28, fontWeight: "800", color: colors.primary, marginBottom: 10 },
-  subtitle: { fontSize: 16, lineHeight: 23, color: colors.text, marginBottom: 18 },
-  label: { marginTop: 8, marginBottom: 8, fontWeight: "700", color: colors.text, fontSize: 16 },
-  input: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 16, backgroundColor: colors.white },
-  passwordHint: { marginTop: -6, marginBottom: 8, color: colors.text, fontSize: 13 }
+  container: { flexGrow: 1, paddingHorizontal: horizontalPadding, paddingTop: rs(24), paddingBottom: rs(32), backgroundColor: colors.white },
+  title: { fontSize: font(28), lineHeight: font(34), fontWeight: "800", color: colors.primary, marginBottom: rs(10) },
+  subtitle: { fontSize: font(16), lineHeight: font(23), color: colors.text, marginBottom: rs(18) },
+  label: { marginTop: rs(8), marginBottom: rs(8), fontWeight: "700", color: colors.text, fontSize: font(16) },
+  input: { borderWidth: 1, borderColor: "#CBD5E1", borderRadius: rs(12, 10, 14), paddingHorizontal: rs(14), paddingVertical: rs(13, 11, 15), marginBottom: rs(12), fontSize: font(16), minHeight: rs(50, 46, 54), backgroundColor: colors.white },
+  passwordHint: { marginTop: -rs(6), marginBottom: rs(8), color: colors.text, fontSize: font(13), lineHeight: font(18) }
 });
