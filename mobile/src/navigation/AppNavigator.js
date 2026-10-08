@@ -23,12 +23,24 @@ import ApplicationsScreen from "../screens/ApplicationsScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import FavoritesScreen from "../screens/FavoritesScreen";
 import MenuAreaScreen from "../screens/MenuAreaScreen";
+import AuthCallbackScreen from "../screens/AuthCallbackScreen";
+import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 
 const Stack = createNativeStackNavigator();
 
+const linking = {
+  prefixes: ["inklu://"],
+  config: {
+    screens: {
+      AuthCallback: "auth/google",
+      ResetPassword: "reset-password"
+    }
+  }
+};
+
 export default function AppNavigator({ initialRouteName = "Welcome" }) {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator initialRouteName={initialRouteName} screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Access" component={AccessScreen} />
@@ -51,6 +63,8 @@ export default function AppNavigator({ initialRouteName = "Welcome" }) {
         <Stack.Screen name="Notifications" component={NotificationsScreen} />
         <Stack.Screen name="Favorites" component={FavoritesScreen} />
         <Stack.Screen name="MenuArea" component={MenuAreaScreen} />
+        <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
