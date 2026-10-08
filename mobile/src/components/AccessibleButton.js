@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, TouchableOpacity, StyleSheet } from "react-native";
 import { colors } from "../theme/colors";
+import { font, horizontalPadding, rs } from "../theme/responsive";
 
 const getAccessibleLabel = (title, accessibilityLabel) => {
   if (accessibilityLabel) return accessibilityLabel;
@@ -20,22 +21,14 @@ export default function AccessibleButton({ title, onPress, type = "primary", dis
       accessibilityState={{ disabled }}
       accessible
     >
-      <Text style={styles.text}>{title}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82} style={styles.text}>{title}</Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primary,
-    minHeight: 52,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 8,
-  },
+  button: { backgroundColor: colors.primary, minHeight: rs(52, 48, 56), paddingHorizontal: horizontalPadding, borderRadius: rs(12, 10, 14), alignItems: "center", justifyContent: "center", marginVertical: rs(8, 6, 10) },
   secondary: { backgroundColor: colors.success },
   disabled: { opacity: 0.5 },
-  text: { color: colors.white, fontSize: 18, fontWeight: "700" },
+  text: { color: colors.white, fontSize: font(18), fontWeight: "700" },
 });
