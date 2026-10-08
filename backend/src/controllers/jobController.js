@@ -20,7 +20,7 @@ const createJob = async (req, res) => {
     const salaryMin = req.body.salaryMin === "" || req.body.salaryMin === undefined || req.body.salaryMin === null ? undefined : Number(req.body.salaryMin);
     const salaryMax = req.body.salaryMax === "" || req.body.salaryMax === undefined || req.body.salaryMax === null ? undefined : Number(req.body.salaryMax);
     const requirements = req.body.requirements;
-    const skills = req.body.skills;
+    const skills = req.body.skills === undefined ? [] : req.body.skills;
     const accessibility = req.body.accessibility;
 
     if (title.length < 2 || title.length > MAX_TEXT) return res.status(400).json({ message: "El cargo debe tener entre 2 y 300 caracteres" });
@@ -37,21 +37,7 @@ const createJob = async (req, res) => {
     if (!Array.isArray(skills) || skills.length > 30 || skills.some((item) => typeof item !== "string" || !item.trim() || item.trim().length > 100)) return res.status(400).json({ message: "Las competencias deben ser una lista válida de hasta 30 elementos" });
     if (!Array.isArray(accessibility) || accessibility.length > 30 || accessibility.some((item) => typeof item !== "string" || !item.trim() || item.trim().length > 100)) return res.status(400).json({ message: "La accesibilidad debe ser una lista válida de hasta 30 elementos" });
 
-    const job = await Job.create({
-      title,
-      area,
-      profession,
-      skills: skills.map((item) => item.trim()),
-      modality: modality || undefined,
-      contractType: contractType || undefined,
-      experienceRequired,
-      educationRequired,
-      salaryMin,
-      salaryMax,
-      requirements: requirements.map((item) => item.trim()),
-      accessibility: accessibility.map((item) => item.trim()),
-      companyId: company._id
-    });
+    const job = await Job.create({ title, area, profession, skills: skills.map((item) => item.trim()), modality: modality || undefined, contractType: contractType || undefined, experienceRequired, educationRequired, salaryMin, salaryMax, requirements: requirements.map((item) => item.trim()), accessibility: accessibility.map((item) => item.trim()), companyId: company._id });
     res.status(201).json(job);
   } catch (error) { console.error("Job create error", error.message); res.status(500).json({ message: "Error creando oferta" }); }
 };
