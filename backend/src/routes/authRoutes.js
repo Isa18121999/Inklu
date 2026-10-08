@@ -15,11 +15,12 @@ const verifyPassword = (password, storedPassword) => { const [salt, storedHash] 
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, phone, password, role, country, accreditationType, accreditationNumber } = req.body;
+    const { name, email, phone, password, role, country, accreditationType, accreditationNumber, ruc } = req.body;
     const normalizedName = String(name || "").trim();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const normalizedPhone = String(phone || "").trim();
     const normalizedConadis = String(accreditationNumber || "").trim();
+    const normalizedRuc = String(ruc || "").trim();
 
     if (!normalizedName || !normalizedEmail || !normalizedPhone || !password) return res.status(400).json({ message: "Nombre, email, teléfono y contraseña son obligatorios" });
     if (role === "candidate" && !validateName(normalizedName)) return res.status(400).json({ message: "El nombre solo puede contener letras, espacios, guiones y apóstrofes" });
@@ -35,6 +36,8 @@ router.post("/register", async (req, res) => {
       if (String(accreditationType || "").trim() !== "Carné CONADIS" || !/^\d{6}$/.test(normalizedConadis)) return res.status(400).json({ message: "Registra el RUI de exactamente 6 dígitos numéricos de tu carné CONADIS" });
       conadisRecord = await verifyRui(normalizedConadis);
       if (!conadisRecord.valid) return res.status(422).json({ message: "El RUI no pudo ser validado en el registro CONADIS." });
+    } else if (normalizedRuc && !/^\d{11}$/.test(normalizedRuc)) {
+      return res.status(400).json({ message: "El RUC debe contener exactamente 11 dígitos" });
     }
 
     if (await User.findOne({ email: normalizedEmail })) return res.status(409).json({ message: "El email ya está registrado" });
@@ -54,7 +57,7 @@ router.post("/register", async (req, res) => {
         disabilityType: conadisRecord.tipoDiscapacidad
       });
     } else {
-      profile = await Company.create({ userId: user._id, name: user.name, email: user.email, phone: user.phone });
+      profile = await Company.create({ userId: user._id, name: user.name, email: user.email, phone: user.phone, ruc: normalizedRuc || undefined });
     }
 
     res.status(201).json({ message: "Registro correcto", user: publicUser(user), token: issueToken(user), profileId: profile._id, ...(role === "candidate" ? { conadisVerified: true, disabilityType: conadisRecord.tipoDiscapacidad } : {}) });
