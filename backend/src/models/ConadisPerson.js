@@ -15,6 +15,7 @@ const ConadisPersonSchema = new mongoose.Schema({
     enum: ["INTELECTUAL", "DEFICIENCIA", "HABLA", "AUDITIVA", "VISUAL", "MOTORA", "OTROS"]
   },
   nivelGravedad: { type: String, enum: ["LEVE", "MODERADA", "SEVERA", "NO_ESPECIFICADO"] },
+  profesionOcupacion: { type: String, trim: true, maxlength: 120 },
   fechaInscripcion: Date,
   fechaActualizacion: Date,
   tieneCarneConadis: { type: Boolean, default: true },
