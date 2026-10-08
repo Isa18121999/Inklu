@@ -10,7 +10,7 @@ export default function WelcomeScreen({ navigation }) {
     <Text style={styles.title} accessibilityRole="header">¡Bienvenido a Inklu!</Text>
     <Text style={styles.description}>Encuentra oportunidades de trabajo{`\n`}de forma inclusiva e inteligente.</Text>
     <AccessibleButton title="Empezar" accessibilityHint="Comienza el registro y permite elegir entre candidato o empresa." onPress={() => navigation.navigate("CreateAccount")} />
-    <AccessibleButton title="Iniciar sesión" type="accent" accessibilityHint="Abre el inicio de sesión." onPress={() => navigation.navigate("Login")} />
+    <AccessibleButton title="Iniciar sesión" type="secondary" accessibilityHint="Abre el inicio de sesión." onPress={() => navigation.navigate("Login")} />
   </View>;
 }
 
