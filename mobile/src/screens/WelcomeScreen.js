@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Image, StyleSheet } from "react-native";
 import AccessibleButton from "../components/AccessibleButton";
 import { colors } from "../theme/colors";
+import { font, horizontalPadding, rs } from "../theme/responsive";
 
 export default function WelcomeScreen({ navigation }) {
   return <View style={styles.container}>
@@ -14,8 +15,8 @@ export default function WelcomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: colors.white },
-  logoImage: { width: 150, height: 150, alignSelf: "center", marginBottom: 18 },
-  title: { textAlign: "center", fontSize: 30, fontWeight: "800", color: colors.text, marginBottom: 10 },
-  description: { textAlign: "center", fontSize: 17, lineHeight: 25, color: "#64748B", marginBottom: 28 }
+  container: { flex: 1, justifyContent: "center", paddingHorizontal: horizontalPadding, backgroundColor: colors.white },
+  logoImage: { width: rs(150, 128, 168), height: rs(150, 128, 168), alignSelf: "center", marginBottom: rs(18, 14, 22) },
+  title: { textAlign: "center", fontSize: font(30), fontWeight: "800", color: colors.text, marginBottom: rs(10, 8, 12) },
+  description: { textAlign: "center", fontSize: font(17), lineHeight: font(25), color: "#64748B", marginBottom: rs(28, 22, 32) }
 });
