@@ -29,7 +29,7 @@ function buildRecords(total = 1000) {
 
     return {
       rui: pad6(900000 + n),
-      estadoRegistro: index % 37 === 0 ? "INACTIVO" : "ACTIVO",
+      estadoRegistro: n % 37 === 0 ? "INACTIVO" : "ACTIVO",
       sexo: pick(sexes, index),
       anioNacimiento,
       edad,
