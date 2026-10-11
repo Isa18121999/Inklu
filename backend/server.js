@@ -20,7 +20,6 @@ function normalizeConadis(value) {
 }
 
 function validConadis(value) {
-  // Formato flexible: se aceptan números y guiones, con 5 a 30 caracteres.
   return /^[A-Za-z0-9-]{5,30}$/.test(value);
 }
 
@@ -42,8 +41,19 @@ async function auth(req, res, next) {
   }
 }
 
-function publicUser(user) {
-  return { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, country: user.country, ruc: user.ruc, conadisNumber: user.role === 'candidate' ? user.conadisNumber : undefined, profile: user.profile };
+function publicUser(user, { includeSensitive = false } = {}) {
+  const data = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    country: user.country,
+    ruc: user.ruc,
+    profile: user.profile
+  };
+  if (includeSensitive && user.role === 'candidate') data.conadisNumber = user.conadisNumber;
+  return data;
 }
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'INKLU API' }));
@@ -72,7 +82,7 @@ app.post('/api/auth/register', async (req, res) => {
       role, country: country || 'PE', ruc: role === 'company' ? String(ruc || '').trim() : undefined,
       conadisNumber, accreditationType: role === 'candidate' ? (accreditationType || 'Carné CONADIS') : undefined
     });
-    return res.status(201).json({ token: tokenFor(user), user: publicUser(user) });
+    return res.status(201).json({ token: tokenFor(user), user: publicUser(user, { includeSensitive: true }) });
   } catch (e) {
     if (e?.code === 11000) {
       if (e.keyPattern?.conadisNumber) return res.status(409).json({ message: 'Este número de CONADIS ya está registrado.' });
@@ -89,14 +99,30 @@ app.post('/api/auth/login', async (req, res) => {
     const password = String(req.body?.password || '');
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
-    return res.json({ token: tokenFor(user), user: publicUser(user) });
+    return res.json({ token: tokenFor(user), user: publicUser(user, { includeSensitive: user.role === 'candidate' }) });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ message: 'No se pudo iniciar sesión.' });
   }
 });
 
-app.get('/api/profile/me', auth, async (req, res) => res.json(publicUser(req.user)));
+app.get('/api/profile/me', auth, async (req, res) => res.json(publicUser(req.user, { includeSensitive: true })));
+
+app.patch('/api/profile/me', auth, async (req, res) => {
+  try {
+    const allowed = ['birth', 'address', 'education', 'experience', 'skills', 'modality', 'location'];
+    const updates = {};
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) updates[`profile.${key}`] = req.body[key];
+    }
+    if (Object.keys(updates).length === 0) return res.status(400).json({ message: 'No hay datos de perfil para actualizar.' });
+    const user = await User.findByIdAndUpdate(req.user._id, { $set: updates }, { new: true, runValidators: true });
+    res.json(publicUser(user, { includeSensitive: true }));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'No se pudo actualizar el perfil.' });
+  }
+});
 
 app.get('/api/company/jobs', auth, async (req, res) => {
   const jobs = await Job.find({ active: true }).populate('companyId', 'name').sort({ createdAt: -1 });
@@ -128,7 +154,7 @@ app.get('/api/applications', auth, async (req, res) => {
   if (req.user.role === 'candidate') filter.candidateId = req.user._id;
   else filter.jobId = { $in: (await Job.find({ companyId: req.user._id }).select('_id')).map(j => j._id) };
   const applications = await Application.find(filter)
-    .populate('candidateId', 'name email phone conadisNumber profile')
+    .populate('candidateId', 'name email phone profile')
     .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name' } })
     .sort({ createdAt: -1 });
   res.json(applications);
