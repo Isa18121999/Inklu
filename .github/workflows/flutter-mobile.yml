@@ -74,3 +74,5 @@ jobs:
         with:
           name: INKLU-iOS
           path: INKLU-iOS.zip
+
+# APK build workflow ready
