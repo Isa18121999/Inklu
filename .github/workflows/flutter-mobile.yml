@@ -1,0 +1,76 @@
+name: Build INKLU Flutter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter_app/**'
+      - '.github/workflows/flutter-mobile.yml'
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.2'
+          channel: stable
+          cache: true
+      - name: Generate Android platform
+        working-directory: flutter_app
+        run: flutter create --platforms=android .
+      - name: Get dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+      - name: Analyze
+        working-directory: flutter_app
+        run: flutter analyze
+      - name: Build APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: INKLU-Android
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+  ios:
+    name: iOS build
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.2'
+          channel: stable
+          cache: true
+      - name: Generate iOS platform
+        working-directory: flutter_app
+        run: flutter create --platforms=ios .
+      - name: Get dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+      - name: Analyze
+        working-directory: flutter_app
+        run: flutter analyze
+      - name: Build iOS without signing
+        working-directory: flutter_app
+        run: flutter build ios --release --no-codesign
+      - name: Package iOS build
+        run: ditto -c -k --sequesterRsrc --keepParent flutter_app/build/ios/iphoneos/Runner.app INKLU-iOS.zip
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: INKLU-iOS
+          path: INKLU-iOS.zip
