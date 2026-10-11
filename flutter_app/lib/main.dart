@@ -266,7 +266,7 @@ class PageShell extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('INKLU')),
     body: ListView(padding: const EdgeInsets.all(20), children: [Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)), const SizedBox(height: 18), ...children]),
-    bottomNavigationBar: showBottomNav ? const NavigationBar(selectedIndex: 0, destinations: [
+    bottomNavigationBar: showBottomNav ? NavigationBar(selectedIndex: 0, destinations: const [
       NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Inicio'),
       NavigationDestination(icon: Icon(Icons.work_outline), label: 'Empleos'),
       NavigationDestination(icon: Icon(Icons.notifications_none), label: 'Avisos'),
