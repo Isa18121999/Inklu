@@ -2,18 +2,18 @@
 (function(){
   const normalize = (v='') => String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const list = (v) => Array.isArray(v) ? v : String(v||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const profile = () => { try { return JSON.parse(localStorage.getItem('inklu_professional_profile') || '{}'); } catch (_) { return {}; } };
 
   // Matching ponderado: habilidades 50%, modalidad 20%, ubicación 15%, experiencia 15%.
   window.matchScore = function(job){
-    const p = window.professionalProfile || {};
+    const p = profile();
     const title = normalize(job.title);
     const description = normalize(job.description);
     const requirements = normalize(job.requirements || job.requiredSkills || job.skills || '');
     const text = `${title} ${description} ${requirements}`;
-    const skills = list(p.skills).map(normalize);
-    const validSkills = skills.filter(Boolean);
-    const matched = validSkills.filter(skill => text.includes(skill));
-    let score = validSkills.length ? (matched.length / validSkills.length) * 50 : 25;
+    const skills = list(p.skills).map(normalize).filter(Boolean);
+    const matched = skills.filter(skill => text.includes(skill));
+    let score = skills.length ? (matched.length / skills.length) * 50 : 25;
 
     const wantedModality = normalize(p.modality);
     const jobModality = normalize(job.modality);
@@ -33,13 +33,11 @@
     } else {
       score += 7.5;
     }
-
     return Math.min(99, Math.max(0, Math.round(score)));
   };
 
   window.addEventListener('load', () => {
     window.__inkluWebFix = true;
-    // Recalcula las tarjetas después de sustituir el algoritmo de matching.
     if (typeof window.render === 'function') window.render();
   });
 })();
