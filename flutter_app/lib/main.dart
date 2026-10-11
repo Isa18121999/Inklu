@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 
 void main() {
-  runApp(const InkluApp());
+  runApp(const MyApp());
 }
 
-class InkluApp extends StatelessWidget {
-  const InkluApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -30,32 +30,21 @@ class WelcomePage extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.diversity_3, size: 92, color: Color(0xFF5B3CC4)),
-                const SizedBox(height: 18),
-                const Text(
-                  'INKLU',
-                  style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800),
-                ),
+                const Icon(Icons.accessibility_new, size: 72, color: Color(0xFF5B3CC4)),
+                const SizedBox(height: 16),
+                const Text('INKLU', style: TextStyle(fontSize: 38, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
-                const Text(
-                  'Talento, inclusión y oportunidades laborales',
-                  textAlign: TextAlign.center,
-                ),
+                const Text('Talento, inclusión y oportunidades laborales', textAlign: TextAlign.center),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const RolePage()),
-                      );
-                    },
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RolePage())),
                     child: const Text('Empezar'),
                   ),
                 ),
@@ -63,12 +52,7 @@ class WelcomePage extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                    },
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginPage())),
                     child: const Text('Iniciar sesión'),
                   ),
                 ),
@@ -86,303 +70,183 @@ class RolePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Selecciona tu rol')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            _roleCard(
-              context,
-              'Soy candidato',
-              Icons.person_outline,
-              const CandidateRegisterPage(),
-            ),
-            const SizedBox(height: 16),
-            _roleCard(
-              context,
-              'Soy empresa',
-              Icons.business_outlined,
-              const CompanyRegisterPage(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _roleCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Widget page,
-  ) {
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(18),
-        leading: Icon(icon, size: 34),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => page),
-          );
-        },
-      ),
+    return PageShell(
+      title: '¿Cómo quieres ingresar?',
+      children: [
+        RoleCard(title: 'Soy candidato', icon: Icons.person_outline, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CandidateRegisterPage()))),
+        const SizedBox(height: 16),
+        RoleCard(title: 'Soy empresa', icon: Icons.business_outlined, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CompanyRegisterPage()))),
+      ],
     );
   }
 }
 
 class CandidateRegisterPage extends StatefulWidget {
   const CandidateRegisterPage({super.key});
-
   @override
   State<CandidateRegisterPage> createState() => _CandidateRegisterPageState();
 }
 
 class _CandidateRegisterPageState extends State<CandidateRegisterPage> {
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final phoneController = TextEditingController();
-  final passwordController = TextEditingController();
-  final conadisController = TextEditingController();
+  final name = TextEditingController();
+  final email = TextEditingController();
+  final phone = TextEditingController();
+  final conadis = TextEditingController();
+  final password = TextEditingController();
   bool loading = false;
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    passwordController.dispose();
-    conadisController.dispose();
-    super.dispose();
-  }
-
-  Future<void> submit() async {
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
-    final phone = phoneController.text.trim();
-    final password = passwordController.text;
-    final conadis = conadisController.text.trim();
-
-    if (name.isEmpty || email.isEmpty || password.length < 8) {
-      _showMessage('Completa los campos obligatorios.');
+  Future<void> register() async {
+    if (name.text.trim().isEmpty || email.text.trim().isEmpty || password.text.length < 8 || conadis.text.trim().isEmpty) {
+      _message('Completa nombre, correo, contraseña y número de CONADIS.');
       return;
     }
-
-    if (!RegExp(r'^[A-Za-z0-9-]{5,30}$').hasMatch(conadis)) {
-      _showMessage('Ingresa un número de CONADIS válido.');
+    final value = conadis.text.trim();
+    if (!RegExp(r'^[A-Za-z0-9-]{5,30}$').hasMatch(value)) {
+      _message('El número de CONADIS no es válido.');
       return;
     }
-
     setState(() => loading = true);
-
     try {
       await ApiService().registerCandidate(
-        name: name,
-        email: email,
-        phone: phone,
-        password: password,
-        conadisNumber: conadis,
+        name: name.text.trim(),
+        email: email.text.trim(),
+        phone: phone.text.trim(),
+        password: password.text,
+        conadisNumber: value,
       );
       if (!mounted) return;
-      _showMessage('Cuenta creada correctamente.');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-    } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      _message('Registro exitoso. Ahora puedes iniciar sesión.');
+      Navigator.pop(context);
+    } catch (e) {
+      _message(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _message(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Registro candidato')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text('1 de 3', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
-          _field('Nombre completo *', nameController),
-          _field('Correo electrónico *', emailController, type: TextInputType.emailAddress),
-          _field('Teléfono', phoneController, type: TextInputType.phone),
-          _field('Contraseña *', passwordController, obscure: true),
-          _field('Número de CONADIS *', conadisController),
-          const Text('El número de CONADIS es obligatorio.', style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: loading ? null : submit,
-            child: Text(loading ? 'Registrando...' : 'Crear cuenta'),
-          ),
-        ],
-      ),
+    return PageShell(
+      title: 'Registro candidato',
+      children: [
+        const Text('Completa tus datos para crear tu cuenta.'),
+        const SizedBox(height: 16),
+        AppField(controller: name, label: 'Nombre completo *'),
+        AppField(controller: email, label: 'Correo electrónico *', keyboardType: TextInputType.emailAddress),
+        AppField(controller: phone, label: 'Teléfono'),
+        AppField(controller: conadis, label: 'Número de CONADIS *'),
+        AppField(controller: password, label: 'Contraseña *', obscureText: true),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: loading ? null : register, child: Text(loading ? 'Registrando...' : 'Crear cuenta'))),
+      ],
     );
   }
 }
 
 class CompanyRegisterPage extends StatefulWidget {
   const CompanyRegisterPage({super.key});
-
   @override
   State<CompanyRegisterPage> createState() => _CompanyRegisterPageState();
 }
 
 class _CompanyRegisterPageState extends State<CompanyRegisterPage> {
-  final nameController = TextEditingController();
-  final emailController = TextEditingController();
-  final phoneController = TextEditingController();
-  final rucController = TextEditingController();
-  final passwordController = TextEditingController();
+  final name = TextEditingController();
+  final email = TextEditingController();
+  final phone = TextEditingController();
+  final ruc = TextEditingController();
+  final password = TextEditingController();
   bool loading = false;
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    rucController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> submit() async {
-    if (nameController.text.trim().isEmpty ||
-        emailController.text.trim().isEmpty ||
-        rucController.text.trim().isEmpty ||
-        passwordController.text.length < 8) {
-      _showMessage('Completa los campos obligatorios.');
+  Future<void> register() async {
+    if (name.text.trim().isEmpty || email.text.trim().isEmpty || password.text.length < 8 || ruc.text.trim().isEmpty) {
+      _message('Completa nombre, correo, RUC y contraseña.');
       return;
     }
-
     setState(() => loading = true);
     try {
       await ApiService().registerCompany(
-        name: nameController.text.trim(),
-        email: emailController.text.trim(),
-        phone: phoneController.text.trim(),
-        password: passwordController.text,
-        ruc: rucController.text.trim(),
+        name: name.text.trim(),
+        email: email.text.trim(),
+        phone: phone.text.trim(),
+        password: password.text,
+        ruc: ruc.text.trim(),
       );
       if (!mounted) return;
-      _showMessage('Empresa registrada correctamente.');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-      );
-    } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      _message('Empresa registrada correctamente.');
+      Navigator.pop(context);
+    } catch (e) {
+      _message(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _message(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Registro empresa')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text('1 de 3', style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
-          _field('Nombre de empresa *', nameController),
-          _field('Correo electrónico *', emailController, type: TextInputType.emailAddress),
-          _field('Teléfono', phoneController, type: TextInputType.phone),
-          _field('RUC *', rucController, type: TextInputType.number),
-          _field('Contraseña *', passwordController, obscure: true),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: loading ? null : submit,
-            child: Text(loading ? 'Registrando...' : 'Crear cuenta'),
-          ),
-        ],
-      ),
+    return PageShell(
+      title: 'Registro empresa',
+      children: [
+        AppField(controller: name, label: 'Razón social *'),
+        AppField(controller: email, label: 'Correo corporativo *', keyboardType: TextInputType.emailAddress),
+        AppField(controller: phone, label: 'Teléfono'),
+        AppField(controller: ruc, label: 'RUC *'),
+        AppField(controller: password, label: 'Contraseña *', obscureText: true),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: loading ? null : register, child: Text(loading ? 'Registrando...' : 'Crear empresa'))),
+      ],
     );
   }
 }
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final email = TextEditingController();
+  final password = TextEditingController();
   bool loading = false;
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> submit() async {
-    if (emailController.text.trim().isEmpty || passwordController.text.isEmpty) {
-      _showMessage('Ingresa correo y contraseña.');
+  Future<void> login() async {
+    if (email.text.trim().isEmpty || password.text.isEmpty) {
+      _message('Ingresa correo y contraseña.');
       return;
     }
-
     setState(() => loading = true);
     try {
-      final response = await ApiService().login(
-        emailController.text.trim(),
-        passwordController.text,
-      );
+      final result = await ApiService().login(email.text.trim(), password.text);
       if (!mounted) return;
-      final user = response['user'];
-      final role = user is Map ? user['role'] : null;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => role == 'company'
-              ? const CompanyHomePage()
-              : const CandidateHomePage(),
-        ),
-      );
-    } catch (error) {
-      _showMessage(error.toString().replaceFirst('Exception: ', ''));
+      final role = result['user']?['role']?.toString() ?? 'candidate';
+      if (role == 'company') {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const CompanyHomePage()));
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const CandidateHomePage()));
+      }
+    } catch (e) {
+      _message(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _message(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Iniciar sesión')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _field('Correo electrónico', emailController, type: TextInputType.emailAddress),
-          _field('Contraseña', passwordController, obscure: true),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: loading ? null : submit,
-            child: Text(loading ? 'Ingresando...' : 'Ingresar'),
-          ),
-        ],
-      ),
+    return PageShell(
+      title: 'Iniciar sesión',
+      children: [
+        AppField(controller: email, label: 'Correo electrónico', keyboardType: TextInputType.emailAddress),
+        AppField(controller: password, label: 'Contraseña', obscureText: true),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: loading ? null : login, child: Text(loading ? 'Ingresando...' : 'Ingresar'))),
+      ],
     );
   }
 }
@@ -392,29 +256,19 @@ class CandidateHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _HomePage(
-      title: 'Hola, candidato 👋',
-      children: const [
-        Text('Encuentra oportunidades que se ajusten a tu perfil.'),
-        SizedBox(height: 18),
-        TextField(
-          decoration: InputDecoration(
-            prefixIcon: Icon(Icons.search),
-            hintText: 'Buscar empleos',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        SizedBox(height: 18),
-        Card(
-          child: ListTile(
-            title: Text('Completa tu perfil'),
-            subtitle: Text('Mejora tus coincidencias con empresas.'),
-          ),
-        ),
-        SizedBox(height: 12),
-        Text('Empleos recomendados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-        Card(child: ListTile(title: Text('Analista de datos'), subtitle: Text('Remoto · Tiempo completo'))),
-        Card(child: ListTile(title: Text('Desarrollador Flutter'), subtitle: Text('Híbrido · Lima'))),
+    return PageShell(
+      title: 'Hola, candidato',
+      children: [
+        const Text('Encuentra oportunidades que se ajusten a tu perfil.'),
+        const SizedBox(height: 16),
+        AppField(controller: TextEditingController(), label: 'Buscar empleo'),
+        const SizedBox(height: 16),
+        InfoCard(title: 'Completa tu perfil', subtitle: 'Agrega estudios, experiencia y habilidades para mejorar tu match.'),
+        const SizedBox(height: 16),
+        const Text('Empleos recomendados', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        JobCard(title: 'Analista de datos', company: 'Empresa inclusiva', modality: 'Remoto'),
+        JobCard(title: 'Asistente administrativo', company: 'Empresa Perú', modality: 'Híbrido'),
       ],
     );
   }
@@ -425,29 +279,18 @@ class CompanyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _HomePage(
-      title: 'Hola, empresa 👋',
+    return PageShell(
+      title: 'Dashboard empresa',
       children: [
-        const Text('Gestiona tus oportunidades y candidatos.'),
+        const Text('Gestiona tus oportunidades y encuentra talento.'),
+        const SizedBox(height: 16),
+        Row(children: [Expanded(child: InfoCard(title: 'Ofertas', subtitle: '0')), const SizedBox(width: 10), Expanded(child: InfoCard(title: 'Postulaciones', subtitle: '0'))]),
+        const SizedBox(height: 16),
+        SizedBox(width: double.infinity, child: FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateJobPage())), icon: const Icon(Icons.add), label: const Text('Crear oferta'))),
         const SizedBox(height: 18),
-        const Row(
-          children: [
-            Expanded(child: Card(child: ListTile(title: Text('3'), subtitle: Text('Ofertas')))),
-            SizedBox(width: 10),
-            Expanded(child: Card(child: ListTile(title: Text('12'), subtitle: Text('Postulaciones')))),
-          ],
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CreateJobPage()),
-            );
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Crear oferta'),
-        ),
+        const Text('Ofertas recientes', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        const InfoCard(title: 'Aún no tienes ofertas', subtitle: 'Crea tu primera oferta laboral inclusiva.'),
       ],
     );
   }
@@ -455,47 +298,55 @@ class CompanyHomePage extends StatelessWidget {
 
 class CreateJobPage extends StatefulWidget {
   const CreateJobPage({super.key});
-
   @override
   State<CreateJobPage> createState() => _CreateJobPageState();
 }
 
 class _CreateJobPageState extends State<CreateJobPage> {
-  final titleController = TextEditingController();
-  final descriptionController = TextEditingController();
+  final title = TextEditingController();
+  final description = TextEditingController();
+  final skills = TextEditingController();
+  final location = TextEditingController();
+  String modality = 'Remoto';
+  bool loading = false;
 
-  @override
-  void dispose() {
-    titleController.dispose();
-    descriptionController.dispose();
-    super.dispose();
+  Future<void> create() async {
+    if (title.text.trim().isEmpty || description.text.trim().isEmpty) {
+      _message('Completa título y descripción.');
+      return;
+    }
+    setState(() => loading = true);
+    try {
+      // La API requiere un token de empresa obtenido mediante login.
+      _message('Oferta preparada. Inicia sesión como empresa para publicarla.');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
+
+  void _message(String text) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Crear oferta')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          _field('Título de puesto', titleController),
-          _field('Descripción', descriptionController, maxLines: 5),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Publicar oferta'),
-          ),
-        ],
-      ),
+    return PageShell(
+      title: 'Crear oferta',
+      children: [
+        AppField(controller: title, label: 'Título *'),
+        AppField(controller: description, label: 'Descripción *', maxLines: 5),
+        AppField(controller: skills, label: 'Habilidades requeridas'),
+        AppField(controller: location, label: 'Ubicación'),
+        DropdownButtonFormField<String>(value: modality, decoration: const InputDecoration(labelText: 'Modalidad', border: OutlineInputBorder()), items: const [DropdownMenuItem(value: 'Remoto', child: Text('Remoto')), DropdownMenuItem(value: 'Híbrido', child: Text('Híbrido')), DropdownMenuItem(value: 'Presencial', child: Text('Presencial'))], onChanged: (v) => setState(() => modality = v ?? modality)),
+        const SizedBox(height: 12),
+        SizedBox(width: double.infinity, child: FilledButton(onPressed: loading ? null : create, child: const Text('Publicar oferta'))),
+      ],
     );
   }
 }
 
-class _HomePage extends StatelessWidget {
+class PageShell extends StatelessWidget {
   final String title;
   final List<Widget> children;
-
-  const _HomePage({required this.title, required this.children});
+  const PageShell({super.key, required this.title, required this.children});
 
   @override
   Widget build(BuildContext context) {
@@ -509,9 +360,9 @@ class _HomePage extends StatelessWidget {
           ...children,
         ],
       ),
-      bottomNavigationBar: const NavigationBar(
+      bottomNavigationBar: NavigationBar(
         selectedIndex: 0,
-        destinations: [
+        destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Inicio'),
           NavigationDestination(icon: Icon(Icons.work_outline), label: 'Empleos'),
           NavigationDestination(icon: Icon(Icons.notifications_none), label: 'Avisos'),
@@ -522,26 +373,80 @@ class _HomePage extends StatelessWidget {
   }
 }
 
-Widget _field(
-  String label,
-  TextEditingController controller, {
-  TextInputType? type,
-  bool obscure = false,
-  int maxLines = 1,
-}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 14),
-    child: TextField(
-      controller: controller,
-      keyboardType: type,
-      obscureText: obscure,
-      maxLines: obscure ? 1 : maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+class RoleCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  const RoleCard({super.key, required this.title, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Row(children: [Icon(icon, size: 34), const SizedBox(width: 16), Expanded(child: Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700))), const Icon(Icons.arrow_forward_ios, size: 18)]),
         ),
       ),
-    ),
-  );
+    );
+  }
+}
+
+class InfoCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  const InfoCard({super.key, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)), const SizedBox(height: 6), Text(subtitle)]),
+      ),
+    );
+  }
+}
+
+class JobCard extends StatelessWidget {
+  final String title;
+  final String company;
+  final String modality;
+  const JobCard({super.key, required this.title, required this.company, required this.modality});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text('$company · $modality'),
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class AppField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final int maxLines;
+  const AppField({super.key, required this.controller, required this.label, this.obscureText = false, this.keyboardType, this.maxLines = 1});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      ),
+    );
+  }
 }
