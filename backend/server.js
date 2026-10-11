@@ -1,0 +1,180 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const User = require('./models/User');
+const Job = require('./models/Job');
+const Application = require('./models/Application');
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-render';
+
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*', methods: ['GET','POST','PATCH','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(express.json());
+
+function normalizeConadis(value) {
+  return String(value || '').replace(/\s+/g, '').trim();
+}
+
+function validConadis(value) {
+  // Formato flexible: se aceptan números y guiones, con 5 a 30 caracteres.
+  return /^[A-Za-z0-9-]{5,30}$/.test(value);
+}
+
+function tokenFor(user) {
+  return jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+async function auth(req, res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    if (!header.startsWith('Bearer ')) return res.status(401).json({ message: 'Sesión requerida.' });
+    const payload = jwt.verify(header.slice(7), JWT_SECRET);
+    const user = await User.findById(payload.id);
+    if (!user) return res.status(401).json({ message: 'Usuario no encontrado.' });
+    req.user = user;
+    next();
+  } catch (_) {
+    return res.status(401).json({ message: 'Token inválido o expirado.' });
+  }
+}
+
+function publicUser(user) {
+  return { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, country: user.country, ruc: user.ruc, conadisNumber: user.role === 'candidate' ? user.conadisNumber : undefined, profile: user.profile };
+}
+
+app.get('/api/health', (req, res) => res.json({ ok: true, service: 'INKLU API' }));
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, phone, password, role, country, ruc, accreditationType, accreditationNumber } = req.body || {};
+    if (!name || !email || !password || !role) return res.status(400).json({ message: 'Completa los campos obligatorios.' });
+    if (!['candidate', 'company'].includes(role)) return res.status(400).json({ message: 'Tipo de cuenta inválido.' });
+    if (password.length < 8) return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' });
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (await User.exists({ email: normalizedEmail })) return res.status(409).json({ message: 'El correo electrónico ya está registrado.' });
+
+    let conadisNumber = null;
+    if (role === 'candidate') {
+      conadisNumber = normalizeConadis(accreditationNumber);
+      if (!conadisNumber) return res.status(400).json({ message: 'El número de CONADIS es obligatorio para registrarte como candidato.' });
+      if (!validConadis(conadisNumber)) return res.status(400).json({ message: 'El número de CONADIS no tiene un formato válido.' });
+      if (await User.exists({ conadisNumber })) return res.status(409).json({ message: 'Este número de CONADIS ya está registrado.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await User.create({
+      name: String(name).trim(), email: normalizedEmail, phone: String(phone || '').trim(), passwordHash,
+      role, country: country || 'PE', ruc: role === 'company' ? String(ruc || '').trim() : undefined,
+      conadisNumber, accreditationType: role === 'candidate' ? (accreditationType || 'Carné CONADIS') : undefined
+    });
+    return res.status(201).json({ token: tokenFor(user), user: publicUser(user) });
+  } catch (e) {
+    if (e?.code === 11000) {
+      if (e.keyPattern?.conadisNumber) return res.status(409).json({ message: 'Este número de CONADIS ya está registrado.' });
+      if (e.keyPattern?.email) return res.status(409).json({ message: 'El correo electrónico ya está registrado.' });
+    }
+    console.error(e);
+    return res.status(500).json({ message: 'No se pudo crear la cuenta.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '');
+    const user = await User.findOne({ email });
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
+    return res.json({ token: tokenFor(user), user: publicUser(user) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'No se pudo iniciar sesión.' });
+  }
+});
+
+app.get('/api/profile/me', auth, async (req, res) => res.json(publicUser(req.user)));
+
+app.get('/api/company/jobs', auth, async (req, res) => {
+  const jobs = await Job.find({ active: true }).populate('companyId', 'name').sort({ createdAt: -1 });
+  res.json(jobs);
+});
+
+app.get('/api/company/my-jobs', auth, async (req, res) => {
+  if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden consultar sus ofertas.' });
+  const jobs = await Job.find({ companyId: req.user._id }).sort({ createdAt: -1 });
+  res.json(jobs);
+});
+
+app.post('/api/company/jobs', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden publicar ofertas.' });
+    const { title, description, modality, location, contractType, salary, requiredSkills, experienceRequired } = req.body || {};
+    if (!title || !description) return res.status(400).json({ message: 'El título y la descripción son obligatorios.' });
+    const skills = Array.isArray(requiredSkills) ? requiredSkills : String(requiredSkills || '').split(',').map(s => s.trim()).filter(Boolean);
+    const job = await Job.create({ companyId: req.user._id, title, description, modality, location, contractType, salary, requiredSkills: skills, experienceRequired: Number(experienceRequired || 0) });
+    res.status(201).json(job);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'No se pudo publicar la oferta.' });
+  }
+});
+
+app.get('/api/applications', auth, async (req, res) => {
+  let filter = {};
+  if (req.user.role === 'candidate') filter.candidateId = req.user._id;
+  else filter.jobId = { $in: (await Job.find({ companyId: req.user._id }).select('_id')).map(j => j._id) };
+  const applications = await Application.find(filter)
+    .populate('candidateId', 'name email phone conadisNumber profile')
+    .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name' } })
+    .sort({ createdAt: -1 });
+  res.json(applications);
+});
+
+app.post('/api/applications', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden postularse.' });
+    const job = await Job.findOne({ _id: req.body?.jobId, active: true });
+    if (!job) return res.status(404).json({ message: 'La oferta no existe o ya no está disponible.' });
+    const application = await Application.create({ jobId: job._id, candidateId: req.user._id });
+    res.status(201).json(application);
+  } catch (e) {
+    if (e?.code === 11000) return res.status(409).json({ message: 'Ya te postulaste a esta oferta.' });
+    console.error(e);
+    res.status(500).json({ message: 'No se pudo registrar la postulación.' });
+  }
+});
+
+app.patch('/api/applications/:id/status', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden actualizar el proceso.' });
+    const application = await Application.findById(req.params.id).populate('jobId');
+    if (!application || String(application.jobId.companyId) !== String(req.user._id)) return res.status(404).json({ message: 'Postulación no encontrada.' });
+    const allowed = ['Postulada', 'En revisión', 'Entrevista', 'Seleccionada', 'No seleccionada'];
+    if (!allowed.includes(req.body?.status)) return res.status(400).json({ message: 'Estado inválido.' });
+    application.status = req.body.status;
+    await application.save();
+    res.json(application);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'No se pudo actualizar el estado.' });
+  }
+});
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ message: 'Error interno del servidor.' });
+});
+
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('MongoDB conectado');
+    app.listen(PORT, () => console.log(`INKLU API escuchando en ${PORT}`));
+  })
+  .catch(err => {
+    console.error('No se pudo conectar a MongoDB:', err.message);
+    process.exit(1);
+  });
