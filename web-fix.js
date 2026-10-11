@@ -1,4 +1,4 @@
-// Mejoras de INKLU: flujo visual + matching de ofertas.
+// Mejoras de INKLU: flujo visual + matching de ofertas + CONADIS obligatorio.
 (function(){
   const normalize = (v='') => String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const list = (v) => Array.isArray(v) ? v : String(v||'').split(',').map(s=>s.trim()).filter(Boolean);
@@ -36,8 +36,72 @@
     return Math.min(99, Math.max(0, Math.round(score)));
   };
 
+  // El CONADIS es requisito obligatorio: no se muestra selector Sí/No.
+  function enforceConadisField(){
+    const title = Array.from(document.querySelectorAll('h1,h2,h3')).find(el => normalize(el.textContent).includes('informacion personal'));
+    if(!title) return;
+    const segmented = document.querySelector('.segmented');
+    if(!segmented) return;
+    const wrapper = segmented.closest('.field');
+    if(!wrapper) return;
+    wrapper.outerHTML = '<div class="field"><label for="conadis">Número de CONADIS *</label><input id="conadis" name="conadis" inputmode="numeric" autocomplete="off" required><small>El número de CONADIS es obligatorio para crear tu cuenta en INKLU.</small></div>';
+    const old = document.querySelector('#conadis');
+    const draft = (()=>{try{return JSON.parse(localStorage.getItem('inklu_candidate_draft')||'{}')}catch(_){return {}}})();
+    if(old && draft.conadis) old.value = draft.conadis;
+  }
+
+  // Reemplaza la función original para exigir CONADIS antes de registrar al candidato.
+  window.registerCandidateStep2 = async function(){
+    const draft = (()=>{try{return JSON.parse(localStorage.getItem('inklu_candidate_draft')||'{}')}catch(_){return {}}})();
+    draft.birth = document.getElementById('birth')?.value || '';
+    draft.address = document.getElementById('address')?.value || '';
+    draft.conadis = (document.getElementById('conadis')?.value || '').trim();
+    localStorage.setItem('inklu_candidate_draft', JSON.stringify(draft));
+
+    const errorBox = document.getElementById('candidate2Error');
+    if(!draft.conadis){
+      if(errorBox) errorBox.innerHTML = '<div class="notice success">El número de CONADIS es obligatorio para continuar.</div>';
+      document.getElementById('conadis')?.focus();
+      return;
+    }
+    if(!/^[A-Za-z0-9-]{4,30}$/.test(draft.conadis)){
+      if(errorBox) errorBox.innerHTML = '<div class="notice success">Ingresa un número de CONADIS válido.</div>';
+      document.getElementById('conadis')?.focus();
+      return;
+    }
+
+    const payload = {
+      name: `${draft.names || ''} ${draft.surnames || ''}`.trim(),
+      email: String(draft.email || '').trim().toLowerCase(),
+      phone: String(draft.phone || '').replace(/\D/g,''),
+      password: draft.password,
+      role: 'candidate',
+      country: 'PE',
+      accreditationType: 'Carné CONADIS',
+      accreditationNumber: draft.conadis
+    };
+
+    try{
+      const r = await fetch('https://inklu-api.onrender.com/api/auth/register', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      let data={}; try{data=await r.json();}catch(_){ }
+      if(!r.ok) throw new Error(data.message || 'No se pudo completar el registro.');
+      localStorage.setItem('inklu_token', data.token || '');
+      localStorage.setItem('inklu_role', 'candidate');
+      if(typeof window.go === 'function') window.go('candidate3');
+    }catch(e){
+      if(errorBox) errorBox.innerHTML = `<div class="notice success">${String(e.message || 'No se pudo registrar la cuenta.').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>`;
+    }
+  };
+
+  const observer = new MutationObserver(() => enforceConadisField());
+  window.addEventListener('DOMContentLoaded', () => observer.observe(document.body,{childList:true,subtree:true}));
   window.addEventListener('load', () => {
     window.__inkluWebFix = true;
+    enforceConadisField();
     if (typeof window.render === 'function') window.render();
   });
 })();
