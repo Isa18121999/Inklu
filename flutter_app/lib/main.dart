@@ -4,106 +4,56 @@ import 'services/api_service.dart';
 
 const navy = Color(0xFF171C3B);
 const purple = Color(0xFF6C4CE8);
-const blue = Color(0xFF2F80ED);
-const green = Color(0xFF27AE60);
 
 void main() => runApp(const InkluApp());
 
 class InkluApp extends StatelessWidget {
   const InkluApp({super.key});
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'INKLU',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: purple),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FD),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE4E6EF))),
-        ),
-      ),
-      home: const WelcomeScreen(),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+    debugShowCheckedModeBanner: false,
+    title: 'INKLU',
+    theme: ThemeData(useMaterial3: true, colorScheme: ColorScheme.fromSeed(seedColor: purple), scaffoldBackgroundColor: const Color(0xFFF8F9FD), inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE4E6EF))))),
+    home: const WelcomeScreen(),
+  );
 }
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(child: Padding(
-      padding: const EdgeInsets.all(28),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Image.asset('assets/logo.png', height: 130, errorBuilder: (_, __, ___) => const Icon(Icons.diversity_3, size: 100, color: purple)),
-        const SizedBox(height: 18),
-        const Text('INKLU', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: navy)),
-        const SizedBox(height: 8),
-        const Text('Talento, inclusión y oportunidades laborales', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.black54)),
-        const SizedBox(height: 40),
-        _PrimaryButton(text: 'Empezar', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoleScreen()))),
-        const SizedBox(height: 12),
-        _OutlineButton(text: 'Iniciar sesión', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()))),
-      ]),
-    )),
-  );
+  Widget build(BuildContext context) => Scaffold(body: SafeArea(child: Padding(padding: const EdgeInsets.all(28), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    const _InkluMark(), const SizedBox(height: 18),
+    const Text('INKLU', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: navy)),
+    const SizedBox(height: 8), const Text('Talento, inclusión y oportunidades laborales', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.black54)),
+    const SizedBox(height: 40),
+    _PrimaryButton(text: 'Empezar', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RoleScreen()))),
+    const SizedBox(height: 12), _OutlineButton(text: 'Iniciar sesión', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen()))),
+  ]))));
 }
 
-class RoleScreen extends StatelessWidget {
-  const RoleScreen({super.key});
-  @override
-  Widget build(BuildContext context) => _Page(title: '¿Cómo quieres usar INKLU?', child: Column(children: [
-    _RoleCard(icon: Icons.person_outline, title: 'Soy candidato', subtitle: 'Quiero encontrar oportunidades laborales', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CandidateRegisterScreen()))),
-    const SizedBox(height: 16),
-    _RoleCard(icon: Icons.business_outlined, title: 'Soy empresa', subtitle: 'Quiero publicar ofertas y encontrar talento', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CompanyRegisterScreen()))),
-  ]));
-}
+class _InkluMark extends StatelessWidget { const _InkluMark(); @override Widget build(BuildContext context) => Container(width: 126,height: 126,decoration: BoxDecoration(shape: BoxShape.circle,color: const Color(0xFFEDE9FE),border: Border.all(color: purple,width: 3)),child: const Center(child: Icon(Icons.diversity_3,size: 72,color: purple))); }
+
+class RoleScreen extends StatelessWidget { const RoleScreen({super.key}); @override Widget build(BuildContext context) => _Page(title: '¿Cómo quieres usar INKLU?', child: Column(children: [
+  _RoleCard(icon: Icons.person_outline,title: 'Soy candidato',subtitle: 'Quiero encontrar oportunidades laborales',onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CandidateRegisterScreen()))),
+  const SizedBox(height: 16), _RoleCard(icon: Icons.business_outlined,title: 'Soy empresa',subtitle: 'Quiero publicar ofertas y encontrar talento',onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CompanyRegisterScreen()))),
+])); }
 
 class CandidateRegisterScreen extends StatefulWidget { const CandidateRegisterScreen({super.key}); @override State<CandidateRegisterScreen> createState() => _CandidateRegisterState(); }
 class _CandidateRegisterState extends State<CandidateRegisterScreen> {
-  final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), password = TextEditingController(), conadis = TextEditingController();
-  bool loading = false;
-  Future<void> submit() async {
-    if (name.text.trim().isEmpty || email.text.trim().isEmpty || password.text.length < 8 || !RegExp(r'^[A-Za-z0-9-]{5,30}$').hasMatch(conadis.text.trim())) {
-      _msg('Completa los campos y coloca un número de CONADIS válido.'); return;
-    }
-    setState(() => loading = true);
-    try {
-      final result = await ApiService().registerCandidate(name: name.text.trim(), email: email.text.trim(), phone: phone.text.trim(), password: password.text, conadisNumber: conadis.text.trim());
-      if (!mounted) return;
-      _saveAndGo(result, 'candidate');
-    } catch (e) { if (mounted) _msg(e.toString().replaceFirst('Exception: ', '')); }
-    finally { if (mounted) setState(() => loading = false); }
-  }
-  void _saveAndGo(Map<String,dynamic> result, String role) async { final p = await SharedPreferences.getInstance(); await p.setString('inklu_token', result['token'] ?? ''); await p.setString('inklu_role', role); if (mounted) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CandidateHome()), (_) => false); }
-  void _msg(String s) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
-  @override Widget build(BuildContext context) => _Page(title: 'Crear cuenta de candidato', child: ListView(children: [
-    const _Progress(label: 'Registro', step: '1 de 3'),
-    _Field('Nombre completo', name), _Field('Correo electrónico', email, keyboard: TextInputType.emailAddress), _Field('Teléfono', phone, keyboard: TextInputType.phone), _Field('Contraseña', password, obscure: true),
-    const SizedBox(height: 4), const Text('Número de CONADIS *', style: TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 7),
-    TextField(controller: conadis, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(hintText: 'Ingresa tu número de CONADIS')), const SizedBox(height: 8),
-    const Text('El número es obligatorio y debe ser único.', style: TextStyle(color: Colors.black54, fontSize: 12)), const SizedBox(height: 24),
-    _PrimaryButton(text: loading ? 'Registrando...' : 'Continuar', onPressed: loading ? null : submit),
-  ]));
+  final name=TextEditingController(),email=TextEditingController(),phone=TextEditingController(),password=TextEditingController(),conadis=TextEditingController(); bool loading=false;
+  Future<void> submit() async { if(name.text.trim().isEmpty||email.text.trim().isEmpty||password.text.length<8||!RegExp(r'^[A-Za-z0-9-]{5,30}$').hasMatch(conadis.text.trim())){_msg('Completa los campos y coloca un número de CONADIS válido.');return;}setState(()=>loading=true);try{final r=await ApiService().registerCandidate(name:name.text.trim(),email:email.text.trim(),phone:phone.text.trim(),password:password.text,conadisNumber:conadis.text.trim());final p=await SharedPreferences.getInstance();await p.setString('inklu_token',r['token']??'');await p.setString('inklu_role','candidate');if(mounted)Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>const CandidateHome()),(_)=>false);}catch(e){if(mounted)_msg(e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}}
+  void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));
+  @override Widget build(BuildContext context)=>_Page(title:'Crear cuenta de candidato',child:ListView(children:[const _Progress(label:'Registro',step:'1 de 3'),_Field('Nombre completo',name),_Field('Correo electrónico',email,keyboard:TextInputType.emailAddress),_Field('Teléfono',phone,keyboard:TextInputType.phone),_Field('Contraseña',password,obscure:true),const SizedBox(height:4),const Text('Número de CONADIS *',style:TextStyle(fontWeight:FontWeight.w700)),const SizedBox(height:7),TextField(controller:conadis,textCapitalization:TextCapitalization.characters,decoration:const InputDecoration(hintText:'Ingresa tu número de CONADIS')),const SizedBox(height:8),const Text('El número es obligatorio y debe ser único.',style:TextStyle(color:Colors.black54,fontSize:12)),const SizedBox(height:24),_PrimaryButton(text:loading?'Registrando...':'Continuar',onPressed:loading?null:submit)]));
 }
 
-class CompanyRegisterScreen extends StatefulWidget { const CompanyRegisterScreen({super.key}); @override State<CompanyRegisterScreen> createState() => _CompanyRegisterState(); }
-class _CompanyRegisterState extends State<CompanyRegisterScreen> {
-  final name=TextEditingController(), email=TextEditingController(), phone=TextEditingController(), password=TextEditingController(), ruc=TextEditingController(); bool loading=false;
-  Future<void> submit() async { if(name.text.trim().isEmpty||email.text.trim().isEmpty||password.text.length<8||ruc.text.trim().length<8){_msg('Completa los datos de la empresa.');return;} setState(()=>loading=true); try { final r=await ApiService().registerCompany(name:name.text.trim(),email:email.text.trim(),phone:phone.text.trim(),password:password.text,ruc:ruc.text.trim()); final p=await SharedPreferences.getInstance(); await p.setString('inklu_token',r['token']??''); await p.setString('inklu_role','company'); if(mounted) Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>const CompanyHome()),(_)=>false); } catch(e){if(mounted)_msg(e.toString().replaceFirst('Exception: ',''));} finally{if(mounted)setState(()=>loading=false);} }
-  void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));
-  @override Widget build(BuildContext context)=>_Page(title:'Crear cuenta de empresa',child:ListView(children:[const _Progress(label:'Registro',step:'1 de 3'),_Field('Nombre de empresa',name),_Field('Correo empresarial',email,keyboard:TextInputType.emailAddress),_Field('Teléfono',phone,keyboard:TextInputType.phone),_Field('RUC',ruc,keyboard:TextInputType.number),_Field('Contraseña',password,obscure:true),const SizedBox(height:20),_PrimaryButton(text:loading?'Registrando...':'Continuar',onPressed:loading?null:submit)]));
-}
+class CompanyRegisterScreen extends StatefulWidget { const CompanyRegisterScreen({super.key}); @override State<CompanyRegisterScreen> createState()=>_CompanyRegisterState(); }
+class _CompanyRegisterState extends State<CompanyRegisterScreen>{final name=TextEditingController(),email=TextEditingController(),phone=TextEditingController(),password=TextEditingController(),ruc=TextEditingController();bool loading=false;Future<void>submit()async{if(name.text.trim().isEmpty||email.text.trim().isEmpty||password.text.length<8||ruc.text.trim().length<8){_msg('Completa los datos de la empresa.');return;}setState(()=>loading=true);try{final r=await ApiService().registerCompany(name:name.text.trim(),email:email.text.trim(),phone:phone.text.trim(),password:password.text,ruc:ruc.text.trim());final p=await SharedPreferences.getInstance();await p.setString('inklu_token',r['token']??'');await p.setString('inklu_role','company');if(mounted)Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>const CompanyHome()),(_)=>false);}catch(e){if(mounted)_msg(e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}}void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));@override Widget build(BuildContext context)=>_Page(title:'Crear cuenta de empresa',child:ListView(children:[const _Progress(label:'Registro',step:'1 de 3'),_Field('Nombre de empresa',name),_Field('Correo empresarial',email,keyboard:TextInputType.emailAddress),_Field('Teléfono',phone,keyboard:TextInputType.phone),_Field('RUC',ruc,keyboard:TextInputType.number),_Field('Contraseña',password,obscure:true),const SizedBox(height:20),_PrimaryButton(text:loading?'Registrando...':'Continuar',onPressed:loading?null:submit)]));}
 
 class LoginScreen extends StatefulWidget { const LoginScreen({super.key}); @override State<LoginScreen> createState()=>_LoginState(); }
-class _LoginState extends State<LoginScreen>{ final email=TextEditingController(),password=TextEditingController(); bool loading=false; Future<void> go()async{if(email.text.trim().isEmpty||password.text.isEmpty){_msg('Ingresa correo y contraseña.');return;}setState(()=>loading=true);try{final r=await ApiService().login(email.text.trim(),password.text);final role=r['user']?['role']??'candidate';final p=await SharedPreferences.getInstance();await p.setString('inklu_token',r['token']??'');await p.setString('inklu_role',role);if(mounted)Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>role=='company'?const CompanyHome():const CandidateHome()),(_)=>false);}catch(e){if(mounted)_msg(e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}}void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));@override Widget build(BuildContext context)=>_Page(title:'Iniciar sesión',child:ListView(children:[_Field('Correo electrónico',email,keyboard:TextInputType.emailAddress),_Field('Contraseña',password,obscure:true),const SizedBox(height:20),_PrimaryButton(text:loading?'Ingresando...':'Iniciar sesión',onPressed:loading?null:go)])); }
+class _LoginState extends State<LoginScreen>{final email=TextEditingController(),password=TextEditingController();bool loading=false;Future<void>go()async{if(email.text.trim().isEmpty||password.text.isEmpty){_msg('Ingresa correo y contraseña.');return;}setState(()=>loading=true);try{final r=await ApiService().login(email.text.trim(),password.text);final role=r['user']?['role']??'candidate';final p=await SharedPreferences.getInstance();await p.setString('inklu_token',r['token']??'');await p.setString('inklu_role',role);if(mounted)Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>role=='company'?const CompanyHome():const CandidateHome()),(_)=>false);}catch(e){if(mounted)_msg(e.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>loading=false);}}void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));@override Widget build(BuildContext context)=>_Page(title:'Iniciar sesión',child:ListView(children:[_Field('Correo electrónico',email,keyboard:TextInputType.emailAddress),_Field('Contraseña',password,obscure:true),const SizedBox(height:20),_PrimaryButton(text:loading?'Ingresando...':'Iniciar sesión',onPressed:loading?null:go)]));}
 
 class CandidateHome extends StatefulWidget{const CandidateHome({super.key});@override State<CandidateHome>createState()=>_CandidateHomeState();}
-class _CandidateHomeState extends State<CandidateHome>{List<dynamic> jobs=[];bool loading=true;@override void initState(){super.initState();load();}Future<void>load()async{final p=await SharedPreferences.getInstance();final t=p.getString('inklu_token')??'';try{jobs=await ApiService().jobs(t);}catch(_){ }if(mounted)setState(()=>loading=false);} @override Widget build(BuildContext context)=>_HomeScaffold(title:'Hola 👋',subtitle:'Encuentra oportunidades para ti',children:[TextField(decoration:InputDecoration(hintText:'Buscar empleo',prefixIcon:const Icon(Icons.search),suffixIcon:IconButton(onPressed:load,icon:const Icon(Icons.refresh)))),const SizedBox(height:20),const Text('Ofertas recomendadas',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),const SizedBox(height:10),if(loading)const Center(child:CircularProgressIndicator()) else if(jobs.isEmpty)const _Empty(text:'Todavía no hay ofertas disponibles.') else ...jobs.take(10).map((j)=>_JobCard(job:j))]);}
+class _CandidateHomeState extends State<CandidateHome>{List<dynamic>jobs=[];bool loading=true;@override void initState(){super.initState();load();}Future<void>load()async{final p=await SharedPreferences.getInstance();final t=p.getString('inklu_token')??'';try{jobs=await ApiService().jobs(t);}catch(_){ }if(mounted)setState(()=>loading=false);}@override Widget build(BuildContext context)=>_HomeScaffold(title:'Hola 👋',subtitle:'Encuentra oportunidades para ti',children:[TextField(decoration:InputDecoration(hintText:'Buscar empleo',prefixIcon:const Icon(Icons.search),suffixIcon:IconButton(onPressed:load,icon:const Icon(Icons.refresh)))),const SizedBox(height:20),const Text('Ofertas recomendadas',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),const SizedBox(height:10),if(loading)const Center(child:CircularProgressIndicator())else if(jobs.isEmpty)const _Empty(text:'Todavía no hay ofertas disponibles.')else...jobs.take(10).map((j)=>_JobCard(job:j))]);}
 
 class CompanyHome extends StatelessWidget{const CompanyHome({super.key});@override Widget build(BuildContext context)=>_HomeScaffold(title:'Panel de empresa',subtitle:'Gestiona tus oportunidades',children:[Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(color:Colors.white,borderRadius:BorderRadius.circular(18)),child:const Row(mainAxisAlignment:MainAxisAlignment.spaceAround,children:[_Stat(value:'0',label:'Ofertas activas'),_Stat(value:'0',label:'Postulaciones'),_Stat(value:'0',label:'En revisión')])),const SizedBox(height:20),_PrimaryButton(text:'Crear oferta',onPressed:()=>_showComing(context,'Crear oferta')),const SizedBox(height:20),const Text('Actividad reciente',style:TextStyle(fontSize:20,fontWeight:FontWeight.w800)),const SizedBox(height:8),const _Empty(text:'Aquí aparecerán tus postulaciones.')]);}
 }
@@ -114,7 +64,7 @@ class _Empty extends StatelessWidget{final String text;const _Empty({required th
 void _showComing(BuildContext context,String title)=>showDialog(context:context,builder:(_)=>AlertDialog(title:Text(title),content:const Text('Esta pantalla continuará en la siguiente etapa de la migración Flutter.'),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cerrar'))]));
 
 class _Page extends StatelessWidget{final String title;final Widget child;const _Page({required this.title,required this.child});@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:Text(title),backgroundColor:Colors.transparent),body:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(22,8,22,24),child:child)));}
-class _HomeScaffold extends StatelessWidget{final String title,subtitle;final List<Widget>children;const _HomeScaffold({required this.title,required this.subtitle,required this.children});@override Widget build(BuildContext context)=>Scaffold(body:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(20,20,20,12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontSize:28,fontWeight:FontWeight.w800,color:navy)),const SizedBox(height:4),Text(subtitle,style:const TextStyle(color:Colors.black54)),const SizedBox(height:20),Expanded(child:ListView(children:children))]))),bottomNavigationBar:NavigationBar(selectedIndex:0,destinations:const[NavigationDestination(icon:Icon(Icons.home_outlined),label:'Inicio'),NavigationDestination(icon:Icon(Icons.work_outline),label:'Empleos'),NavigationDestination(icon:Icon(Icons.person_outline),label:'Perfil')]);}
+class _HomeScaffold extends StatelessWidget{final String title,subtitle;final List<Widget>children;const _HomeScaffold({required this.title,required this.subtitle,required this.children});@override Widget build(BuildContext context)=>Scaffold(body:SafeArea(child:Padding(padding:const EdgeInsets.fromLTRB(20,20,20,12),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontSize:28,fontWeight:FontWeight.w800,color:navy)),const SizedBox(height:4),Text(subtitle,style:const TextStyle(color:Colors.black54)),const SizedBox(height:20),Expanded(child:ListView(children:children))]))),bottomNavigationBar:const NavigationBar(selectedIndex:0,destinations:[NavigationDestination(icon:Icon(Icons.home_outlined),label:'Inicio'),NavigationDestination(icon:Icon(Icons.work_outline),label:'Empleos'),NavigationDestination(icon:Icon(Icons.person_outline),label:'Perfil')]);}
 class _Field extends StatelessWidget{final String label;final TextEditingController controller;final bool obscure;final TextInputType? keyboard;const _Field(this.label,this.controller,{this.obscure=false,this.keyboard});@override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.only(bottom:14),child:TextField(controller:controller,obscureText:obscure,keyboardType:keyboard,decoration:InputDecoration(labelText:label)));}
 class _Progress extends StatelessWidget{final String label,step;const _Progress({required this.label,required this.step});@override Widget build(BuildContext context)=>Padding(padding:const EdgeInsets.only(bottom:20),child:Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Text(label,style:const TextStyle(fontWeight:FontWeight.w800)),Text(step,style:const TextStyle(color:Colors.black54))]));}
 class _PrimaryButton extends StatelessWidget{final String text;final VoidCallback? onPressed;const _PrimaryButton({required this.text,required this.onPressed});@override Widget build(BuildContext context)=>SizedBox(height:52,width:double.infinity,child:FilledButton(onPressed:onPressed,style:FilledButton.styleFrom(backgroundColor:purple,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(14))),child:Text(text,style:const TextStyle(fontWeight:FontWeight.w700))));}
