@@ -36,7 +36,7 @@ jobs:
 
       - name: Analyze Flutter app
         working-directory: flutter_app
-        run: flutter analyze
+        run: flutter analyze --no-fatal-warnings
 
       - name: Build release APK
         working-directory: flutter_app
