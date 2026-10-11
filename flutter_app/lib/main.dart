@@ -335,7 +335,7 @@ class _CreateJobPageState extends State<CreateJobPage> {
         AppField(controller: description, label: 'Descripción *', maxLines: 5),
         AppField(controller: skills, label: 'Habilidades requeridas'),
         AppField(controller: location, label: 'Ubicación'),
-        DropdownButtonFormField<String>(value: modality, decoration: const InputDecoration(labelText: 'Modalidad', border: OutlineInputBorder()), items: const [DropdownMenuItem(value: 'Remoto', child: Text('Remoto')), DropdownMenuItem(value: 'Híbrido', child: Text('Híbrido')), DropdownMenuItem(value: 'Presencial', child: Text('Presencial'))], onChanged: (v) => setState(() => modality = v ?? modality)),
+        DropdownButtonFormField<String>(initialValue: modality, decoration: const InputDecoration(labelText: 'Modalidad', border: OutlineInputBorder()), items: const [DropdownMenuItem(value: 'Remoto', child: Text('Remoto')), DropdownMenuItem(value: 'Híbrido', child: Text('Híbrido')), DropdownMenuItem(value: 'Presencial', child: Text('Presencial'))], onChanged: (v) => setState(() => modality = v ?? modality)),
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, child: FilledButton(onPressed: loading ? null : create, child: const Text('Publicar oferta'))),
       ],
@@ -434,6 +434,7 @@ class AppField extends StatelessWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
   final int maxLines;
+
   const AppField({super.key, required this.controller, required this.label, this.obscureText = false, this.keyboardType, this.maxLines = 1});
 
   @override
