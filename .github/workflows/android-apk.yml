@@ -5,17 +5,12 @@ on:
   push:
     branches: [main]
     paths:
-      - 'index.html'
-      - 'styles.css'
-      - 'app-v2.js'
-      - 'web-fix.js'
-      - 'assets/**'
-      - 'package.json'
-      - 'capacitor.config.json'
+      - 'flutter_app/**'
       - '.github/workflows/android-apk.yml'
 
 jobs:
   build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -24,43 +19,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          node-version: 20
+          flutter-version: '3.35.2'
+          channel: stable
+          cache: true
 
-      - name: Install dependencies
-        run: npm install
+      - name: Generate Android platform
+        working-directory: flutter_app
+        run: flutter create --platforms=android .
 
-      - name: Prepare web assets
-        run: |
-          rm -rf www
-          mkdir -p www/assets
-          cp index.html styles.css app-v2.js web-fix.js www/
-          cp -R assets/. www/assets/
+      - name: Get dependencies
+        working-directory: flutter_app
+        run: flutter pub get
 
-      - name: Add Android platform
-        run: npx cap add android
+      - name: Analyze Flutter app
+        working-directory: flutter_app
+        run: flutter analyze
 
-      - name: Sync web app with Android
-        run: npx cap sync android
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug
+      - name: Build release APK
+        working-directory: flutter_app
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: INKLU-Android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: INKLU-Android
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
