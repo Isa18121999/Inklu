@@ -1,8 +1,10 @@
-// Mejoras de INKLU: flujo visual + matching de ofertas + CONADIS obligatorio.
+// Mejoras de INKLU: flujo visual + matching de ofertas + CONADIS obligatorio + perfil persistente.
 (function(){
+  const API_URL = 'https://inklu-api.onrender.com/api';
   const normalize = (v='') => String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const list = (v) => Array.isArray(v) ? v : String(v||'').split(',').map(s=>s.trim()).filter(Boolean);
   const profile = () => { try { return JSON.parse(localStorage.getItem('inklu_professional_profile') || '{}'); } catch (_) { return {}; } };
+  const token = () => localStorage.getItem('inklu_token') || '';
 
   // Matching ponderado: habilidades 50%, modalidad 20%, ubicación 15%, experiencia 15%.
   window.matchScore = function(job){
@@ -64,7 +66,7 @@
       document.getElementById('conadis')?.focus();
       return;
     }
-    if(!/^[A-Za-z0-9-]{4,30}$/.test(draft.conadis)){
+    if(!/^[A-Za-z0-9-]{5,30}$/.test(draft.conadis)){
       if(errorBox) errorBox.innerHTML = '<div class="notice success">Ingresa un número de CONADIS válido.</div>';
       document.getElementById('conadis')?.focus();
       return;
@@ -82,7 +84,7 @@
     };
 
     try{
-      const r = await fetch('https://inklu-api.onrender.com/api/auth/register', {
+      const r = await fetch(`${API_URL}/auth/register`, {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify(payload)
@@ -94,6 +96,44 @@
       if(typeof window.go === 'function') window.go('candidate3');
     }catch(e){
       if(errorBox) errorBox.innerHTML = `<div class="notice success">${String(e.message || 'No se pudo registrar la cuenta.').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>`;
+    }
+  };
+
+  // Guarda el perfil profesional también en MongoDB, no solo en localStorage.
+  window.finishProfessionalProfile = async function(){
+    const professionalProfile = {
+      education: document.getElementById('education')?.value?.trim() || '',
+      experience: Number(document.getElementById('experience')?.value || 0),
+      skills: list(document.getElementById('skills')?.value || ''),
+      modality: document.getElementById('modality')?.value || '',
+      location: document.getElementById('location')?.value?.trim() || ''
+    };
+
+    localStorage.setItem('inklu_professional_profile', JSON.stringify(professionalProfile));
+
+    if(!token()){
+      const box = document.getElementById('candidate3Error');
+      if(box) box.innerHTML = '<div class="notice success">Tu sesión expiró. Inicia sesión nuevamente para guardar el perfil.</div>';
+      return;
+    }
+
+    try{
+      const r = await fetch(`${API_URL}/profile/me`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json', Authorization:`Bearer ${token()}`},
+        body:JSON.stringify(professionalProfile)
+      });
+      let data={}; try{data=await r.json();}catch(_){ }
+      if(!r.ok) throw new Error(data.message || 'No se pudo guardar el perfil.');
+
+      localStorage.setItem('inklu_professional_profile', JSON.stringify(data.profile || professionalProfile));
+      if(typeof window.loadProfile === 'function') await window.loadProfile();
+      if(typeof window.loadJobs === 'function') await window.loadJobs();
+      if(typeof window.go === 'function') window.go('candidateDash');
+    }catch(e){
+      const box = document.getElementById('candidate3Error');
+      if(box) box.innerHTML = `<div class="notice success">${String(e.message || 'No se pudo guardar el perfil.').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</div>`;
+      else alert(e.message || 'No se pudo guardar el perfil.');
     }
   };
 
