@@ -30,6 +30,15 @@ jobs:
         working-directory: flutter_app
         run: flutter create --platforms=android .
 
+      - name: Install INKLU branding and launcher icon
+        working-directory: flutter_app
+        run: |
+          mkdir -p assets android/app/src/main/res/drawable
+          cp ../assets/logo.png assets/logo.png
+          base64 -w 0 assets/logo.png > assets/logo.b64
+          cp assets/logo.png android/app/src/main/res/drawable/inklu_icon.png
+          sed -i 's#@mipmap/ic_launcher_round#@drawable/inklu_icon#g; s#@mipmap/ic_launcher#@drawable/inklu_icon#g; s/android:label="inklu"/android:label="INKLU"/' android/app/src/main/AndroidManifest.xml
+
       - name: Get dependencies
         working-directory: flutter_app
         run: flutter pub get
