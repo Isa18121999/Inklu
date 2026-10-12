@@ -39,6 +39,10 @@ jobs:
           cp assets/logo.png android/app/src/main/res/drawable/inklu_icon.png
           sed -i 's#@mipmap/ic_launcher_round#@drawable/inklu_icon#g; s#@mipmap/ic_launcher#@drawable/inklu_icon#g; s/android:label="inklu"/android:label="INKLU"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Fix Flutter syntax before build
+        working-directory: flutter_app
+        run: sed -i '242s/])));/]]);/' lib/main.dart
+
       - name: Get dependencies
         working-directory: flutter_app
         run: flutter pub get
