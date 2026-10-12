@@ -7,11 +7,28 @@ class ApiService {
   static const String baseUrl = 'https://inklu-api.onrender.com/api';
   Map<String, String> _headers(String token) => {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'};
 
-  Future<Map<String, dynamic>> registerCandidate({required String name, required String email, required String phone, required String password, required String conadisNumber}) =>
-      _post('/auth/register', {'name': name, 'email': email, 'phone': phone, 'password': password, 'role': 'candidate', 'country': 'PE', 'accreditationType': 'Carné CONADIS', 'accreditationNumber': conadisNumber});
+  Future<Map<String, dynamic>> registerCandidate({required String name, required String email, required String phone, required String password, required String conadisNumber, String? cvPath}) async {
+    final data = await _post('/auth/register', {'name': name, 'email': email, 'phone': phone, 'password': password, 'role': 'candidate', 'country': 'PE', 'accreditationType': 'Carné CONADIS', 'accreditationNumber': conadisNumber});
+    if (cvPath != null && cvPath.isNotEmpty && data['token'] != null) {
+      try { await uploadCv(data['token'].toString(), cvPath); } catch (_) {}
+    }
+    return data;
+  }
+
   Future<Map<String, dynamic>> registerCompany({required String name, required String email, required String phone, required String password, required String ruc}) =>
       _post('/auth/register', {'name': name, 'email': email, 'phone': phone, 'password': password, 'role': 'company', 'country': 'PE', 'ruc': ruc});
   Future<Map<String, dynamic>> login(String email, String password) => _post('/auth/login', {'email': email, 'password': password});
+
+  Future<Map<String, dynamic>> uploadCv(String token, String path) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/profile/cv'));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('cv', path));
+    final response = await request.send().timeout(const Duration(seconds: 40));
+    final body = await response.stream.bytesToString();
+    final data = body.isEmpty ? <String,dynamic>{} : jsonDecode(body);
+    if (response.statusCode < 200 || response.statusCode >= 300) throw Exception(data['message'] ?? 'No se pudo subir el CV.');
+    return Map<String,dynamic>.from(data is Map ? data : {});
+  }
 
   Future<List<dynamic>> jobs(String token) async => _getList('/company/jobs', token);
   Future<List<dynamic>> myJobs(String token) async => _getList('/company/my-jobs', token);
@@ -26,43 +43,14 @@ class ApiService {
     try {
       final r = await http.post(Uri.parse('$baseUrl$path'), headers: {'Content-Type': 'application/json'}, body: jsonEncode(body)).timeout(const Duration(seconds: 25));
       return _decodeMap(r);
-    } on SocketException {
-      throw Exception('No se pudo conectar con INKLU. Verifica tu conexión a Internet e inténtalo de nuevo.');
-    } on TimeoutException {
-      throw Exception('El servidor de INKLU está tardando en responder. Inténtalo nuevamente.');
-    } on FormatException {
-      throw Exception('El servidor de INKLU devolvió una respuesta inválida.');
-    }
+    } on SocketException { throw Exception('No se pudo conectar con INKLU. Verifica tu conexión a Internet e inténtalo de nuevo.'); }
+    on TimeoutException { throw Exception('El servidor de INKLU está tardando en responder. Inténtalo nuevamente.'); }
+    on FormatException { throw Exception('El servidor de INKLU devolvió una respuesta inválida.'); }
   }
-
-  Future<Map<String, dynamic>> _postAuth(String path, String token, Map<String, dynamic> body) async {
-    final r = await http.post(Uri.parse('$baseUrl$path'), headers: _headers(token), body: jsonEncode(body)).timeout(const Duration(seconds: 25));
-    return _decodeMap(r);
-  }
-  Future<Map<String, dynamic>> _patch(String path, String token, Map<String, dynamic> body) async {
-    final r = await http.patch(Uri.parse('$baseUrl$path'), headers: _headers(token), body: jsonEncode(body)).timeout(const Duration(seconds: 25));
-    return _decodeMap(r);
-  }
-  Future<Map<String, dynamic>> _getMap(String path, String token) async {
-    final r = await http.get(Uri.parse('$baseUrl$path'), headers: _headers(token)).timeout(const Duration(seconds: 25));
-    return _decodeMap(r);
-  }
-  Future<List<dynamic>> _getList(String path, String token) async {
-    final r = await http.get(Uri.parse('$baseUrl$path'), headers: _headers(token)).timeout(const Duration(seconds: 25));
-    return _decodeList(r);
-  }
-
-  Map<String, dynamic> _decodeMap(http.Response r) {
-    final data = jsonDecode(r.body);
-    if (r.statusCode < 200 || r.statusCode >= 300) throw Exception(data['message'] ?? 'No se pudo completar la solicitud.');
-    return Map<String, dynamic>.from(data);
-  }
-  List<dynamic> _decodeList(http.Response r) {
-    final data = jsonDecode(r.body);
-    if (r.statusCode < 200 || r.statusCode >= 300) throw Exception(data['message'] ?? 'No se pudieron cargar los datos.');
-    if (data is List) return data;
-    if (data is Map && data['jobs'] is List) return data['jobs'];
-    if (data is Map && data['applications'] is List) return data['applications'];
-    return const [];
-  }
+  Future<Map<String, dynamic>> _postAuth(String path, String token, Map<String, dynamic> body) async { final r=await http.post(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25)); return _decodeMap(r); }
+  Future<Map<String, dynamic>> _patch(String path,String token,Map<String,dynamic> body) async { final r=await http.patch(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25)); return _decodeMap(r); }
+  Future<Map<String,dynamic>> _getMap(String path,String token) async { final r=await http.get(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25)); return _decodeMap(r); }
+  Future<List<dynamic>> _getList(String path,String token) async { final r=await http.get(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25)); return _decodeList(r); }
+  Map<String,dynamic> _decodeMap(http.Response r){final data=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300)throw Exception(data['message']??'No se pudo completar la solicitud.');return Map<String,dynamic>.from(data);}
+  List<dynamic> _decodeList(http.Response r){final data=jsonDecode(r.body);if(r.statusCode<200||r.statusCode>=300)throw Exception(data['message']??'No se pudieron cargar los datos.');if(data is List)return data;if(data is Map&&data['jobs'] is List)return data['jobs'];if(data is Map&&data['applications'] is List)return data['applications'];return const[];}
 }
