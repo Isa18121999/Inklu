@@ -41,7 +41,7 @@ jobs:
 
       - name: Fix Flutter syntax before build
         working-directory: flutter_app
-        run: sed -i '242s/])));/]]);/' lib/main.dart
+        run: sed -i '242s/)])));/)]));/' lib/main.dart
 
       - name: Get dependencies
         working-directory: flutter_app
