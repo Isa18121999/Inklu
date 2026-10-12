@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/api_service.dart';
@@ -6,7 +7,6 @@ const primary = Color(0xFF4F46E5);
 const ink = Color(0xFF111827);
 const muted = Color(0xFF64748B);
 const line = Color(0xFFE2E8F0);
-const logoUrl = 'https://raw.githubusercontent.com/Isa18121999/Inklu/main/assets/logo.png';
 final messenger = GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
@@ -39,11 +39,30 @@ class MyApp extends StatelessWidget {
       );
 }
 
-class Logo extends StatelessWidget {
+class Logo extends StatefulWidget {
   final double size;
   const Logo({super.key, this.size = 100});
   @override
-  Widget build(BuildContext context) => Image.network(logoUrl, width: size, height: size, fit: BoxFit.contain, errorBuilder: (_, __, ___) => Icon(Icons.image_outlined, size: size * .45, color: primary));
+  State<Logo> createState() => _LogoState();
+}
+
+class _LogoState extends State<Logo> {
+  Uint8List? bytes;
+  @override
+  void initState() {
+    super.initState();
+    _loadLogo();
+  }
+  Future<void> _loadLogo() async {
+    try {
+      final encoded = await rootBundle.loadString('assets/logo.b64');
+      if (mounted) setState(() => bytes = base64Decode(encoded.trim()));
+    } catch (_) {}
+  }
+  @override
+  Widget build(BuildContext context) => bytes == null
+      ? SizedBox(width: widget.size, height: widget.size, child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: primary)))
+      : Image.memory(bytes!, width: widget.size, height: widget.size, fit: BoxFit.contain, filterQuality: FilterQuality.high);
 }
 
 class WelcomePage extends StatelessWidget {
