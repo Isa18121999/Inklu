@@ -90,7 +90,7 @@ class CandidateRegister extends StatefulWidget {
 class _CandidateRegisterState extends State<CandidateRegister> {
   int step = 0;
   final name = TextEditingController(), surname = TextEditingController(), email = TextEditingController(), password = TextEditingController();
-  final birth = TextEditingController(), phone = TextEditingController(), address = TextEditingController(text: 'Lima, Perú'), cv = TextEditingController();
+  final birth = TextEditingController(), phone = TextEditingController(), address = TextEditingController(text: 'Lima, Perú'), conadis = TextEditingController(), cv = TextEditingController();
   bool terms = false, loading = false;
   DateTime? birthDate;
 
@@ -112,13 +112,16 @@ class _CandidateRegisterState extends State<CandidateRegister> {
     if (step == 0 && (name.text.trim().isEmpty || surname.text.trim().isEmpty || !validEmail(email.text) || !validPassword(password.text) || !terms)) {
       message('Completa nombres, apellidos, correo, contraseña y acepta los términos.'); return;
     }
-    if (step == 1 && (!RegExp(r'^\d{9}$').hasMatch(phone.text) || birthDate == null || cv.text.trim().isEmpty)) {
-      message('Completa la fecha de nacimiento, teléfono y sube tu CV.'); return;
+    if (step == 1 && (!RegExp(r'^\d{9}$').hasMatch(phone.text) || birthDate == null || !RegExp(r'^\d+$').hasMatch(conadis.text.trim()) || conadis.text.trim().isEmpty)) {
+      message('Completa la fecha de nacimiento, teléfono y número de CONADIS.'); return;
+    }
+    if (step == 2 && cv.text.trim().isEmpty) {
+      message('Debes subir tu CV para finalizar el registro.'); return;
     }
     if (step < 2) { setState(() => step++); return; }
     setState(() => loading = true);
     try {
-      await ApiService().registerCandidate(name: '${name.text.trim()} ${surname.text.trim()}', email: email.text.trim(), phone: phone.text, password: password.text, conadisNumber: '');
+      await ApiService().registerCandidate(name: '${name.text.trim()} ${surname.text.trim()}', email: email.text.trim(), phone: phone.text, password: password.text, conadisNumber: conadis.text.trim());
       if (!mounted) return;
       message('Cuenta creada correctamente.');
       Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const CandidateDashboard()), (_) => false);
@@ -128,7 +131,7 @@ class _CandidateRegisterState extends State<CandidateRegister> {
 
   @override Widget build(BuildContext context) => Page(
     title: step == 0 ? 'Crear cuenta\ncomo candidato' : step == 1 ? 'Información\npersonal' : 'Perfil profesional',
-    subtitle: step == 0 ? 'Completa tus datos para comenzar.' : step == 1 ? 'Cuéntanos más sobre ti.' : 'Completa tu perfil para un mejor matching.',
+    subtitle: step == 0 ? 'Completa tus datos para comenzar.' : step == 1 ? 'Cuéntanos más sobre ti.' : 'Sube tu CV para completar tu perfil profesional.',
     child: Column(children: [
       Dots(step), const SizedBox(height: 18),
       if (step == 0) ...[
@@ -140,9 +143,9 @@ class _CandidateRegisterState extends State<CandidateRegister> {
         Field(phone, 'Teléfono', keyboard: TextInputType.phone, formatters: digits(9)),
         Field(address, 'Dirección'),
         Field(email, 'Correo electrónico', keyboard: TextInputType.emailAddress),
-        InkWell(onTap: pickCv, borderRadius: BorderRadius.circular(12), child: Container(width: double.infinity, padding: const EdgeInsets.all(16), decoration: BoxDecoration(border: Border.all(color: cv.text.isEmpty ? line : primary), borderRadius: BorderRadius.circular(12)), child: Row(children: [const Icon(Icons.upload_file_outlined, color: primary), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(cv.text.isEmpty ? 'Subir CV' : cv.text, style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 3), Text(cv.text.isEmpty ? 'PDF, DOC o DOCX' : 'Archivo seleccionado', style: const TextStyle(fontSize: 12, color: muted))])), const Icon(Icons.chevron_right, color: muted)]))),
+        Field(conadis, 'Número de CONADIS', keyboard: TextInputType.number, formatters: digits(20)),
       ] else ...[
-        Option(Icons.school_outlined, 'Formación académica'), Option(Icons.work_outline, 'Experiencia laboral'), Option(Icons.link, 'Habilidades'), Option(Icons.tune, 'Preferencias laborales'),
+        InkWell(onTap: pickCv, borderRadius: BorderRadius.circular(12), child: Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(border: Border.all(color: cv.text.isEmpty ? line : primary, width: cv.text.isEmpty ? 1 : 1.5), borderRadius: BorderRadius.circular(12)), child: Row(children: [const Icon(Icons.upload_file_outlined, color: primary, size: 30), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(cv.text.isEmpty ? 'Subir CV' : cv.text, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)), const SizedBox(height: 5), Text(cv.text.isEmpty ? 'PDF, DOC o DOCX' : 'Archivo seleccionado', style: const TextStyle(fontSize: 12, color: muted))])), const Icon(Icons.chevron_right, color: muted)]))),
       ],
       const SizedBox(height: 18), Button(step == 2 ? (loading ? 'Guardando...' : 'Finalizar') : 'Siguiente', loading ? null : next),
     ]));
@@ -155,7 +158,7 @@ class CompanyRegister extends StatefulWidget {
 class _CompanyRegisterState extends State<CompanyRegister> {
   int step = 0;
   final company = TextEditingController(), ruc = TextEditingController(), email = TextEditingController(), password = TextEditingController();
-  final sector = TextEditingController(), size = TextEditingController(), address = TextEditingController(text: 'Lima, Perú'), website = TextEditingController(), description = TextEditingController();
+  final size = TextEditingController(), address = TextEditingController(text: 'Lima, Perú'), website = TextEditingController(), description = TextEditingController();
   bool terms = false, loading = false;
   String? selectedSector;
   final sectors = const ['Tecnología', 'Educación', 'Salud', 'Finanzas', 'Comercio', 'Manufactura', 'Servicios', 'Construcción', 'Transporte', 'Turismo', 'Otro'];
@@ -176,7 +179,6 @@ class _CompanyRegisterState extends State<CompanyRegister> {
       finally { if (mounted) setState(() => loading = false); }
       return;
     }
-    setState(() => step++);
   }
 
   @override Widget build(BuildContext context) => Page(
@@ -241,7 +243,6 @@ class Dashboard extends StatelessWidget {
 }
 class Dots extends StatelessWidget { final int step; const Dots(this.step, {super.key}); @override Widget build(BuildContext context) => Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(3, (i) => Container(margin: const EdgeInsets.symmetric(horizontal: 3), width: i == step ? 8 : 6, height: i == step ? 8 : 6, decoration: BoxDecoration(shape: BoxShape.circle, color: i == step ? primary : const Color(0xFFD8DCE7))))); }
 class RoleCard extends StatelessWidget { final IconData icon; final String title, sub; final Color bg; final VoidCallback tap; const RoleCard(this.icon, this.title, this.sub, this.bg, this.tap, {super.key}); @override Widget build(BuildContext c) => InkWell(onTap: tap, borderRadius: BorderRadius.circular(14), child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: bg.withOpacity(.45), borderRadius: BorderRadius.circular(14), border: Border.all(color: line)), child: Row(children: [Container(width: 62, height: 74, decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14)), child: Icon(icon, size: 38, color: primary)), const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)), const SizedBox(height: 4), Text(sub, style: const TextStyle(color: muted, fontSize: 12))])), const CircleAvatar(radius: 14, backgroundColor: primary, child: Icon(Icons.arrow_forward_ios, size: 12, color: Colors.white))]))); }
-class Option extends StatelessWidget { final IconData icon; final String title; const Option(this.icon, this.title, {super.key}); @override Widget build(BuildContext c) => Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14), decoration: BoxDecoration(border: Border.all(color: line), borderRadius: BorderRadius.circular(12)), child: Row(children: [CircleAvatar(radius: 18, backgroundColor: const Color(0xFFF1EEFF), child: Icon(icon, color: primary, size: 19)), const SizedBox(width: 12), Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))), const Icon(Icons.chevron_right, color: muted)])); }
 class Field extends StatelessWidget {
   final TextEditingController c; final String label; final bool obscure; final bool readOnly; final TextInputType? keyboard; final int maxLines; final List<TextInputFormatter>? formatters; final VoidCallback? onTap; final Widget? suffix;
   const Field(this.c, this.label, {super.key, this.obscure = false, this.readOnly = false, this.keyboard, this.maxLines = 1, this.formatters, this.onTap, this.suffix});
