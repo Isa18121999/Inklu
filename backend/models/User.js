@@ -10,6 +10,14 @@ const CandidateProfileSchema = new mongoose.Schema({
   location: { type: String, trim: true }
 }, { _id: false });
 
+const CvSchema = new mongoose.Schema({
+  fileName: { type: String, trim: true },
+  mimeType: { type: String, trim: true },
+  data: { type: Buffer },
+  size: { type: Number, min: 0 },
+  uploadedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -18,14 +26,12 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ['candidate', 'company'], required: true },
   country: { type: String, default: 'PE' },
   ruc: { type: String, trim: true },
-  // Obligatorio y único para candidatos. No se usa para empresas.
   conadisNumber: { type: String, trim: true, default: null },
   accreditationType: { type: String, trim: true, default: 'Carné CONADIS' },
-  profile: { type: CandidateProfileSchema, default: () => ({}) }
+  profile: { type: CandidateProfileSchema, default: () => ({}) },
+  cv: { type: CvSchema, default: undefined }
 }, { timestamps: true });
 
-// Permite muchos documentos sin CONADIS solo para registros que no sean candidatos.
-// Los candidatos deben llegar a la ruta de registro con un número válido.
 UserSchema.index(
   { conadisNumber: 1 },
   { unique: true, partialFilterExpression: { conadisNumber: { $type: 'string' } } }
