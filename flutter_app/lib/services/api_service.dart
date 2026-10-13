@@ -34,6 +34,22 @@ class ApiService {
   Future<Map<String, dynamic>> createJob(String token, Map<String, dynamic> data) async => _postAuth('/company/jobs', token, data);
   Future<Map<String, dynamic>> apply(String token, String jobId) async => _postAuth('/applications', token, {'jobId': jobId});
   Future<Map<String, dynamic>> updateApplicationStatus(String token, String id, String status) async => _patch('/applications/$id/status', token, {'status': status});
+  Future<Map<String, dynamic>> analyzeCv(String token) async =>
+      _postAuth('/profile/cv/analyze', token, {});
+  Future<List<dynamic>> recommendations(String token) async {
+    final result = await _getMap('/recommendations', token);
+    final items = result['recommendations'];
+    return items is List ? items : const [];
+  }
+  Future<List<dynamic>> chatMessages(String token, String applicationId) async =>
+      _getList('/applications/$applicationId/messages', token);
+  Future<Map<String, dynamic>> sendChatMessage(
+    String token,
+    String applicationId,
+    String content,
+  ) async =>
+      _postAuth('/applications/$applicationId/messages', token, {'content': content});
+
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
     try { final r=await http.post(Uri.parse('$baseUrl$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body)).timeout(const Duration(seconds:25)); return _decodeMap(r); }
