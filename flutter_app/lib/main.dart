@@ -20,7 +20,7 @@ void toast(String s) {
 final GlobalKey<NavigatorState> _nav=GlobalKey<NavigatorState>();
 class InkluApp extends StatelessWidget{const InkluApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,navigatorKey:_nav,title:'INKLU',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:Colors.white,colorScheme:ColorScheme.fromSeed(seedColor:primary)),home:const Welcome());}
 class Logo extends StatefulWidget{final double size;const Logo({super.key,this.size=110});@override State<Logo> createState()=>_LogoState();}
-class _LogoState extends State<Logo>{Uint8List? b;@override void initState(){super.initState();rootBundle.loadString('assets/logo.b64').then((x){if(mounted)setState(()=>b=base64Decode(x.trim()));});}@override Widget build(BuildContext c)=>b==null?SizedBox(width:widget.size,height:widget.size):Image.memory(b!,width:widget.size,height:widget.size,fit:BoxFit.contain);}
+class _LogoState extends State<Logo>{Uint8List? b;@override void initState(){super.initState();rootBundle.loadString('assets/logo.b64').then((x){if(mounted)setState(()=>b=base64Decode(x.trim()));});}@override Widget build(BuildContext c)=>b==null?SizedBox(width:widget.size,height:widget.size):Semantics(label:'Logo INKLU',image:true,child:Image.memory(b!,width:widget.size,height:widget.size,fit:BoxFit.contain));}
 class Welcome extends StatelessWidget {
   const Welcome({super.key});
 
@@ -39,7 +39,7 @@ class Welcome extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Conectamos talento,\\noportunidades e inclusión',
+                    'Conectamos talento,\noportunidades e inclusión',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: muted, fontSize: 16),
                   ),
