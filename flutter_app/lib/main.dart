@@ -326,9 +326,541 @@ class _LoginState extends State<Login> {
       );
 }
 class CandidateHome extends StatefulWidget{const CandidateHome({super.key});@override State<CandidateHome> createState()=>_CandidateHomeState();}
-class _CandidateHomeState extends State<CandidateHome>{int tab=0;List<dynamic> jobs=[];List<dynamic> apps=[];@override void initState(){super.initState();load();}Future<void> load()async{try{final t=sessionToken!;jobs=await api.jobs(t);apps=await api.applications(t);if(mounted)setState((){});}catch(x){if(mounted)toast(x.toString().replaceFirst('Exception: ',''));}}Future<void> apply(String id)async{try{await api.apply(sessionToken!,id);toast('Postulación enviada correctamente.');load();}catch(x){toast(x.toString().replaceFirst('Exception: ',''));}}@override Widget build(BuildContext c)=>Dash(title:'Hola, ${sessionUser?['name']??'candidato'}',tab:tab,onTab:(x)=>setState(()=>tab=x),children:tab==0?[const Text('Encuentra oportunidades laborales inclusivas.',style:TextStyle(color:muted)),const SizedBox(height:16),const ProfileCard(),const SizedBox(height:20),const Section('Ofertas para ti'),...jobs.take(5).map((j)=>JobCard(j,onTap:()=>showOffer(c,j,apply)))] :tab==1?[const Section('Ofertas disponibles'),...jobs.map((j)=>JobCard(j,onTap:()=>showOffer(c,j,apply)))] :tab==2?[const Section('Mis postulaciones'),...apps.map((x)=>ListTile(title:Text(x['jobId']?['title']?.toString()??'Oferta'),subtitle:Text(x['status']?.toString()??'Postulada')))] :[const Info('Tu perfil','Tu cuenta está conectada al backend de INKLU.')]);}
+class _CandidateHomeState extends State<CandidateHome> {
+  int tab = 0;
+  List<dynamic> jobs = [];
+  List<dynamic> apps = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final t = sessionToken!;
+      jobs = await api.jobs(t);
+      apps = await api.applications(t);
+      if (mounted) setState(() {});
+    } catch (x) {
+      if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> apply(String id) async {
+    try {
+      await api.apply(sessionToken!, id);
+      toast('Postulación enviada correctamente.');
+      load();
+    } catch (x) {
+      toast(x.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  @override
+  Widget build(BuildContext c) => Dash(
+        title: 'Hola, ${sessionUser?['name'] ?? 'candidato'}',
+        tab: tab,
+        onTab: (x) => setState(() => tab = x),
+        children: tab == 0
+            ? [
+                const Text('Encuentra oportunidades laborales inclusivas.',
+                    style: TextStyle(color: muted)),
+                const SizedBox(height: 16),
+                const ProfileCard(),
+                const SizedBox(height: 20),
+                const Section('Ofertas para ti'),
+                ...jobs.take(5).map(
+                    (j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+              ]
+            : tab == 1
+                ? [
+                    const Section('Ofertas disponibles'),
+                    ...jobs.map(
+                        (j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+                  ]
+                : tab == 2
+                    ? [
+                        const Section('Mis postulaciones'),
+                        ...apps.map((x) => ListTile(
+                              title: Text(x['jobId']?['title']?.toString() ??
+                                  'Oferta'),
+                              subtitle:
+                                  Text(x['status']?.toString() ?? 'Postulada'),
+                            )),
+                      ]
+                    : [CandidateProfilePanel(token: sessionToken!)],
+      );
+}
+
+class CandidateProfilePanel extends StatefulWidget {
+  final String token;
+  const CandidateProfilePanel({super.key, required this.token});
+
+  @override
+  State<CandidateProfilePanel> createState() => _CandidateProfilePanelState();
+}
+
+class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
+  Map<String, dynamic>? user;
+  bool loading = true;
+  bool saving = false;
+  bool uploadingCv = false;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    loadProfile();
+  }
+
+  Map<String, dynamic> get profile {
+    final raw = user?['profile'];
+    if (raw is Map) return Map<String, dynamic>.from(raw);
+    return <String, dynamic>{};
+  }
+
+  String valueOf(dynamic value) {
+    final valueText = value?.toString().trim() ?? '';
+    return valueText.isEmpty ? 'Pendiente de completar' : valueText;
+  }
+
+  bool filled(dynamic value) => value != null && value.toString().trim().isNotEmpty;
+
+  Future<void> loadProfile() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final result = await api.profile(widget.token);
+      if (mounted) setState(() => user = result);
+    } catch (x) {
+      if (mounted) setState(() => error = x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> editProfile() async {
+    if (user == null) return;
+    final birth = TextEditingController(text: profile['birth']?.toString() ?? '');
+    final address = TextEditingController(text: profile['address']?.toString() ?? '');
+    final location = TextEditingController(text: profile['location']?.toString() ?? '');
+    final modality = TextEditingController(text: profile['modality']?.toString() ?? '');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Editar información personal'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              F(birth, 'Fecha de nacimiento (dd/mm/aaaa)'),
+              F(address, 'Dirección'),
+              F(location, 'Ubicación preferida'),
+              F(modality, 'Modalidad laboral preferida'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Guardar cambios'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      setState(() => saving = true);
+      try {
+        final updated = await api.updateProfile(widget.token, {
+          'birth': birth.text.trim(),
+          'address': address.text.trim(),
+          'location': location.text.trim(),
+          'modality': modality.text.trim(),
+        });
+        if (mounted) {
+          setState(() => user = updated);
+          toast('Tu perfil se actualizó correctamente.');
+        }
+      } catch (x) {
+        toast(x.toString().replaceFirst('Exception: ', ''));
+      } finally {
+        if (mounted) setState(() => saving = false);
+      }
+    }
+
+    birth.dispose();
+    address.dispose();
+    location.dispose();
+    modality.dispose();
+  }
+
+  Future<void> replaceCv() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'doc', 'docx'],
+      withData: false,
+    );
+    if (result == null) return;
+    final path = result.files.single.path;
+    if (path == null || path.isEmpty) {
+      toast('No se pudo leer el archivo. Selecciona el CV nuevamente.');
+      return;
+    }
+    setState(() => uploadingCv = true);
+    try {
+      await api.uploadCv(widget.token, path);
+      toast('Tu CV se guardó correctamente.');
+      await loadProfile();
+    } catch (x) {
+      toast(x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => uploadingCv = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading && user == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (error != null && user == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Info('No se pudo cargar tu perfil', 'Comprueba tu conexión e inténtalo de nuevo.'),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: loadProfile,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
+      );
+    }
+
+    final data = user ?? <String, dynamic>{};
+    final name = valueOf(data['name']);
+    final email = valueOf(data['email']);
+    final phone = valueOf(data['phone']);
+    final birth = profile['birth'];
+    final address = profile['address'];
+    final conadis = data['conadisNumber'];
+    final hasCv = data['hasCv'] == true;
+    final completionFields = [
+      data['name'],
+      data['email'],
+      data['phone'],
+      birth,
+      address,
+      conadis,
+      hasCv ? 'cv' : null,
+    ];
+    final completed =
+        completionFields.where((item) => filled(item)).length;
+    final percent = completed / completionFields.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F7FF),
+            border: Border.all(color: line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Color(0xFFEDE9FE),
+                    child: Icon(Icons.person_outline, color: primary, size: 30),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name,
+                            style: const TextStyle(
+                                fontSize: 19, fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 3),
+                        const Text('Perfil de candidato',
+                            style: TextStyle(color: muted)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Actualizar perfil',
+                    onPressed: loading ? null : loadProfile,
+                    icon: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Completitud del perfil',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  Text('${(percent * 100).round()}%',
+                      style: const TextStyle(
+                          color: primary, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: percent,
+                  minHeight: 8,
+                  backgroundColor: line,
+                  color: primary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              OutlinedButton.icon(
+                onPressed: saving ? null : editProfile,
+                icon: const Icon(Icons.edit_outlined),
+                label: Text(saving ? 'Guardando...' : 'Editar información'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        const Section('Información personal'),
+        _ProfileValue(icon: Icons.email_outlined, label: 'Correo electrónico', value: email),
+        _ProfileValue(icon: Icons.phone_outlined, label: 'Teléfono', value: phone),
+        _ProfileValue(icon: Icons.cake_outlined, label: 'Fecha de nacimiento', value: valueOf(birth)),
+        _ProfileValue(icon: Icons.location_on_outlined, label: 'Dirección', value: valueOf(address)),
+        _ProfileValue(icon: Icons.map_outlined, label: 'Ubicación preferida', value: valueOf(profile['location'])),
+        _ProfileValue(icon: Icons.work_outline, label: 'Modalidad laboral', value: valueOf(profile['modality'])),
+        _ProfileValue(icon: Icons.verified_user_outlined, label: 'Número de CONADIS', value: valueOf(conadis)),
+        const SizedBox(height: 18),
+        const Section('Mi currículum'),
+        Container(
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(
+            border: Border.all(color: line),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.description_outlined, color: primary, size: 30),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasCv ? valueOf(data['cvFileName']) : 'Todavía no has subido un CV',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasCv ? 'Documento guardado en tu perfil.' : 'Aceptamos PDF, DOC y DOCX. Máximo 5 MB.',
+                      style: const TextStyle(color: muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: uploadingCv ? null : replaceCv,
+            icon: uploadingCv
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.upload_file),
+            label: Text(uploadingCv ? 'Subiendo CV...' : hasCv ? 'Actualizar CV' : 'Subir CV'),
+          ),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProfileValue extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _ProfileValue({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: line)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: primary, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(color: muted, fontSize: 12)),
+                  const SizedBox(height: 3),
+                  Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
 class CompanyHome extends StatefulWidget{const CompanyHome({super.key});@override State<CompanyHome> createState()=>_CompanyHomeState();}
 class _CompanyHomeState extends State<CompanyHome>{int tab=0;List<dynamic> mine=[];List<dynamic> apps=[];@override void initState(){super.initState();load();}Future<void> load()async{try{mine=await api.myJobs(sessionToken!);apps=await api.applications(sessionToken!);if(mounted)setState((){});}catch(x){if(mounted)toast(x.toString().replaceFirst('Exception: ',''));}}Future<void> create()async{final t=TextEditingController(),d=TextEditingController(),l=TextEditingController(text:'Lima, Perú');final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(title:const Text('Nueva oferta laboral'),content:SingleChildScrollView(child:Column(children:[F(t,'Título del puesto'),F(d,'Descripción',max:5),F(l,'Ubicación')])),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Publicar'))]));if(ok==true&&t.text.trim().isNotEmpty&&d.text.trim().isNotEmpty){try{await api.createJob(sessionToken!,{'title':t.text.trim(),'description':d.text.trim(),'location':l.text.trim(),'modality':'Remoto','contractType':'Tiempo completo'});toast('Oferta publicada correctamente.');load();}catch(x){toast(x.toString().replaceFirst('Exception: ',''));}}}@override Widget build(BuildContext c)=>Dash(title:'Hola, ${sessionUser?['name']??'empresa'}',tab:tab,onTab:(x)=>setState(()=>tab=x),labels:const['Inicio','Ofertas','Candidatos','Perfil'],children:tab==0?[const Text('Gestiona tus ofertas y conecta con talento diverso.',style:TextStyle(color:muted)),const SizedBox(height:16),Btn('+ Crear nueva oferta',create),const SizedBox(height:20),const Section('Mis ofertas'),...mine.map((j)=>JobCard(j))] :tab==1?[Btn('+ Crear oferta',create),...mine.map((j)=>JobCard(j))]:tab==2?[const Section('Postulaciones'),...apps.map((x)=>ListTile(title:Text(x['candidateId']?['name']?.toString()??'Candidato'),subtitle:Text(x['jobId']?['title']?.toString()??'Oferta')))] :[const Info('Perfil de empresa','Información conectada a INKLU API.')]);}
+class CompanyProfilePanel extends StatefulWidget {
+  final String token;
+  const CompanyProfilePanel({super.key, required this.token});
+
+  @override
+  State<CompanyProfilePanel> createState() => _CompanyProfilePanelState();
+}
+
+class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
+  Map<String, dynamic>? user;
+  bool loading = true;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final result = await api.profile(widget.token);
+      if (mounted) setState(() => user = result);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  String show(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? 'Pendiente de completar' : text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading && user == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (error != null && user == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Info('No se pudo cargar el perfil de empresa', error!),
+          OutlinedButton.icon(
+            onPressed: load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
+      );
+    }
+    final data = user ?? <String, dynamic>{};
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F7FF),
+            border: Border.all(color: line),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                radius: 28,
+                backgroundColor: Color(0xFFEDE9FE),
+                child: Icon(Icons.business_outlined, color: primary, size: 30),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(show(data['name']),
+                        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 3),
+                    const Text('Perfil de empresa', style: TextStyle(color: muted)),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Actualizar perfil',
+                onPressed: loading ? null : load,
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        const Section('Datos registrados'),
+        _ProfileValue(icon: Icons.email_outlined, label: 'Correo institucional', value: show(data['email'])),
+        _ProfileValue(icon: Icons.business_outlined, label: 'RUC', value: show(data['ruc'])),
+        _ProfileValue(icon: Icons.phone_outlined, label: 'Teléfono', value: show(data['phone'])),
+        const SizedBox(height: 12),
+        const Info(
+          'Información de la empresa',
+          'El perfil muestra los datos que actualmente guarda la cuenta. El sector, tamaño, dirección, sitio web y descripción aún necesitan integrarse con el almacenamiento del backend.',
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 8),
+          Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+        ],
+      ],
+    );
+  }
+}
+
 void showOffer(
   BuildContext c,
   dynamic d,
