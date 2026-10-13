@@ -18,6 +18,13 @@ const CvSchema = new mongoose.Schema({
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+const CvAnalysisSchema = new mongoose.Schema({
+  skills: { type: [String], default: [] },
+  textLength: { type: Number, default: 0 },
+  analyzedAt: { type: Date },
+  sourceUploadedAt: { type: Date }
+}, { _id: false });
+
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -29,7 +36,8 @@ const UserSchema = new mongoose.Schema({
   conadisNumber: { type: String, trim: true, default: null },
   accreditationType: { type: String, trim: true, default: 'Carné CONADIS' },
   profile: { type: CandidateProfileSchema, default: () => ({}) },
-  cv: { type: CvSchema, default: undefined }
+  cv: { type: CvSchema, default: undefined },
+  cvAnalysis: { type: CvAnalysisSchema, default: undefined }
 }, { timestamps: true });
 
 UserSchema.index(
