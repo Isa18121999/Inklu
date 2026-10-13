@@ -1546,7 +1546,11 @@ class CompanyApplicationCard extends StatelessWidget {
                         child: Text(value),
                       ))
                   .toList(),
-              onChanged: onStatusChanged,
+              onChanged: (nextStatus) {
+                if (nextStatus != null && nextStatus != status) {
+                  onStatusChanged(nextStatus);
+                }
+              },
             ),
             const SizedBox(height: 10),
             if (chatAvailableForStatus(status))
