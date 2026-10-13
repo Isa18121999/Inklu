@@ -442,7 +442,41 @@ app.get('/api/recommendations', auth, async (req, res) => {
 app.get('/api/jobs', auth, async (req, res) => {
   try {
     const clean = value => String(value || '').trim().slice(0, 100);
-    const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\app.get('/api/company/jobs', auth, async (req, res) => {');
+    const escapeRegex = value => value.split('').map(character =>
+      ('.^$*+?()[]{}|\\\\'.includes(character) ? '\\\\' + character : character)
+    ).join('');
+    const q = clean(req.query.q);
+    const location = clean(req.query.location);
+    const modality = clean(req.query.modality);
+    const contractType = clean(req.query.contractType);
+    const category = clean(req.query.category);
+    const filter = { active: true };
+
+    if (q) {
+      const regex = new RegExp(escapeRegex(q), 'i');
+      const companies = await User.find({ role: 'company', name: regex }).select('_id').limit(100);
+      const alternatives = [
+        { title: regex },
+        { description: regex },
+        { category: regex },
+        { requiredSkills: regex }
+      ];
+      if (companies.length) alternatives.push({ companyId: { $in: companies.map(company => company._id) } });
+      filter.$or = alternatives;
+    }
+    if (location) filter.location = new RegExp(escapeRegex(location), 'i');
+    if (modality) filter.modality = new RegExp('^' + escapeRegex(modality) + '$', 'i');
+    if (contractType) filter.contractType = new RegExp('^' + escapeRegex(contractType) + '$', 'i');
+    if (category) filter.category = new RegExp('^' + escapeRegex(category) + '$', 'i');
+
+    const jobs = await Job.find(filter).populate('companyId', 'name').sort({ createdAt: -1 }).limit(100);
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error buscando ofertas:', error);
+    res.status(500).json({ message: 'No se pudieron buscar las ofertas.' });
+  }
+});
+app.get('/api/company/jobs', auth, async (req, res) => {');
     const q = clean(req.query.q);
     const location = clean(req.query.location);
     const modality = clean(req.query.modality);
