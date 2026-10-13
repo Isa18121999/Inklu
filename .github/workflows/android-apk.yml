@@ -42,10 +42,6 @@ jobs:
             sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
           fi
 
-      - name: Fix Flutter syntax before build
-        working-directory: flutter_app
-        run: sed -i '242s/)])));/)]));/' lib/main.dart
-
       - name: Get dependencies
         working-directory: flutter_app
         run: flutter pub get
