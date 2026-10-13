@@ -20,6 +20,10 @@ const CvSchema = new mongoose.Schema({
 
 const CvAnalysisSchema = new mongoose.Schema({
   skills: { type: [String], default: [] },
+  keywords: [{
+    term: { type: String, required: true },
+    count: { type: Number, min: 1, required: true }
+  }],
   textLength: { type: Number, default: 0 },
   analyzedAt: { type: Date },
   sourceUploadedAt: { type: Date }
