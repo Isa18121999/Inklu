@@ -99,9 +99,9 @@ jobs:
           path: flutter_app/analyze.txt
       - name: Build iOS without signing
         working-directory: flutter_app
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --simulator --release
       - name: Package iOS build
-        run: ditto -c -k --sequesterRsrc --keepParent flutter_app/build/ios/iphoneos/Runner.app INKLU-iOS.zip
+        run: ditto -c -k --sequesterRsrc --keepParent flutter_app/build/ios/iphonesimulator/Runner.app INKLU-iOS.zip
       - name: Upload iOS build
         uses: actions/upload-artifact@v4
         with:
