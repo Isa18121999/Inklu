@@ -1211,6 +1211,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
   bool saving = false;
   bool uploadingCv = false;
   bool analyzingCv = false;
+  bool uploadingPhoto = false;
+  Uint8List? profilePhotoBytes;
   String? error;
 
   @override
@@ -1239,11 +1241,50 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     });
     try {
       final result = await api.profile(widget.token);
-      if (mounted) setState(() => user = result);
+      Uint8List? photoBytes;
+      if (result['hasProfilePhoto'] == true) {
+        try {
+          photoBytes = await api.profilePhoto(widget.token);
+        } catch (_) {
+          // Keep the rest of the profile usable if the image cannot be loaded.
+        }
+      }
+      if (mounted) {
+        setState(() {
+          user = result;
+          profilePhotoBytes = photoBytes;
+        });
+      }
     } catch (x) {
       if (mounted) setState(() => error = x.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> uploadProfilePhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: false,
+      withData: false,
+    );
+    if (result == null) return;
+    final path = result.files.single.path;
+    if (path == null || path.isEmpty) {
+      toast('No se pudo leer la foto. Selecciónala nuevamente.');
+      return;
+    }
+
+    setState(() => uploadingPhoto = true);
+    try {
+      await api.uploadProfilePhoto(widget.token, path);
+      await loadProfile();
+      toast('Foto de perfil actualizada correctamente.');
+    } catch (x) {
+      toast(x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => uploadingPhoto = false);
     }
   }
 
@@ -1464,10 +1505,15 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
             children: [
               Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Color(0xFFEDE9FE),
-                    child: Icon(Icons.person_outline, color: primary, size: 30),
+                  CircleAvatar(
+                    radius: 32,
+                    backgroundColor: const Color(0xFFEDE9FE),
+                    backgroundImage: profilePhotoBytes == null
+                        ? null
+                        : MemoryImage(profilePhotoBytes!),
+                    child: profilePhotoBytes == null
+                        ? const Icon(Icons.person_outline, color: primary, size: 32)
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1489,6 +1535,27 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
                     icon: const Icon(Icons.refresh),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: uploadingPhoto ? null : uploadProfilePhoto,
+                  icon: uploadingPhoto
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_a_photo_outlined),
+                  label: Text(
+                    uploadingPhoto
+                        ? 'Subiendo foto...'
+                        : profilePhotoBytes == null
+                            ? 'Subir foto de perfil'
+                            : 'Cambiar foto de perfil',
+                  ),
+                ),
               ),
               const SizedBox(height: 18),
               Row(
@@ -1902,6 +1969,8 @@ class CompanyProfilePanel extends StatefulWidget {
 class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
   Map<String, dynamic>? user;
   bool loading = true;
+  bool uploadingPhoto = false;
+  Uint8List? profilePhotoBytes;
   String? error;
 
   @override
@@ -1917,11 +1986,50 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
     });
     try {
       final result = await api.profile(widget.token);
-      if (mounted) setState(() => user = result);
+      Uint8List? photoBytes;
+      if (result['hasProfilePhoto'] == true) {
+        try {
+          photoBytes = await api.profilePhoto(widget.token);
+        } catch (_) {
+          // Profile details remain available even if photo retrieval fails.
+        }
+      }
+      if (mounted) {
+        setState(() {
+          user = result;
+          profilePhotoBytes = photoBytes;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> uploadProfilePhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: false,
+      withData: false,
+    );
+    if (result == null) return;
+    final path = result.files.single.path;
+    if (path == null || path.isEmpty) {
+      toast('No se pudo leer la foto. Selecciónala nuevamente.');
+      return;
+    }
+
+    setState(() => uploadingPhoto = true);
+    try {
+      await api.uploadProfilePhoto(widget.token, path);
+      await load();
+      toast('Foto de perfil de empresa actualizada.');
+    } catch (e) {
+      toast(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => uploadingPhoto = false);
     }
   }
 
@@ -1965,10 +2073,15 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
           ),
           child: Row(
             children: [
-              const CircleAvatar(
-                radius: 28,
-                backgroundColor: Color(0xFFEDE9FE),
-                child: Icon(Icons.business_outlined, color: primary, size: 30),
+              CircleAvatar(
+                radius: 32,
+                backgroundColor: const Color(0xFFEDE9FE),
+                backgroundImage: profilePhotoBytes == null
+                    ? null
+                    : MemoryImage(profilePhotoBytes!),
+                child: profilePhotoBytes == null
+                    ? const Icon(Icons.business_outlined, color: primary, size: 32)
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1988,6 +2101,23 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
                 icon: const Icon(Icons.refresh),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: uploadingPhoto ? null : uploadProfilePhoto,
+            icon: uploadingPhoto
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.add_a_photo_outlined),
+            label: Text(
+              uploadingPhoto
+                  ? 'Subiendo foto...'
+                  : profilePhotoBytes == null
+                      ? 'Subir foto de perfil'
+                      : 'Cambiar foto de perfil',
+            ),
           ),
         ),
         const SizedBox(height: 22),
