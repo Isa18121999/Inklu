@@ -1840,7 +1840,19 @@ class Dash extends StatelessWidget {
     body: ListView(
       padding: const EdgeInsets.fromLTRB(18, 15, 18, 24),
       children: [
-        Text(title, style: const TextStyle(fontSize: 25, height: 1.22, fontWeight: FontWeight.w900, color: Color(0xFF19162D))),
+        Align(
+          alignment: tab == 2 ? Alignment.center : Alignment.centerLeft,
+          child: Text(
+            title,
+            textAlign: tab == 2 ? TextAlign.center : TextAlign.start,
+            style: const TextStyle(
+              fontSize: 25,
+              height: 1.22,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF19162D),
+            ),
+          ),
+        ),
         const SizedBox(height: 12),
         ...children,
       ],
