@@ -188,7 +188,7 @@ class _CompanyRegisterState extends State<CompanyRegister> {
         (!validEmail(email.text) ||
             !validPass(pass.text) ||
             company.text.trim().isEmpty ||
-            !RegExp(r'^\d{11}).hasMatch(ruc.text) ||
+            !RegExp(r'^\d{11}$').hasMatch(ruc.text) ||
             !terms)) {
       toast('Verifica empresa, RUC, correo y términos.');
       return;
