@@ -483,6 +483,96 @@ class _CandidateHomeState extends State<CandidateHome> {
   }
 }
 
+
+String normalizeApplicationStatus(String? raw) {
+  switch (raw) {
+    case 'Postulada':
+      return 'Postulado';
+    case 'En revisión':
+      return 'CV visto';
+    case 'Entrevista':
+      return 'En proceso';
+    case 'Seleccionada':
+      return 'Aceptado';
+    case 'No seleccionada':
+      return 'Proceso terminado';
+    default:
+      return raw == null || raw.isEmpty ? 'Postulado' : raw;
+  }
+}
+
+bool chatAvailableForStatus(String status) =>
+    const ['En proceso', 'Aceptado', 'Proceso terminado']
+        .contains(normalizeApplicationStatus(status));
+
+class JobRecommendationCard extends StatelessWidget {
+  final Map<String, dynamic> job;
+  final VoidCallback onTap;
+
+  const JobRecommendationCard({
+    super.key,
+    required this.job,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final score = (job['matchScore'] as num?)?.round() ?? 0;
+    final rawReasons = job['matchReasons'];
+    final reasons = rawReasons is List
+        ? rawReasons.map((item) => item.toString()).toList()
+        : <String>[];
+    final company = job['companyId'] is Map
+        ? job['companyId']['name']?.toString() ?? 'Empresa'
+        : 'Empresa';
+
+    return Card(
+      color: Colors.white,
+      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: Color(0xFFEAE6FA)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFFEDE9FF),
+          child: Icon(Icons.auto_awesome_outlined, color: primary),
+        ),
+        title: Text(
+          job['title']?.toString() ?? 'Oferta laboral',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(company),
+              const SizedBox(height: 4),
+              Text(
+                '$score% de coincidencia',
+                style: const TextStyle(
+                  color: primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (reasons.isNotEmpty)
+                Text(
+                  reasons.take(2).join(' · '),
+                  style: const TextStyle(color: muted, fontSize: 11),
+                ),
+            ],
+          ),
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right, color: primary),
+      ),
+    );
+  }
+}
+
 class ApplicationProgressCard extends StatelessWidget {
   final Map<String, dynamic> application;
   final String token;
