@@ -29,6 +29,14 @@ const CvAnalysisSchema = new mongoose.Schema({
   sourceUploadedAt: { type: Date }
 }, { _id: false });
 
+const ProfilePhotoSchema = new mongoose.Schema({
+  fileName: { type: String, trim: true },
+  mimeType: { type: String, enum: ['image/jpeg', 'image/png', 'image/webp'], required: true },
+  data: { type: Buffer, required: true },
+  size: { type: Number, min: 1, required: true },
+  updatedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -41,7 +49,8 @@ const UserSchema = new mongoose.Schema({
   accreditationType: { type: String, trim: true, default: 'Carné CONADIS' },
   profile: { type: CandidateProfileSchema, default: () => ({}) },
   cv: { type: CvSchema, default: undefined },
-  cvAnalysis: { type: CvAnalysisSchema, default: undefined }
+  cvAnalysis: { type: CvAnalysisSchema, default: undefined },
+  profilePhoto: { type: ProfilePhotoSchema, default: undefined }
 }, { timestamps: true });
 
 UserSchema.index(
