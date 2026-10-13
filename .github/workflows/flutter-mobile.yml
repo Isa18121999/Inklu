@@ -26,6 +26,18 @@ jobs:
       - name: Generate Android platform
         working-directory: flutter_app
         run: flutter create --platforms=android .
+      - name: Install INKLU branding and internet permission
+        working-directory: flutter_app
+        run: |
+          mkdir -p assets android/app/src/main/res/drawable
+          cp ../assets/logo.png assets/logo.png
+          python3 -c "import base64;from pathlib import Path;p=Path('assets/logo.png');Path('assets/logo.b64').write_text(base64.b64encode(p.read_bytes()).decode())"
+          cp assets/logo.png android/app/src/main/res/drawable/inklu_icon.png
+          sed -i 's#@mipmap/ic_launcher_round#@drawable/inklu_icon#g; s#@mipmap/ic_launcher#@drawable/inklu_icon#g; s/android:label="inklu"/android:label="INKLU"/' android/app/src/main/AndroidManifest.xml
+          if ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml; then
+            sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.INTERNET"/>' android/app/src/main/AndroidManifest.xml
+          fi
+
       - name: Get dependencies
         working-directory: flutter_app
         run: flutter pub get
@@ -65,12 +77,16 @@ jobs:
       - name: Generate iOS platform
         working-directory: flutter_app
         run: flutter create --platforms=ios .
+      - name: Prepare INKLU logo
+        working-directory: flutter_app
+        run: |
+          mkdir -p assets
+          cp ../assets/logo.png assets/logo.png
+          python3 -c "import base64;from pathlib import Path;p=Path('assets/logo.png');Path('assets/logo.b64').write_text(base64.b64encode(p.read_bytes()).decode())"
+
       - name: Get dependencies
         working-directory: flutter_app
         run: flutter pub get
-      - name: Apply accessibility enhancements
-        working-directory: flutter_app
-        run: python3 tool/apply_accessibility_patch.py
       - name: Analyze
         working-directory: flutter_app
         run: |
