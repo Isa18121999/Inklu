@@ -455,13 +455,53 @@ app.get('/api/applications', auth, async (req, res) => {
   let filter = {};
   if (req.user.role === 'candidate') filter.candidateId = req.user._id;
   else filter.jobId = { $in: (await Job.find({ companyId: req.user._id }).select('_id')).map(j => j._id) };
+
+  // Optional server-side status filter (the Flutter UI also filters already-loaded data).
+  if (req.query.status && req.query.status !== 'Todas') {
+    const requestedStatus = String(req.query.status);
+    const legacyStatus = {
+      'Postulado': 'Postulada',
+      'CV visto': 'En revisión',
+      'En proceso': 'Entrevista',
+      'Aceptado': 'Seleccionada',
+      'Proceso terminado': 'No seleccionada'
+    }[requestedStatus];
+    filter.status = legacyStatus
+      ? { $in: [requestedStatus, legacyStatus] }
+      : requestedStatus;
+  }
+
   const applications = await Application.find(filter)
     .populate('candidateId', 'name email phone profile cvAnalysis')
     .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name' } })
     .sort({ createdAt: -1 });
+
+  const jobIds = [...new Set(applications.map(a => String(a.jobId?._id || a.jobId)).filter(Boolean))];
+  const countRows = jobIds.length
+    ? await Application.aggregate([
+        { $match: { jobId: { $in: jobIds.map(id => new mongoose.Types.ObjectId(id)) } } },
+        { $group: { _id: '$jobId', count: { $sum: 1 } } }
+      ])
+    : [];
+  const applicantCounts = new Map(countRows.map(row => [String(row._id), row.count]));
+
   res.json(applications.map(application => {
     const record = application.toObject();
     record.status = normalizeApplicationStatus(record.status);
+    const history = Array.isArray(record.statusHistory) ? record.statusHistory : [];
+    if (history.length === 0) {
+      record.statusHistory = [{
+        status: record.status,
+        changedAt: record.updatedAt || record.createdAt,
+        changedBy: null
+      }];
+    } else {
+      record.statusHistory = history.map(entry => ({
+        ...entry,
+        status: normalizeApplicationStatus(entry.status)
+      }));
+    }
+    record.applicantCount = applicantCounts.get(String(record.jobId?._id || record.jobId)) || 1;
     return record;
   }));
 });
@@ -470,7 +510,12 @@ app.post('/api/applications', auth, async (req, res) => {
     if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden postularse.' });
     const job = await Job.findOne({ _id: req.body?.jobId, active: true });
     if (!job) return res.status(404).json({ message: 'La oferta no existe o ya no está disponible.' });
-    const application = await Application.create({ jobId: job._id, candidateId: req.user._id });
+    const application = await Application.create({
+      jobId: job._id,
+      candidateId: req.user._id,
+      status: 'Postulado',
+      statusHistory: [{ status: 'Postulado', changedAt: new Date(), changedBy: req.user._id }]
+    });
     res.status(201).json(application);
   } catch (e) { if (e?.code === 11000) return res.status(409).json({ message: 'Ya te postulaste a esta oferta.' }); console.error(e); res.status(500).json({ message: 'No se pudo registrar la postulación.' }); }
 });
@@ -483,9 +528,25 @@ app.patch('/api/applications/:id/status', auth, async (req, res) => {
     }
     const allowed = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
     if (!allowed.includes(req.body?.status)) return res.status(400).json({ message: 'Etapa de postulación inválida.' });
-    application.status = req.body.status;
-    await application.save();
-    res.json({ ...application.toObject(), status: normalizeApplicationStatus(application.status) });
+    const nextStatus = req.body.status;
+    if (normalizeApplicationStatus(application.status) !== nextStatus) {
+      application.status = nextStatus;
+      application.statusHistory.push({
+        status: nextStatus,
+        changedAt: new Date(),
+        changedBy: req.user._id
+      });
+      await application.save();
+    }
+    res.json({
+      ...application.toObject(),
+      status: normalizeApplicationStatus(application.status),
+      statusHistory: (application.statusHistory || []).map(item => ({
+        status: normalizeApplicationStatus(item.status),
+        changedAt: item.changedAt,
+        changedBy: item.changedBy
+      }))
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'No se pudo actualizar el estado.' });
