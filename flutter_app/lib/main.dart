@@ -335,25 +335,17 @@ class _CandidateHomeState extends State<CandidateHome> {
   List<dynamic> cvSkills = [];
   bool scanningRecommendations = false;
   String? recommendationMessage;
+  String selectedApplicationFilter = 'Todas';
+  static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
 
   @override
-  void initState() {
-    super.initState();
-    load();
-  }
+  void initState() { super.initState(); load(); }
 
   Future<void> load() async {
     try {
-      final t = sessionToken!;
-      final results = await Future.wait([
-        api.jobs(t),
-        api.applications(t),
-      ]);
+      final results = await Future.wait([api.jobs(sessionToken!), api.applications(sessionToken!)]);
       if (!mounted) return;
-      setState(() {
-        jobs = results[0];
-        apps = results[1];
-      });
+      setState(() { jobs = results[0]; apps = results[1]; });
     } catch (x) {
       if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
     }
@@ -370,10 +362,7 @@ class _CandidateHomeState extends State<CandidateHome> {
   }
 
   Future<void> scanCvAndRecommend() async {
-    setState(() {
-      scanningRecommendations = true;
-      recommendationMessage = null;
-    });
+    setState(() { scanningRecommendations = true; recommendationMessage = null; });
     try {
       final analysis = await api.analyzeCv(sessionToken!);
       final results = await api.recommendations(sessionToken!);
@@ -390,8 +379,7 @@ class _CandidateHomeState extends State<CandidateHome> {
           : 'CV analizado. Habilidades detectadas: ${cvSkills.take(4).join(', ')}.');
     } catch (x) {
       if (mounted) {
-        setState(() => recommendationMessage =
-            x.toString().replaceFirst('Exception: ', ''));
+        setState(() => recommendationMessage = x.toString().replaceFirst('Exception: ', ''));
         toast(x.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
@@ -400,147 +388,97 @@ class _CandidateHomeState extends State<CandidateHome> {
   }
 
   @override
-  Widget build(BuildContext c) => Dash(
-        title: 'Hola, ${sessionUser?['name'] ?? 'candidato'}',
-        tab: tab,
-        onTab: (x) => setState(() => tab = x),
-        children: tab == 0
-            ? [
-                const Text('Encuentra oportunidades laborales inclusivas.',
-                    style: TextStyle(color: muted)),
-                const SizedBox(height: 16),
-                const ProfileCard(),
-                const SizedBox(height: 20),
-                const Section('Ofertas sugeridas por análisis de CV'),
-                Text(
-                  'MVP de coincidencia de habilidades: analiza el texto del CV y lo compara con los requisitos publicados.',
-                  style: const TextStyle(color: muted, fontSize: 12),
-                ),
+  Widget build(BuildContext c) {
+    final visibleApplications = apps.where((item) {
+      if (selectedApplicationFilter == 'Todas') return true;
+      return normalizeApplicationStatus(item['status']?.toString()).toLowerCase() == selectedApplicationFilter.toLowerCase();
+    }).toList();
+
+    return Dash(
+      title: tab == 2 ? 'Mis postulaciones' : 'Hola, ${sessionUser?['name'] ?? 'candidato'}',
+      tab: tab,
+      onTab: (x) => setState(() => tab = x),
+      children: tab == 0
+          ? [
+              const Text('Encuentra oportunidades laborales inclusivas.', style: TextStyle(color: muted)),
+              const SizedBox(height: 16),
+              const ProfileCard(),
+              const SizedBox(height: 20),
+              const Section('Ofertas sugeridas por análisis de CV'),
+              const Text('Analiza el texto de tu CV y compáralo con las ofertas publicadas.', style: TextStyle(color: muted, fontSize: 12)),
+              const SizedBox(height: 10),
+              Btn(scanningRecommendations ? 'Analizando CV...' : 'Analizar mi CV y sugerir ofertas', scanningRecommendations ? null : scanCvAndRecommend),
+              if (cvSkills.isNotEmpty) ...[
                 const SizedBox(height: 10),
-                Btn(
-                  scanningRecommendations
-                      ? 'Analizando CV...'
-                      : 'Analizar mi CV y sugerir ofertas',
-                  scanningRecommendations ? null : scanCvAndRecommend,
-                ),
-                if (cvSkills.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  Text('Habilidades detectadas: ${cvSkills.join(', ')}',
-                      style: const TextStyle(fontSize: 12, color: muted)),
-                ],
-                if (recommendationMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(recommendationMessage!,
-                      style: const TextStyle(color: muted, fontSize: 12)),
-                ],
-                const SizedBox(height: 12),
-                if (recommendations.isNotEmpty)
-                  ...recommendations.map((j) => JobRecommendationCard(
-                        job: Map<String, dynamic>.from(j),
-                        onTap: () => showOffer(c, j, apply),
-                      ))
-                else ...[
-                  const Section('Ofertas recientes'),
-                  if (jobs.isEmpty)
-                    const Info('Todavía no hay ofertas', 'Vuelve a revisar pronto.')
-                  else
-                    ...jobs.take(3).map(
-                        (j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
-                ],
-              ]
-            : tab == 1
-                ? [
-                    const Section('Ofertas disponibles'),
-                    ...jobs.map(
-                        (j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
-                  ]
-                : tab == 2
-                    ? [
-                        const Section('Mis postulaciones'),
-                        const Text(
-                          'Toca una etapa para conocer su significado. La empresa es quien actualiza el estado del proceso.',
-                          style: TextStyle(color: muted, fontSize: 12),
+                Text('Habilidades detectadas: ${cvSkills.join(', ')}', style: const TextStyle(fontSize: 12, color: muted)),
+              ],
+              if (recommendationMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(recommendationMessage!, style: const TextStyle(color: muted, fontSize: 12)),
+              ],
+              const SizedBox(height: 12),
+              if (recommendations.isNotEmpty)
+                ...recommendations.map((j) => JobRecommendationCard(job: Map<String, dynamic>.from(j), onTap: () => showOffer(c, j, apply)))
+              else ...[
+                const Section('Ofertas recientes'),
+                if (jobs.isEmpty)
+                  const Info('Todavía no hay ofertas', 'Vuelve a revisar pronto.')
+                else
+                  ...jobs.take(3).map((j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+              ],
+            ]
+          : tab == 1
+              ? [
+                  const Section('Ofertas disponibles'),
+                  ...jobs.map((j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+                ]
+              : tab == 2
+                  ? [
+                      const Text('Sigue cada etapa de selección y conversa con la empresa cuando tu postulación llegue a “En proceso”.', style: TextStyle(color: muted, fontSize: 12)),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 43,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: applicationFilters.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final filter = applicationFilters[index];
+                            final selected = filter == selectedApplicationFilter;
+                            return ChoiceChip(
+                              label: Text(filter),
+                              selected: selected,
+                              showCheckmark: false,
+                              onSelected: (_) => setState(() => selectedApplicationFilter = filter),
+                              labelStyle: TextStyle(
+                                color: selected ? Colors.white : const Color(0xFF433D63),
+                                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                              backgroundColor: const Color(0xFFF0EDFF),
+                              selectedColor: primary,
+                              side: BorderSide(color: selected ? primary : const Color(0xFFE5E0FA)),
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(horizontal: 9),
+                            );
+                          },
                         ),
-                        const SizedBox(height: 10),
-                        if (apps.isEmpty)
-                          const Info('Aún no tienes postulaciones',
-                              'Cuando postules a una oferta, aquí podrás seguir las etapas y conversar con la empresa al llegar a “En proceso”.')
-                        else
-                          ...apps.map((x) => ApplicationProgressCard(
-                                application: Map<String, dynamic>.from(x),
-                                token: sessionToken!,
-                              )),
-                      ]
-                    : [CandidateProfilePanel(token: sessionToken!)],
-      );
-}
-
-String normalizeApplicationStatus(String? raw) {
-  switch (raw) {
-    case 'Postulada':
-      return 'Postulado';
-    case 'En revisión':
-      return 'CV visto';
-    case 'Entrevista':
-      return 'En proceso';
-    case 'Seleccionada':
-      return 'Aceptado';
-    case 'No seleccionada':
-      return 'Proceso terminado';
-    default:
-      return raw == null || raw.isEmpty ? 'Postulado' : raw;
-  }
-}
-
-bool chatAvailableForStatus(String status) =>
-    const ['En proceso', 'Aceptado', 'Proceso terminado'].contains(
-      normalizeApplicationStatus(status),
-    );
-
-class JobRecommendationCard extends StatelessWidget {
-  final Map<String, dynamic> job;
-  final VoidCallback onTap;
-  const JobRecommendationCard({super.key, required this.job, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final score = (job['matchScore'] as num?)?.round() ?? 0;
-    final reasons = (job['matchReasons'] as List?)?.map((e) => e.toString()).toList() ?? [];
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: line),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFFEDE9FE),
-          child: Icon(Icons.auto_awesome_outlined, color: primary),
-        ),
-        title: Text(job['title']?.toString() ?? 'Oferta laboral',
-            style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 5),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(job['companyId'] is Map
-                  ? (job['companyId']['name']?.toString() ?? 'Empresa')
-                  : 'Empresa'),
-              const SizedBox(height: 4),
-              Text('$score% de coincidencia',
-                  style: const TextStyle(color: primary, fontWeight: FontWeight.w800)),
-              if (reasons.isNotEmpty)
-                Text(reasons.take(2).join(' · '),
-                    style: const TextStyle(color: muted, fontSize: 11)),
-            ],
-          ),
-        ),
-        isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right),
-      ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (visibleApplications.isEmpty)
+                        Info(
+                          selectedApplicationFilter == 'Todas' ? 'Aún no tienes postulaciones' : 'No hay postulaciones en esta etapa',
+                          selectedApplicationFilter == 'Todas'
+                              ? 'Cuando postules a una oferta, aparecerá aquí con su seguimiento.'
+                              : 'Prueba otro filtro para revisar tus otras postulaciones.',
+                        )
+                      else
+                        ...visibleApplications.map((item) => ApplicationProgressCard(
+                          application: Map<String, dynamic>.from(item),
+                          token: sessionToken!,
+                        )),
+                    ]
+                  : [CandidateProfilePanel(token: sessionToken!)],
     );
   }
 }
@@ -548,145 +486,163 @@ class JobRecommendationCard extends StatelessWidget {
 class ApplicationProgressCard extends StatelessWidget {
   final Map<String, dynamic> application;
   final String token;
-  const ApplicationProgressCard({
-    super.key,
-    required this.application,
-    required this.token,
-  });
+  const ApplicationProgressCard({super.key, required this.application, required this.token});
+
+  static const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+  static const descriptions = [
+    'La empresa recibió tu candidatura. Todavía no ha marcado el CV como visto.',
+    'La empresa indicó que ha revisado tu currículum.',
+    'La selección continúa. Ya puedes conversar con la empresa a través del chat privado.',
+    'La empresa marcó tu candidatura como aceptada.',
+    'La empresa ha finalizado el proceso de selección para esta postulación.',
+  ];
+
+  int stageIndex(String status) {
+    final normalized = normalizeApplicationStatus(status).toLowerCase();
+    final index = stages.indexWhere((stage) => stage.toLowerCase() == normalized);
+    return index < 0 ? 0 : index;
+  }
+
+  DateTime? dateFrom(dynamic value) => value == null ? null : DateTime.tryParse(value.toString())?.toLocal();
+
+  String timeAgo(DateTime? date) {
+    if (date == null) return 'Fecha pendiente';
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'Hace un momento';
+    if (diff.inHours < 1) return 'Hace ${diff.inMinutes} min';
+    if (diff.inDays < 1) return 'Hace ${diff.inHours} h';
+    if (diff.inDays == 1) return 'Hace 1 día';
+    if (diff.inDays < 30) return 'Hace ${diff.inDays} días';
+    if (diff.inDays < 365) return 'Hace ${(diff.inDays / 30).floor()} meses';
+    return 'Hace ${(diff.inDays / 365).floor()} años';
+  }
+
+  Map<String, dynamic>? historyFor(String status) {
+    final history = application['statusHistory'];
+    if (history is! List) return null;
+    for (final item in history.reversed) {
+      if (item is Map && normalizeApplicationStatus(item['status']?.toString()).toLowerCase() == status.toLowerCase()) {
+        return Map<String, dynamic>.from(item);
+      }
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final status = normalizeApplicationStatus(application['status']?.toString());
-    final job = application['jobId'] is Map
-        ? Map<String, dynamic>.from(application['jobId'])
-        : <String, dynamic>{};
-    final company = job['companyId'] is Map
-        ? job['companyId']['name']?.toString() ?? 'Empresa'
-        : 'Empresa';
+    final activeIndex = stageIndex(status);
+    final job = application['jobId'] is Map ? Map<String, dynamic>.from(application['jobId']) : <String, dynamic>{};
+    final company = job['companyId'] is Map ? job['companyId']['name']?.toString() ?? 'Empresa' : 'Empresa';
     final id = (application['_id'] ?? application['id'] ?? '').toString();
-    final finalStage = status == 'Aceptado'
-        ? 'Aceptado'
-        : status == 'Proceso terminado'
-            ? 'Proceso terminado'
-            : 'Aceptado / proceso terminado';
-    const stageDescriptions = [
-      'La empresa recibió tu postulación. Esta es la primera etapa del proceso.',
-      'La empresa marcó tu CV como visto.',
-      'La empresa inició una siguiente etapa del proceso. Desde aquí puedes escribirle por el chat de INKLU.',
-    ];
-    final stages = ['Postulado', 'CV visto', 'En proceso', finalStage];
-    final activeIndex = switch (status) {
-      'CV visto' => 1,
-      'En proceso' => 2,
-      'Aceptado' || 'Proceso terminado' => 3,
-      _ => 0,
-    };
+    final title = job['title']?.toString() ?? 'Oferta laboral';
+    final location = job['location']?.toString().trim() ?? '';
+    final modality = job['modality']?.toString().trim() ?? '';
+    final applicantCount = (application['applicantCount'] as num?)?.toInt() ?? 1;
+    final rawHistory = application['statusHistory'];
+    final lastHistory = rawHistory is List && rawHistory.isNotEmpty ? Map<String, dynamic>.from(rawHistory.last) : <String, dynamic>{};
+    final changedAt = dateFrom(lastHistory['changedAt'] ?? application['createdAt']);
+    final isWeb = title.toLowerCase().contains('web') || title.toLowerCase().contains('desarroll') || title.toLowerCase().contains('frontend');
+    final isHealth = title.toLowerCase().contains('salud') || title.toLowerCase().contains('enfer') || title.toLowerCase().contains('clínic');
+    final IconData jobIcon = isWeb ? Icons.code_rounded : isHealth ? Icons.favorite_rounded : Icons.apartment_rounded;
+    final Color iconColor = isWeb ? const Color(0xFF0F9278) : isHealth ? const Color(0xFFE83E83) : const Color(0xFF6555E8);
+    final Color iconBg = isWeb ? const Color(0xFFDDF7F0) : isHealth ? const Color(0xFFFFE5F0) : const Color(0xFFEDE9FF);
 
     return Card(
-      elevation: 0,
+      color: Colors.white,
+      elevation: 1.5,
+      shadowColor: const Color(0x20654CE8),
       margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        side: const BorderSide(color: line),
-        borderRadius: BorderRadius.circular(14),
-      ),
+      shape: RoundedRectangleBorder(side: const BorderSide(color: Color(0xFFEAE6FA)), borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(job['title']?.toString() ?? 'Oferta laboral',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text(company, style: const TextStyle(color: muted)),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDE9FE),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text('Estado: $status',
-                  style: const TextStyle(color: primary, fontWeight: FontWeight.w800)),
-            ),
-            const SizedBox(height: 12),
-            ...List.generate(stages.length, (index) {
-              final completed = index <= activeIndex;
-              final description = index < 3
-                  ? stageDescriptions[index]
-                  : status == 'Aceptado'
-                      ? 'La empresa marcó la postulación como aceptada.'
-                      : status == 'Proceso terminado'
-                          ? 'La empresa ha cerrado este proceso de selección.'
-                          : 'Etapa final. La empresa actualizará este estado cuando corresponda.';
-              return InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => showDialog<void>(
-                  context: context,
-                  builder: (dialogContext) => AlertDialog(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 54, height: 54, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(15)), child: Icon(jobIcon, color: iconColor, size: 29)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontSize: 15, height: 1.25, fontWeight: FontWeight.w900, color: Color(0xFF19162D))),
+              const SizedBox(height: 4),
+              Text(company, style: const TextStyle(fontSize: 13, color: Color(0xFF514B70))),
+              const SizedBox(height: 7),
+              Wrap(spacing: 12, runSpacing: 6, children: [
+                if (location.isNotEmpty) _JobMeta(icon: Icons.location_on_outlined, text: location),
+                if (modality.isNotEmpty) _JobMeta(icon: Icons.work_outline, text: modality),
+              ]),
+            ])),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF6555B8), size: 25),
+          ]),
+          const SizedBox(height: 18),
+          Row(children: List.generate(stages.length, (index) {
+            final completed = index < activeIndex;
+            final active = index == activeIndex;
+            final color = completed || active ? primary : const Color(0xFFE6E4F0);
+            return Expanded(child: Row(children: [
+              InkWell(
+                borderRadius: BorderRadius.circular(22),
+                onTap: () => showDialog<void>(context: context, builder: (dialogContext) {
+                  final stageHistory = historyFor(stages[index]);
+                  final stageDate = dateFrom(stageHistory?['changedAt']);
+                  final reached = index <= activeIndex;
+                  final fallbackDate = index == 0 ? dateFrom(application['createdAt']) : null;
+                  return AlertDialog(
                     title: Text(stages[index]),
-                    content: Text(completed
-                        ? description
-                        : 'Esta etapa todavía no se ha alcanzado. Tu estado actual es “$status”.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogContext),
-                        child: const Text('Entendido'),
-                      ),
-                    ],
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  child: Row(
-                    children: [
-                      Icon(
-                        completed ? Icons.check_circle : Icons.radio_button_unchecked,
-                        color: completed ? primary : muted,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(stages[index],
-                            style: TextStyle(
-                              fontWeight: completed ? FontWeight.w800 : FontWeight.w500,
-                              color: completed ? ink : muted,
-                            )),
-                      ),
-                      const Icon(Icons.info_outline, color: muted, size: 17),
-                    ],
-                  ),
-                ),
-              );
-            }),
-            const SizedBox(height: 8),
-            if (chatAvailableForStatus(status))
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatScreen(
-                        applicationId: id,
-                        token: token,
-                        title: 'Chat con $company',
-                      ),
+                    content: Text(
+                      '${descriptions[index]}'
+                      '${reached ? '\n\nEstado: alcanzado.' : '\n\nEsta etapa todavía no se ha alcanzado.'}'
+                      '${reached ? '\n${timeAgo(stageDate ?? fallbackDate)}' : ''}',
                     ),
-                  ),
-                  icon: const Icon(Icons.chat_bubble_outline),
-                  label: const Text('Conversar con la empresa'),
+                    actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cerrar'))],
+                  );
+                }),
+                child: Container(width: 31, height: 31,
+                  decoration: BoxDecoration(color: completed ? primary : Colors.white, shape: BoxShape.circle, border: Border.all(color: active ? primary : color, width: active ? 2.3 : 1.5)),
+                  alignment: Alignment.center,
+                  child: Text('${index + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: completed ? Colors.white : active ? primary : const Color(0xFF77728D))),
                 ),
-              )
-            else
-              const Text(
-                'El chat se habilitará cuando la empresa actualice la postulación a “En proceso”.',
-                style: TextStyle(color: muted, fontSize: 12),
               ),
-          ],
-        ),
+              if (index < stages.length - 1)
+                Expanded(child: Container(height: 3, color: index < activeIndex ? primary : const Color(0xFFE6E4F0))),
+            ]));
+          })),
+          const SizedBox(height: 12),
+          Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 8, runSpacing: 3, children: [
+            Text(status, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: primary)),
+            const Text('•', style: TextStyle(color: Color(0xFF9690AF))),
+            Text(timeAgo(changedAt), style: const TextStyle(fontSize: 12, color: Color(0xFF6F698A))),
+          ]),
+          const SizedBox(height: 7),
+          Row(children: [
+            const Icon(Icons.groups_2_outlined, size: 17, color: Color(0xFF696386)),
+            const SizedBox(width: 6),
+            Expanded(child: Text('$applicantCount ${applicantCount == 1 ? 'persona postulada' : 'personas postuladas'}', style: const TextStyle(fontSize: 12, color: Color(0xFF6F698A)))),
+          ]),
+          const SizedBox(height: 12),
+          if (chatAvailableForStatus(status))
+            SizedBox(width: double.infinity, child: FilledButton.icon(
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEDE9FF), foregroundColor: primary),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(applicationId: id, token: token, title: 'Chat con $company'))),
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('Conversar con la empresa'),
+            ))
+          else
+            const Text('El chat se habilita cuando la empresa actualice la etapa a “En proceso”.', style: TextStyle(color: Color(0xFF77728D), fontSize: 11)),
+        ]),
       ),
     );
   }
+}
+
+class _JobMeta extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _JobMeta({required this.icon, required this.text});
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 15, color: const Color(0xFF655D83)),
+    const SizedBox(width: 4),
+    Text(text, style: const TextStyle(color: Color(0xFF655D83), fontSize: 11.5)),
+  ]);
 }
 
 class ChatScreen extends StatefulWidget {
@@ -1777,54 +1733,43 @@ class Dash extends StatelessWidget {
   final List<Widget> children;
   final List<String> labels;
 
-  const Dash({
-    super.key,
-    required this.title,
-    required this.tab,
-    required this.onTab,
-    required this.children,
-    this.labels = const ['Inicio', 'Ofertas', 'Postulaciones', 'Perfil'],
-  });
+  const Dash({super.key, required this.title, required this.tab, required this.onTab, required this.children, this.labels = const ['Inicio', 'Ofertas', 'Postulaciones', 'Perfil']});
 
   @override
   Widget build(BuildContext c) => Scaffold(
-        appBar: AppBar(
-          title: Row(
-            children: [
-              const Logo(size: 34),
-              const SizedBox(width: 6),
-              const Text('INKLU',
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-            ],
-          ),
-        ),
-        body: ListView(
-          padding: const EdgeInsets.all(18),
-          children: [
-            Text(title,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 5),
-            ...children,
-          ],
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: tab,
-          onDestinationSelected: onTab,
-          destinations: [
-            NavigationDestination(
-                icon: const Icon(Icons.home_outlined), label: labels[0]),
-            NavigationDestination(
-                icon: const Icon(Icons.business_center_outlined),
-                label: labels[1]),
-            NavigationDestination(
-                icon: const Icon(Icons.people_outline), label: labels[2]),
-            NavigationDestination(
-                icon: const Icon(Icons.person_outline), label: labels[3]),
-          ],
-        ),
-      );
+    backgroundColor: const Color(0xFFFAF9FF),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFFFAF9FF),
+      surfaceTintColor: Colors.transparent,
+      title: Row(children: [
+        const Logo(size: 34),
+        const SizedBox(width: 6),
+        const Text('INKLU', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF19162D))),
+      ]),
+    ),
+    body: ListView(
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 24),
+      children: [
+        Text(title, style: const TextStyle(fontSize: 25, height: 1.22, fontWeight: FontWeight.w900, color: Color(0xFF19162D))),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    ),
+    bottomNavigationBar: NavigationBar(
+      backgroundColor: const Color(0xFFF0EDFF),
+      indicatorColor: const Color(0xFFDCD4FF),
+      selectedIndex: tab,
+      onDestinationSelected: onTab,
+      destinations: [
+        NavigationDestination(icon: const Icon(Icons.home_outlined), label: labels[0]),
+        NavigationDestination(icon: const Icon(Icons.business_center_outlined), label: labels[1]),
+        NavigationDestination(icon: const Icon(Icons.people_outline), label: labels[2]),
+        NavigationDestination(icon: const Icon(Icons.person_outline), label: labels[3]),
+      ],
+    ),
+  );
 }
+
 class F extends StatelessWidget{final TextEditingController c;final String label;final bool obscure,read;final TextInputType? type;final int max;final List<TextInputFormatter>? format;final VoidCallback? onTap;final Widget? suffix;const F(this.c,this.label,{super.key,this.obscure=false,this.read=false,this.type,this.max=1,this.format,this.onTap,this.suffix});@override Widget build(BuildContext cxt)=>Padding(padding:const EdgeInsets.only(bottom:11),child:TextField(controller:c,obscureText:obscure,readOnly:read,keyboardType:type,maxLines:obscure?1:max,inputFormatters:format,onTap:onTap,decoration:InputDecoration(labelText:label,suffixIcon:suffix)));}
 class Btn extends StatelessWidget{final String text;final VoidCallback? on;const Btn(this.text,this.on,{super.key});@override Widget build(BuildContext c)=>SizedBox(width:double.infinity,height:48,child:FilledButton(onPressed:on,style:FilledButton.styleFrom(backgroundColor:primary,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),child:Text(text,style:const TextStyle(fontWeight:FontWeight.w700))));}
 class Out extends StatelessWidget{final String text;final VoidCallback on;const Out(this.text,this.on,{super.key});@override Widget build(BuildContext c)=>SizedBox(width:double.infinity,height:46,child:OutlinedButton(onPressed:on,child:Text(text)));}
