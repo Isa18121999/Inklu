@@ -1,0 +1,33 @@
+name: Check INKLU backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-check.yml'
+
+jobs:
+  backend-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check JavaScript syntax
+        run: |
+          node --check server.js
+          for file in models/*.js; do node --check "$file"; done
+      - name: Verify CV parsers load
+        run: node -e "const { PDFParse } = require('pdf-parse'); const mammoth = require('mammoth'); if (!PDFParse || !mammoth.extractRawText) process.exit(1); console.log('CV parsers loaded successfully')"
