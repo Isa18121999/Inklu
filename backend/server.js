@@ -86,6 +86,47 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+const CV_STOP_WORDS = new Set((
+  'para como con por una uno unas unos las los del que de en al el y o a se su sus es son fue ser está estar ' +
+  'the and for with from this that are was were you your our their have has had not but can will about after before ' +
+  'perfil curriculum currículum cv candidato candidata empresa empleo trabajo profesional profesionales experiencia ' +
+  'experiencias habilidades conocimiento conocimientos funciones responsabilidades objetivo datos persona personal ' +
+  'años ano año años mes meses equipo equipos puesto posición cargo laboral laborales'
+).split(/\\s+/));
+
+function keywordCounts(text, limit = 60) {
+  const tokens = normalizeText(text).match(/[a-z0-9+#.]{3,}/g) || [];
+  const counts = new Map();
+  for (const token of tokens) {
+    if (CV_STOP_WORDS.has(token) || /^\\d+$/.test(token)) continue;
+    counts.set(token, (counts.get(token) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([term, count]) => ({ term, count }));
+}
+
+function tfidfCosineSimilarity(candidateKeywords, jobKeywords, documentFrequency, documentCount) {
+  const candidateCounts = new Map((candidateKeywords || []).map(item => [item.term, item.count]));
+  const jobCounts = new Map((jobKeywords || []).map(item => [item.term, item.count]));
+  const terms = new Set([...candidateCounts.keys(), ...jobCounts.keys()]);
+  let dot = 0;
+  let candidateNorm = 0;
+  let jobNorm = 0;
+  for (const term of terms) {
+    const df = documentFrequency.get(term) || 0;
+    const idf = Math.log((documentCount + 1) / (df + 1)) + 1;
+    const candidateWeight = candidateCounts.has(term) ? (1 + Math.log(candidateCounts.get(term))) * idf : 0;
+    const jobWeight = jobCounts.has(term) ? (1 + Math.log(jobCounts.get(term))) * idf : 0;
+    dot += candidateWeight * jobWeight;
+    candidateNorm += candidateWeight * candidateWeight;
+    jobNorm += jobWeight * jobWeight;
+  }
+  if (!candidateNorm || !jobNorm) return 0;
+  return dot / (Math.sqrt(candidateNorm) * Math.sqrt(jobNorm));
+}
+
 function normalizeApplicationStatus(status) {
   const legacy = {
     'Postulada': 'Postulado',
@@ -123,6 +164,7 @@ async function analyzeCandidateCv(user) {
   ) {
     return {
       skills: cached.skills || [],
+      keywords: cached.keywords || [],
       textLength: cached.textLength || 0,
       analyzedAt: cached.analyzedAt,
       cached: true
@@ -171,16 +213,18 @@ async function analyzeCandidateCv(user) {
   const skills = CV_SKILL_CATALOG
     .filter(skill => skill.terms.some(term => normalized.includes(normalizeText(term))))
     .map(skill => skill.label);
+  const keywords = keywordCounts(text, 60);
 
   user.cvAnalysis = {
     skills,
+    keywords,
     textLength: text.length,
     analyzedAt: new Date(),
     sourceUploadedAt: uploadedAt
   };
   await user.save();
 
-  return { skills, textLength: text.length, analyzedAt: user.cvAnalysis.analyzedAt, cached: false };
+  return { skills, keywords, textLength: text.length, analyzedAt: user.cvAnalysis.analyzedAt, cached: false };
 }
 
 function recommendJobsForUser(user, jobs) {
@@ -191,9 +235,22 @@ function recommendJobsForUser(user, jobs) {
   const normalizedSkills = skills.map(normalizeText);
   const location = normalizeText(user.profile?.location);
   const modality = normalizeText(user.profile?.modality);
-
-  return jobs.map(job => {
+  const cvKeywords = user.cvAnalysis?.keywords || [];
+  const jobDocuments = jobs.map(job => {
     const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
+    const content = [job.title, job.description, ...requiredSkills].join(' ');
+    return { job, requiredSkills, content, keywords: keywordCounts(content, 200) };
+  });
+  const documentFrequency = new Map();
+  for (const document of jobDocuments) {
+    const uniqueTerms = new Set(document.keywords.map(item => item.term));
+    for (const term of uniqueTerms) {
+      documentFrequency.set(term, (documentFrequency.get(term) || 0) + 1);
+    }
+  }
+
+  return jobDocuments.map(document => {
+    const { job, requiredSkills, content, keywords } = document;
     const jobText = normalizeText([
       job.title,
       job.description,
@@ -203,17 +260,34 @@ function recommendJobsForUser(user, jobs) {
     ].join(' '));
     const matchedSkills = skills.filter(skill => jobText.includes(normalizeText(skill)));
     const matchedRequired = requiredSkills.filter(required =>
-      normalizedSkills.some(skill => skill.includes(normalizeText(required)) || normalizeText(required).includes(skill))
+      normalizedSkills.some(skill =>
+        skill.includes(normalizeText(required)) || normalizeText(required).includes(skill)
+      )
+    );
+    const candidateTerms = new Set(cvKeywords.map(item => item.term));
+    const sharedKeywords = keywords
+      .filter(item => candidateTerms.has(item.term))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map(item => item.term);
+
+    const similarity = tfidfCosineSimilarity(
+      cvKeywords,
+      keywords,
+      documentFrequency,
+      Math.max(jobDocuments.length, 1)
     );
     const reasons = [];
     if (matchedSkills.length) reasons.push('Habilidades relacionadas: ' + matchedSkills.slice(0, 4).join(', '));
+    if (sharedKeywords.length) reasons.push('Palabras coincidentes: ' + sharedKeywords.slice(0, 4).join(', '));
     if (location && normalizeText(job.location).includes(location)) reasons.push('Coincide con tu ubicación preferida');
     if (modality && normalizeText(job.modality).includes(modality)) reasons.push('Coincide con tu modalidad preferida');
 
-    let score = skills.length
-      ? Math.round((matchedSkills.length / Math.min(skills.length, 5)) * 70)
-      : 0;
-    if (matchedRequired.length) score += Math.min(20, matchedRequired.length * 10);
+    let score = Math.round(similarity * 75);
+    if (matchedSkills.length) {
+      score = Math.max(score, Math.round((matchedSkills.length / Math.min(skills.length, 5)) * 65));
+    }
+    if (matchedRequired.length) score += Math.min(15, matchedRequired.length * 5);
     if (location && normalizeText(job.location).includes(location)) score += 5;
     if (modality && normalizeText(job.modality).includes(modality)) score += 5;
     score = Math.min(100, score);
@@ -223,9 +297,13 @@ function recommendJobsForUser(user, jobs) {
       ...record,
       matchScore: score,
       matchReasons: reasons,
-      matchedSkills
+      matchedSkills,
+      textSimilarity: Number(similarity.toFixed(4))
     };
-  }).sort((a, b) => b.matchScore - a.matchScore).slice(0, 10);
+  })
+    .filter(job => job.matchScore > 0)
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, 10);
 }
 
 async function findChatApplication(req, res) {
@@ -317,6 +395,7 @@ app.post('/api/profile/cv/analyze', auth, async (req, res) => {
     res.json({
       message: analysis.cached ? 'El CV ya estaba analizado.' : 'CV analizado correctamente.',
       skills: analysis.skills,
+      keywords: (analysis.keywords || []).slice(0, 12).map(item => item.term),
       textLength: analysis.textLength,
       analyzedAt: analysis.analyzedAt,
       cached: analysis.cached,
