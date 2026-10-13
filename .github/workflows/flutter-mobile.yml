@@ -99,7 +99,7 @@ jobs:
           path: flutter_app/analyze.txt
       - name: Build iOS without signing
         working-directory: flutter_app
-        run: flutter build ios --simulator --release
+        run: flutter build ios --simulator --debug
       - name: Package iOS build
         run: ditto -c -k --sequesterRsrc --keepParent flutter_app/build/ios/iphonesimulator/Runner.app INKLU-iOS.zip
       - name: Upload iOS build
