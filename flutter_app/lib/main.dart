@@ -336,6 +336,13 @@ class _CandidateHomeState extends State<CandidateHome> {
   bool scanningRecommendations = false;
   String? recommendationMessage;
   String selectedApplicationFilter = 'Todas';
+  final TextEditingController jobSearchController = TextEditingController();
+  String? selectedLocationFilter;
+  String? selectedModalityFilter;
+  String? selectedContractFilter;
+  String? selectedCategoryFilter;
+  bool searchingJobs = false;
+  bool filtersExpanded = false;
   static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
 
   @override
@@ -351,6 +358,40 @@ class _CandidateHomeState extends State<CandidateHome> {
     }
   }
 
+  @override
+  void dispose() {
+    jobSearchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> searchJobs({bool reset = false}) async {
+    if (reset) {
+      jobSearchController.clear();
+      selectedLocationFilter = null;
+      selectedModalityFilter = null;
+      selectedContractFilter = null;
+      selectedCategoryFilter = null;
+    }
+    setState(() => searchingJobs = true);
+    try {
+      final result = await api.searchJobs(
+        sessionToken!,
+        query: jobSearchController.text.trim(),
+        location: selectedLocationFilter,
+        modality: selectedModalityFilter,
+        contractType: selectedContractFilter,
+        category: selectedCategoryFilter,
+      );
+      if (!mounted) return;
+      setState(() => jobs = result);
+      toast('${result.length} ofertas encontradas.');
+    } catch (x) {
+      if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => searchingJobs = false);
+    }
+  }
+
   Future<void> apply(String id) async {
     try {
       await api.apply(sessionToken!, id);
@@ -359,6 +400,120 @@ class _CandidateHomeState extends State<CandidateHome> {
     } catch (x) {
       toast(x.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  Widget buildJobFilters() {
+    const locations = ['Lima', 'Callao', 'Arequipa', 'Trujillo', 'Chiclayo', 'Piura', 'Cusco', 'Huancayo', 'Iquitos'];
+    const modalities = ['Remoto', 'Híbrido', 'Presencial'];
+    const contracts = ['Tiempo completo', 'Medio tiempo', 'Temporal', 'Prácticas', 'Freelance', 'Por horas'];
+    const categories = ['Tecnología', 'Administración', 'Diseño', 'Atención al cliente', 'Educación', 'Salud', 'Finanzas', 'Logística', 'Marketing', 'Otro'];
+
+    Widget dropdown({
+      required String label,
+      required String? value,
+      required List<String> values,
+      required ValueChanged<String?> onChanged,
+      required String allLabel,
+      required IconData icon,
+    }) => DropdownButtonFormField<String>(
+      initialValue: value ?? '',
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: primary, size: 20),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0xFFE5E0FA))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(13), borderSide: const BorderSide(color: Color(0xFFE5E0FA))),
+      ),
+      items: [
+        DropdownMenuItem<String>(value: '', child: Text(allLabel, overflow: TextOverflow.ellipsis)),
+        ...values.map((item) => DropdownMenuItem<String>(value: item, child: Text(item, overflow: TextOverflow.ellipsis))),
+      ],
+      onChanged: (next) => onChanged(next == null || next.isEmpty ? null : next),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F5FF),
+        border: Border.all(color: const Color(0xFFE5E0FA)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.tune_rounded, color: primary),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Filtra las ofertas', style: TextStyle(fontWeight: FontWeight.w800, color: ink))),
+              TextButton(
+                onPressed: () => setState(() {
+                  selectedLocationFilter = null;
+                  selectedModalityFilter = null;
+                  selectedContractFilter = null;
+                  selectedCategoryFilter = null;
+                }),
+                child: const Text('Limpiar'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          dropdown(
+            label: 'Área profesional',
+            value: selectedCategoryFilter,
+            values: categories,
+            allLabel: 'Todas las áreas',
+            icon: Icons.work_outline,
+            onChanged: (value) => setState(() => selectedCategoryFilter = value),
+          ),
+          const SizedBox(height: 10),
+          dropdown(
+            label: 'Ubicación',
+            value: selectedLocationFilter,
+            values: locations,
+            allLabel: 'Todas las ubicaciones',
+            icon: Icons.location_on_outlined,
+            onChanged: (value) => setState(() => selectedLocationFilter = value),
+          ),
+          const SizedBox(height: 10),
+          dropdown(
+            label: 'Modalidad',
+            value: selectedModalityFilter,
+            values: modalities,
+            allLabel: 'Todas las modalidades',
+            icon: Icons.laptop_mac_outlined,
+            onChanged: (value) => setState(() => selectedModalityFilter = value),
+          ),
+          const SizedBox(height: 10),
+          dropdown(
+            label: 'Tipo de contrato',
+            value: selectedContractFilter,
+            values: contracts,
+            allLabel: 'Todos los contratos',
+            icon: Icons.description_outlined,
+            onChanged: (value) => setState(() => selectedContractFilter = value),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: searchingJobs ? null : () => searchJobs(),
+              icon: searchingJobs
+                  ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.search_rounded),
+              label: Text(searchingJobs ? 'Buscando...' : 'Aplicar filtros'),
+              style: FilledButton.styleFrom(
+                backgroundColor: primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> scanCvAndRecommend() async {
@@ -429,8 +584,97 @@ class _CandidateHomeState extends State<CandidateHome> {
             ]
           : tab == 1
               ? [
-                  const Section('Ofertas disponibles'),
-                  ...jobs.map((j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+                  Container(
+                    padding: const EdgeInsets.all(17),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEDE9FF),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '¡Ahora es el momento de cambiar!',
+                          style: TextStyle(
+                            fontSize: 21,
+                            height: 1.2,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF272047),
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: const [
+                              BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3)),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: jobSearchController,
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) => searchJobs(),
+                            decoration: InputDecoration(
+                              hintText: '¿Qué empleo buscas?',
+                              hintStyle: const TextStyle(color: Color(0xFF89839F), fontSize: 15),
+                              prefixIcon: const Icon(Icons.search_rounded, color: primary, size: 27),
+                              suffixIcon: IconButton(
+                                tooltip: 'Buscar empleo',
+                                onPressed: searchingJobs ? null : () => searchJobs(),
+                                icon: const Icon(Icons.arrow_forward_rounded, color: primary),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(vertical: 17, horizontal: 8),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: const BorderSide(color: primary, width: 1.5)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton.icon(
+                            onPressed: () => setState(() => filtersExpanded = !filtersExpanded),
+                            icon: const Icon(Icons.tune_rounded, size: 19),
+                            label: Text(filtersExpanded ? 'Ocultar filtros' : 'Filtrar ofertas'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: primary,
+                              backgroundColor: Colors.white,
+                              side: const BorderSide(color: Color(0xFFD8D0FA)),
+                              shape: const StadiumBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (filtersExpanded) ...[
+                    const SizedBox(height: 12),
+                    buildJobFilters(),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Expanded(child: Text('Ofertas disponibles', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: ink))),
+                      Text('${jobs.length} resultado${jobs.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 12, color: muted)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (searchingJobs)
+                    const Padding(
+                      padding: EdgeInsets.all(25),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (jobs.isEmpty)
+                    const Info(
+                      'No encontramos ofertas con esos filtros',
+                      'Prueba otra palabra o limpia alguno de los filtros para ver más oportunidades.',
+                    )
+                  else
+                    ...jobs.map((job) => JobCard(job, onTap: () => showOffer(c, job, apply))),
                 ]
               : tab == 2
                   ? [
@@ -1416,7 +1660,11 @@ class _CompanyHomeState extends State<CompanyHome> {
     final description = TextEditingController();
     final location = TextEditingController(text: 'Lima, Perú');
     const modalities = ['Remoto', 'Híbrido', 'Presencial'];
+    const categories = ['Tecnología', 'Administración', 'Diseño', 'Atención al cliente', 'Educación', 'Salud', 'Finanzas', 'Logística', 'Marketing', 'Otro'];
+    const contracts = ['Tiempo completo', 'Medio tiempo', 'Temporal', 'Prácticas', 'Freelance', 'Por horas'];
     String modality = 'Remoto';
+    String category = 'Tecnología';
+    String contractType = 'Tiempo completo';
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -1430,6 +1678,15 @@ class _CompanyHomeState extends State<CompanyHome> {
                 F(description, 'Descripción', max: 5),
                 F(location, 'Ubicación'),
                 DropdownButtonFormField<String>(
+                  initialValue: category,
+                  decoration: const InputDecoration(labelText: 'Área profesional'),
+                  items: categories.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => category = value);
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
                   initialValue: modality,
                   decoration: const InputDecoration(labelText: 'Modalidad'),
                   items: modalities
@@ -1440,6 +1697,15 @@ class _CompanyHomeState extends State<CompanyHome> {
                       .toList(),
                   onChanged: (value) {
                     if (value != null) setDialogState(() => modality = value);
+                  },
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: contractType,
+                  decoration: const InputDecoration(labelText: 'Tipo de contrato'),
+                  items: contracts.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => contractType = value);
                   },
                 ),
               ],
@@ -1466,8 +1732,9 @@ class _CompanyHomeState extends State<CompanyHome> {
           'title': title.text.trim(),
           'description': description.text.trim(),
           'location': location.text.trim(),
+          'category': category,
           'modality': modality,
-          'contractType': 'Tiempo completo',
+          'contractType': contractType,
         });
         toast('Oferta publicada correctamente.');
         await load();
