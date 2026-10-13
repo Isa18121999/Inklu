@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -49,6 +50,52 @@ class ApiService {
   }
   Future<List<dynamic>> myJobs(String token) async => _getList('/company/my-jobs', token);
   Future<List<dynamic>> applications(String token) async => _getList('/applications', token);
+  Future<Map<String, dynamic>> uploadProfilePhoto(String token, String path) async {
+    final file = File(path);
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) throw Exception('El archivo de imagen está vacío.');
+    if (bytes.length > 2 * 1024 * 1024) {
+      throw Exception('La foto no puede superar los 2 MB.');
+    }
+
+    final fileName = path.split(RegExp(r'[/\\\\]')).last;
+    final extension = fileName.toLowerCase().split('.').last;
+    final mimeType = switch (extension) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => throw Exception('Selecciona una imagen JPG, PNG o WEBP.'),
+    };
+
+    return _postAuth('/profile/photo', token, {
+      'fileName': fileName,
+      'mimeType': mimeType,
+      'data': base64Encode(bytes),
+    });
+  }
+
+  Future<Uint8List?> profilePhoto(String token) async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/profile/photo'), headers: _headers(token))
+        .timeout(const Duration(seconds: 25));
+    if (response.statusCode == 404) return null;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message = 'No se pudo cargar la foto de perfil.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
+    }
+    final contentType = response.headers['content-type'] ?? '';
+    if (!contentType.startsWith('image/')) {
+      throw Exception('El servidor devolvió un archivo que no es una imagen.');
+    }
+    return response.bodyBytes;
+  }
+
   Future<Map<String, dynamic>> profile(String token) async => _getMap('/profile/me', token);
   Future<Map<String, dynamic>> updateProfile(String token, Map<String, dynamic> data) async => _patch('/profile/me', token, data);
   Future<Map<String, dynamic>> createJob(String token, Map<String, dynamic> data) async => _postAuth('/company/jobs', token, data);
