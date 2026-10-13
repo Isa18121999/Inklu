@@ -26,7 +26,27 @@ class ApiService {
     final r = await http.post(Uri.parse('$baseUrl/profile/cv'), headers: _headers(token), body: jsonEncode(body)).timeout(const Duration(seconds: 45));
     return _decodeMap(r);
   }
-  Future<List<dynamic>> jobs(String token) async => _getList('/company/jobs', token);
+  Future<List<dynamic>> jobs(String token) async => _getList('/jobs', token);
+
+  Future<List<dynamic>> searchJobs(
+    String token, {
+    String? query,
+    String? location,
+    String? modality,
+    String? contractType,
+    String? category,
+  }) async {
+    final filters = <String, String>{
+      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      if (location != null && location.trim().isNotEmpty) 'location': location.trim(),
+      if (modality != null && modality.trim().isNotEmpty) 'modality': modality.trim(),
+      if (contractType != null && contractType.trim().isNotEmpty) 'contractType': contractType.trim(),
+      if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
+    };
+    final uri = Uri.parse('$baseUrl/jobs').replace(queryParameters: filters.isEmpty ? null : filters);
+    final response = await http.get(uri, headers: _headers(token)).timeout(const Duration(seconds: 25));
+    return _decodeList(response);
+  }
   Future<List<dynamic>> myJobs(String token) async => _getList('/company/my-jobs', token);
   Future<List<dynamic>> applications(String token) async => _getList('/applications', token);
   Future<Map<String, dynamic>> profile(String token) async => _getMap('/profile/me', token);
