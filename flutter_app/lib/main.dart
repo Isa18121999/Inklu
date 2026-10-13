@@ -449,12 +449,7 @@ class _CandidateHomeState extends State<CandidateHome> {
               const SizedBox(width: 8),
               const Expanded(child: Text('Filtra las ofertas', style: TextStyle(fontWeight: FontWeight.w800, color: ink))),
               TextButton(
-                onPressed: () => setState(() {
-                  selectedLocationFilter = null;
-                  selectedModalityFilter = null;
-                  selectedContractFilter = null;
-                  selectedCategoryFilter = null;
-                }),
+                onPressed: searchingJobs ? null : () => searchJobs(reset: true),
                 child: const Text('Limpiar'),
               ),
             ],
