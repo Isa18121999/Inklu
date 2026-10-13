@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
@@ -330,6 +331,10 @@ class _CandidateHomeState extends State<CandidateHome> {
   int tab = 0;
   List<dynamic> jobs = [];
   List<dynamic> apps = [];
+  List<dynamic> recommendations = [];
+  List<dynamic> cvSkills = [];
+  bool scanningRecommendations = false;
+  String? recommendationMessage;
 
   @override
   void initState() {
@@ -340,9 +345,15 @@ class _CandidateHomeState extends State<CandidateHome> {
   Future<void> load() async {
     try {
       final t = sessionToken!;
-      jobs = await api.jobs(t);
-      apps = await api.applications(t);
-      if (mounted) setState(() {});
+      final results = await Future.wait([
+        api.jobs(t),
+        api.applications(t),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        jobs = results[0];
+        apps = results[1];
+      });
     } catch (x) {
       if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
     }
@@ -352,9 +363,39 @@ class _CandidateHomeState extends State<CandidateHome> {
     try {
       await api.apply(sessionToken!, id);
       toast('Postulación enviada correctamente.');
-      load();
+      await load();
     } catch (x) {
       toast(x.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> scanCvAndRecommend() async {
+    setState(() {
+      scanningRecommendations = true;
+      recommendationMessage = null;
+    });
+    try {
+      final analysis = await api.analyzeCv(sessionToken!);
+      final results = await api.recommendations(sessionToken!);
+      if (!mounted) return;
+      setState(() {
+        cvSkills = (analysis['skills'] as List?) ?? [];
+        recommendations = results;
+        recommendationMessage = results.isEmpty
+            ? 'No encontramos coincidencias claras todavía. Completa tus preferencias o revisa todas las ofertas.'
+            : 'Encontramos ${results.length} ofertas ordenadas por coincidencia con tu CV.';
+      });
+      toast(cvSkills.isEmpty
+          ? 'CV analizado. No se reconocieron habilidades del catálogo todavía.'
+          : 'CV analizado. Habilidades detectadas: ${cvSkills.take(4).join(', ')}.');
+    } catch (x) {
+      if (mounted) {
+        setState(() => recommendationMessage =
+            x.toString().replaceFirst('Exception: ', ''));
+        toast(x.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => scanningRecommendations = false);
     }
   }
 
@@ -370,9 +411,42 @@ class _CandidateHomeState extends State<CandidateHome> {
                 const SizedBox(height: 16),
                 const ProfileCard(),
                 const SizedBox(height: 20),
-                const Section('Ofertas para ti'),
-                ...jobs.take(5).map(
-                    (j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+                const Section('Ofertas sugeridas por análisis de CV'),
+                Text(
+                  'MVP de coincidencia de habilidades: analiza el texto del CV y lo compara con los requisitos publicados.',
+                  style: const TextStyle(color: muted, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Btn(
+                  scanningRecommendations
+                      ? 'Analizando CV...'
+                      : 'Analizar mi CV y sugerir ofertas',
+                  scanningRecommendations ? null : scanCvAndRecommend,
+                ),
+                if (cvSkills.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text('Habilidades detectadas: ${cvSkills.join(', ')}',
+                      style: const TextStyle(fontSize: 12, color: muted)),
+                ],
+                if (recommendationMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(recommendationMessage!,
+                      style: const TextStyle(color: muted, fontSize: 12)),
+                ],
+                const SizedBox(height: 12),
+                if (recommendations.isNotEmpty)
+                  ...recommendations.map((j) => JobRecommendationCard(
+                        job: Map<String, dynamic>.from(j),
+                        onTap: () => showOffer(c, j, apply),
+                      ))
+                else ...[
+                  const Section('Ofertas recientes'),
+                  if (jobs.isEmpty)
+                    const Info('Todavía no hay ofertas', 'Vuelve a revisar pronto.')
+                  else
+                    ...jobs.take(3).map(
+                        (j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+                ],
               ]
             : tab == 1
                 ? [
@@ -383,15 +457,459 @@ class _CandidateHomeState extends State<CandidateHome> {
                 : tab == 2
                     ? [
                         const Section('Mis postulaciones'),
-                        ...apps.map((x) => ListTile(
-                              title: Text(x['jobId']?['title']?.toString() ??
-                                  'Oferta'),
-                              subtitle:
-                                  Text(x['status']?.toString() ?? 'Postulada'),
-                            )),
+                        const Text(
+                          'Toca una etapa para conocer su significado. La empresa es quien actualiza el estado del proceso.',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        ),
+                        const SizedBox(height: 10),
+                        if (apps.isEmpty)
+                          const Info('Aún no tienes postulaciones',
+                              'Cuando postules a una oferta, aquí podrás seguir las etapas y conversar con la empresa al llegar a “En proceso”.')
+                        else
+                          ...apps.map((x) => ApplicationProgressCard(
+                                application: Map<String, dynamic>.from(x),
+                                token: sessionToken!,
+                              )),
                       ]
                     : [CandidateProfilePanel(token: sessionToken!)],
       );
+}
+
+String normalizeApplicationStatus(String? raw) {
+  switch (raw) {
+    case 'Postulada':
+      return 'Postulado';
+    case 'En revisión':
+      return 'CV visto';
+    case 'Entrevista':
+      return 'En proceso';
+    case 'Seleccionada':
+      return 'Aceptado';
+    case 'No seleccionada':
+      return 'Proceso terminado';
+    default:
+      return raw == null || raw.isEmpty ? 'Postulado' : raw;
+  }
+}
+
+bool chatAvailableForStatus(String status) =>
+    const ['En proceso', 'Aceptado', 'Proceso terminado'].contains(
+      normalizeApplicationStatus(status),
+    );
+
+class JobRecommendationCard extends StatelessWidget {
+  final Map<String, dynamic> job;
+  final VoidCallback onTap;
+  const JobRecommendationCard({super.key, required this.job, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final score = (job['matchScore'] as num?)?.round() ?? 0;
+    final reasons = (job['matchReasons'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFFEDE9FE),
+          child: Icon(Icons.auto_awesome_outlined, color: primary),
+        ),
+        title: Text(job['title']?.toString() ?? 'Oferta laboral',
+            style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(job['companyId'] is Map
+                  ? (job['companyId']['name']?.toString() ?? 'Empresa')
+                  : 'Empresa'),
+              const SizedBox(height: 4),
+              Text('$score% de coincidencia',
+                  style: const TextStyle(color: primary, fontWeight: FontWeight.w800)),
+              if (reasons.isNotEmpty)
+                Text(reasons.take(2).join(' · '),
+                    style: const TextStyle(color: muted, fontSize: 11)),
+            ],
+          ),
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class ApplicationProgressCard extends StatelessWidget {
+  final Map<String, dynamic> application;
+  final String token;
+  const ApplicationProgressCard({
+    super.key,
+    required this.application,
+    required this.token,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = normalizeApplicationStatus(application['status']?.toString());
+    final job = application['jobId'] is Map
+        ? Map<String, dynamic>.from(application['jobId'])
+        : <String, dynamic>{};
+    final company = job['companyId'] is Map
+        ? job['companyId']['name']?.toString() ?? 'Empresa'
+        : 'Empresa';
+    final id = (application['_id'] ?? application['id'] ?? '').toString();
+    final finalStage = status == 'Aceptado'
+        ? 'Aceptado'
+        : status == 'Proceso terminado'
+            ? 'Proceso terminado'
+            : 'Aceptado / proceso terminado';
+    const stageDescriptions = [
+      'La empresa recibió tu postulación. Esta es la primera etapa del proceso.',
+      'La empresa marcó tu CV como visto.',
+      'La empresa inició una siguiente etapa del proceso. Desde aquí puedes escribirle por el chat de INKLU.',
+    ];
+    final stages = ['Postulado', 'CV visto', 'En proceso', finalStage];
+    final activeIndex = switch (status) {
+      'CV visto' => 1,
+      'En proceso' => 2,
+      'Aceptado' || 'Proceso terminado' => 3,
+      _ => 0,
+    };
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 14),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(job['title']?.toString() ?? 'Oferta laboral',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text(company, style: const TextStyle(color: muted)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEDE9FE),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text('Estado: $status',
+                  style: const TextStyle(color: primary, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(stages.length, (index) {
+              final completed = index <= activeIndex;
+              final description = index < 3
+                  ? stageDescriptions[index]
+                  : status == 'Aceptado'
+                      ? 'La empresa marcó la postulación como aceptada.'
+                      : status == 'Proceso terminado'
+                          ? 'La empresa ha cerrado este proceso de selección.'
+                          : 'Etapa final. La empresa actualizará este estado cuando corresponda.';
+              return InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => showDialog<void>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: Text(stages[index]),
+                    content: Text(completed
+                        ? description
+                        : 'Esta etapa todavía no se ha alcanzado. Tu estado actual es “$status”.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Entendido'),
+                      ),
+                    ],
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: Row(
+                    children: [
+                      Icon(
+                        completed ? Icons.check_circle : Icons.radio_button_unchecked,
+                        color: completed ? primary : muted,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(stages[index],
+                            style: TextStyle(
+                              fontWeight: completed ? FontWeight.w800 : FontWeight.w500,
+                              color: completed ? ink : muted,
+                            )),
+                      ),
+                      const Icon(Icons.info_outline, color: muted, size: 17),
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            if (chatAvailableForStatus(status))
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        applicationId: id,
+                        token: token,
+                        title: 'Chat con $company',
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  label: const Text('Conversar con la empresa'),
+                ),
+              )
+            else
+              const Text(
+                'El chat se habilitará cuando la empresa actualice la postulación a “En proceso”.',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatScreen extends StatefulWidget {
+  final String applicationId;
+  final String token;
+  final String title;
+  const ChatScreen({
+    super.key,
+    required this.applicationId,
+    required this.token,
+    required this.title,
+  });
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final controller = TextEditingController();
+  final scrollController = ScrollController();
+  List<dynamic> messages = [];
+  bool loading = true;
+  bool sending = false;
+  String? error;
+  Timer? refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    loadMessages();
+    refreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!sending) loadMessages(silent: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    refreshTimer?.cancel();
+    controller.dispose();
+    scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> loadMessages({bool silent = false}) async {
+    if (!silent && mounted) setState(() => loading = true);
+    try {
+      final items = await api.chatMessages(widget.token, widget.applicationId);
+      if (mounted) {
+        setState(() {
+          messages = items;
+          error = null;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (scrollController.hasClients) {
+            scrollController.jumpTo(scrollController.position.maxScrollExtent);
+          }
+        });
+      }
+    } catch (x) {
+      if (mounted && !silent) setState(() => error = x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted && !silent) setState(() => loading = false);
+    }
+  }
+
+  Future<void> sendMessage() async {
+    final content = controller.text.trim();
+    if (content.isEmpty || sending) return;
+    setState(() => sending = true);
+    try {
+      await api.sendChatMessage(widget.token, widget.applicationId, content);
+      controller.clear();
+      await loadMessages(silent: true);
+    } catch (x) {
+      toast(x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUserId = (sessionUser?['id'] ?? sessionUser?['_id'] ?? '').toString();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar mensajes',
+            onPressed: () => loadMessages(),
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 10),
+              child: Text(
+                'Chat privado de esta postulación. Evita compartir información sensible innecesaria.',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
+            ),
+            Expanded(
+              child: loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : error != null && messages.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(error!, textAlign: TextAlign.center),
+                                const SizedBox(height: 10),
+                                OutlinedButton(
+                                  onPressed: () => loadMessages(),
+                                  child: const Text('Reintentar'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : messages.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                  'Todavía no hay mensajes. Escribe para iniciar la conversación.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: muted),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(14),
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final message = Map<String, dynamic>.from(messages[index]);
+                                final mine = message['senderId']?.toString() == currentUserId;
+                                return Align(
+                                  alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      maxWidth: MediaQuery.of(context).size.width * 0.78,
+                                    ),
+                                    margin: const EdgeInsets.only(bottom: 9),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: mine ? const Color(0xFFEDE9FE) : const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (!mine)
+                                          Text(message['senderName']?.toString() ?? 'Usuario',
+                                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: primary)),
+                                        Text(message['content']?.toString() ?? ''),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _messageTime(message['createdAt']),
+                                          style: const TextStyle(fontSize: 10, color: muted),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+            ),
+            if (error != null && messages.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(6),
+                child: Text(error!, style: const TextStyle(fontSize: 11, color: Colors.red)),
+              ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => sendMessage(),
+                        maxLength: 2000,
+                        maxLines: 3,
+                        minLines: 1,
+                        decoration: const InputDecoration(
+                          hintText: 'Escribe un mensaje...',
+                          counterText: '',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filled(
+                      tooltip: 'Enviar mensaje',
+                      onPressed: sending ? null : sendMessage,
+                      icon: sending
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.send),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _messageTime(dynamic raw) {
+  if (raw == null) return '';
+  final date = DateTime.tryParse(raw.toString())?.toLocal();
+  if (date == null) return '';
+  return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 }
 
 class CandidateProfilePanel extends StatefulWidget {
@@ -407,6 +925,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
   bool loading = true;
   bool saving = false;
   bool uploadingCv = false;
+  bool analyzingCv = false;
   String? error;
 
   @override
@@ -447,34 +966,90 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     if (user == null) return;
     final birth = TextEditingController(text: profile['birth']?.toString() ?? '');
     final address = TextEditingController(text: profile['address']?.toString() ?? '');
-    final location = TextEditingController(text: profile['location']?.toString() ?? '');
-    final modality = TextEditingController(text: profile['modality']?.toString() ?? '');
+    const locationOptions = [
+      'Lima Metropolitana',
+      'Callao',
+      'Arequipa',
+      'Trujillo',
+      'Chiclayo',
+      'Piura',
+      'Cusco',
+      'Huancayo',
+      'Iquitos',
+      'Otra',
+    ];
+    const modalityOptions = ['Remoto', 'Híbrido', 'Presencial', 'Indistinto'];
+    final savedLocation = profile['location']?.toString();
+    String? selectedLocation = locationOptions.contains(savedLocation)
+        ? savedLocation
+        : (savedLocation?.toLowerCase().contains('lima') == true
+            ? 'Lima Metropolitana'
+            : null);
+    final savedModality = profile['modality']?.toString();
+    String? selectedModality =
+        modalityOptions.contains(savedModality) ? savedModality : null;
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Editar información personal'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              F(birth, 'Fecha de nacimiento (dd/mm/aaaa)'),
-              F(address, 'Dirección'),
-              F(location, 'Ubicación preferida'),
-              F(modality, 'Modalidad laboral preferida'),
-            ],
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Editar información personal'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                F(birth, 'Fecha de nacimiento (dd/mm/aaaa)'),
+                F(address, 'Dirección'),
+                DropdownButtonFormField<String>(
+                  key: ValueKey('location-$selectedLocation'),
+                  initialValue: selectedLocation,
+                  decoration: const InputDecoration(labelText: 'Ubicación preferida'),
+                  items: locationOptions
+                      .map((value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() => selectedLocation = value),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: ValueKey('modality-$selectedModality'),
+                  initialValue: selectedModality,
+                  decoration: const InputDecoration(labelText: 'Modalidad laboral'),
+                  items: modalityOptions
+                      .map((value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setDialogState(() => selectedModality = value),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'La ubicación y la modalidad ayudan a calcular tus recomendaciones.',
+                  style: TextStyle(color: muted, fontSize: 12),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (selectedLocation == null || selectedModality == null) {
+                  toast('Selecciona tu ubicación y modalidad laboral.');
+                  return;
+                }
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Guardar cambios'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Guardar cambios'),
-          ),
-        ],
       ),
     );
 
@@ -484,8 +1059,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         final updated = await api.updateProfile(widget.token, {
           'birth': birth.text.trim(),
           'address': address.text.trim(),
-          'location': location.text.trim(),
-          'modality': modality.text.trim(),
+          'location': selectedLocation,
+          'modality': selectedModality,
         });
         if (mounted) {
           setState(() => user = updated);
@@ -500,8 +1075,6 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
 
     birth.dispose();
     address.dispose();
-    location.dispose();
-    modality.dispose();
   }
 
   Future<void> replaceCv() async {
@@ -519,12 +1092,28 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     setState(() => uploadingCv = true);
     try {
       await api.uploadCv(widget.token, path);
-      toast('Tu CV se guardó correctamente.');
       await loadProfile();
+      toast('Tu CV se guardó correctamente.');
     } catch (x) {
       toast(x.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => uploadingCv = false);
+    }
+  }
+
+  Future<void> analyzeCvForSuggestions() async {
+    setState(() => analyzingCv = true);
+    try {
+      final analysis = await api.analyzeCv(widget.token);
+      await loadProfile();
+      final skills = (analysis['skills'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      toast(skills.isEmpty
+          ? 'CV revisado, pero no se detectaron habilidades conocidas. Prueba con un PDF de texto o DOCX.'
+          : 'Habilidades detectadas: ${skills.take(6).join(', ')}. En Inicio puedes ver las ofertas sugeridas.');
+    } catch (x) {
+      toast(x.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => analyzingCv = false);
     }
   }
 
@@ -565,6 +1154,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
       data['phone'],
       birth,
       address,
+      profile['location'],
+      profile['modality'],
       conadis,
       hasCv ? 'cv' : null,
     ];
@@ -695,6 +1286,17 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
             label: Text(uploadingCv ? 'Subiendo CV...' : hasCv ? 'Actualizar CV' : 'Subir CV'),
           ),
         ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: !hasCv || analyzingCv ? null : analyzeCvForSuggestions,
+            icon: analyzingCv
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.auto_awesome_outlined),
+            label: Text(analyzingCv ? 'Analizando CV...' : 'Analizar CV y sugerir ofertas'),
+          ),
+        ),
         if (error != null) ...[
           const SizedBox(height: 8),
           Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
@@ -742,7 +1344,241 @@ class _ProfileValue extends StatelessWidget {
 }
 
 class CompanyHome extends StatefulWidget{const CompanyHome({super.key});@override State<CompanyHome> createState()=>_CompanyHomeState();}
-class _CompanyHomeState extends State<CompanyHome>{int tab=0;List<dynamic> mine=[];List<dynamic> apps=[];@override void initState(){super.initState();load();}Future<void> load()async{try{mine=await api.myJobs(sessionToken!);apps=await api.applications(sessionToken!);if(mounted)setState((){});}catch(x){if(mounted)toast(x.toString().replaceFirst('Exception: ',''));}}Future<void> create()async{final t=TextEditingController(),d=TextEditingController(),l=TextEditingController(text:'Lima, Perú');final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(title:const Text('Nueva oferta laboral'),content:SingleChildScrollView(child:Column(children:[F(t,'Título del puesto'),F(d,'Descripción',max:5),F(l,'Ubicación')])),actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Publicar'))]));if(ok==true&&t.text.trim().isNotEmpty&&d.text.trim().isNotEmpty){try{await api.createJob(sessionToken!,{'title':t.text.trim(),'description':d.text.trim(),'location':l.text.trim(),'modality':'Remoto','contractType':'Tiempo completo'});toast('Oferta publicada correctamente.');load();}catch(x){toast(x.toString().replaceFirst('Exception: ',''));}}}@override Widget build(BuildContext c)=>Dash(title:'Hola, ${sessionUser?['name']??'empresa'}',tab:tab,onTab:(x)=>setState(()=>tab=x),labels:const['Inicio','Ofertas','Candidatos','Perfil'],children:tab==0?[const Text('Gestiona tus ofertas y conecta con talento diverso.',style:TextStyle(color:muted)),const SizedBox(height:16),Btn('+ Crear nueva oferta',create),const SizedBox(height:20),const Section('Mis ofertas'),...mine.map((j)=>JobCard(j))] :tab==1?[Btn('+ Crear oferta',create),...mine.map((j)=>JobCard(j))]:tab==2?[const Section('Postulaciones'),...apps.map((x)=>ListTile(title:Text(x['candidateId']?['name']?.toString()??'Candidato'),subtitle:Text(x['jobId']?['title']?.toString()??'Oferta')))] :[CompanyProfilePanel(token: sessionToken!)]);}
+class _CompanyHomeState extends State<CompanyHome> {
+  int tab = 0;
+  List<dynamic> mine = [];
+  List<dynamic> apps = [];
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      mine = await api.myJobs(sessionToken!);
+      apps = await api.applications(sessionToken!);
+      if (mounted) setState(() {});
+    } catch (x) {
+      if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> create() async {
+    final title = TextEditingController();
+    final description = TextEditingController();
+    final location = TextEditingController(text: 'Lima, Perú');
+    const modalities = ['Remoto', 'Híbrido', 'Presencial'];
+    String modality = 'Remoto';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Nueva oferta laboral'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                F(title, 'Título del puesto'),
+                F(description, 'Descripción', max: 5),
+                F(location, 'Ubicación'),
+                DropdownButtonFormField<String>(
+                  initialValue: modality,
+                  decoration: const InputDecoration(labelText: 'Modalidad'),
+                  items: modalities
+                      .map((value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) setDialogState(() => modality = value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Publicar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok == true &&
+        title.text.trim().isNotEmpty &&
+        description.text.trim().isNotEmpty) {
+      try {
+        await api.createJob(sessionToken!, {
+          'title': title.text.trim(),
+          'description': description.text.trim(),
+          'location': location.text.trim(),
+          'modality': modality,
+          'contractType': 'Tiempo completo',
+        });
+        toast('Oferta publicada correctamente.');
+        await load();
+      } catch (x) {
+        toast(x.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+    title.dispose();
+    description.dispose();
+    location.dispose();
+  }
+
+  Future<void> changeApplicationStatus(String id, String status) async {
+    try {
+      await api.updateApplicationStatus(sessionToken!, id, status);
+      toast('Etapa actualizada a: $status.');
+      await load();
+    } catch (x) {
+      toast(x.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  @override
+  Widget build(BuildContext c) => Dash(
+        title: 'Hola, ${sessionUser?['name'] ?? 'empresa'}',
+        tab: tab,
+        onTab: (x) => setState(() => tab = x),
+        labels: const ['Inicio', 'Ofertas', 'Candidatos', 'Perfil'],
+        children: tab == 0
+            ? [
+                const Text('Gestiona tus ofertas y conecta con talento diverso.',
+                    style: TextStyle(color: muted)),
+                const SizedBox(height: 16),
+                Btn('+ Crear nueva oferta', create),
+                const SizedBox(height: 20),
+                const Section('Mis ofertas'),
+                if (mine.isEmpty)
+                  const Info('Todavía no hay ofertas',
+                      'Crea una oferta para empezar a recibir candidatos.')
+                else
+                  ...mine.map((j) => JobCard(j)),
+              ]
+            : tab == 1
+                ? [
+                    Btn('+ Crear oferta', create),
+                    ...mine.map((j) => JobCard(j)),
+                  ]
+                : tab == 2
+                    ? [
+                        const Section('Postulaciones recibidas'),
+                        const Text(
+                          'Actualiza cada etapa para que la persona candidata pueda seguir el proceso. El chat se habilita en “En proceso”.',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        ),
+                        const SizedBox(height: 10),
+                        if (apps.isEmpty)
+                          const Info('Aún no hay postulaciones',
+                              'Las postulaciones a tus ofertas aparecerán aquí.')
+                        else
+                          ...apps.map((a) => CompanyApplicationCard(
+                                application: Map<String, dynamic>.from(a),
+                                onStatusChanged: (nextStatus) => changeApplicationStatus(
+                                  (a['_id'] ?? a['id']).toString(),
+                                  nextStatus,
+                                ),
+                                token: sessionToken!,
+                              )),
+                      ]
+                    : [CompanyProfilePanel(token: sessionToken!)],
+      );
+}
+
+class CompanyApplicationCard extends StatelessWidget {
+  final Map<String, dynamic> application;
+  final ValueChanged<String> onStatusChanged;
+  final String token;
+
+  const CompanyApplicationCard({
+    super.key,
+    required this.application,
+    required this.onStatusChanged,
+    required this.token,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = normalizeApplicationStatus(application['status']?.toString());
+    final candidate = application['candidateId'] is Map
+        ? application['candidateId']['name']?.toString() ?? 'Candidato'
+        : 'Candidato';
+    final job = application['jobId'] is Map
+        ? Map<String, dynamic>.from(application['jobId'])
+        : <String, dynamic>{};
+    final appId = (application['_id'] ?? application['id'] ?? '').toString();
+    final jobTitle = job['title']?.toString() ?? 'Oferta';
+    const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        side: const BorderSide(color: line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(candidate,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(height: 3),
+            Text(jobTitle, style: const TextStyle(color: muted)),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              key: ValueKey('$appId-$status'),
+              initialValue: stages.contains(status) ? status : 'Postulado',
+              decoration: const InputDecoration(labelText: 'Etapa del proceso'),
+              items: stages
+                  .map((value) => DropdownMenuItem(
+                        value: value,
+                        child: Text(value),
+                      ))
+                  .toList(),
+              onChanged: onStatusChanged,
+            ),
+            const SizedBox(height: 10),
+            if (chatAvailableForStatus(status))
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatScreen(
+                        applicationId: appId,
+                        token: token,
+                        title: 'Chat con $candidate',
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.chat_outlined),
+                  label: const Text('Abrir chat'),
+                ),
+              )
+            else
+              const Text(
+                'El chat aparecerá cuando actualices el estado a “En proceso”.',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class CompanyProfilePanel extends StatefulWidget {
   final String token;
   const CompanyProfilePanel({super.key, required this.token});
