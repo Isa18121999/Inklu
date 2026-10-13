@@ -15,6 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-render';
 const MAX_CV_BYTES = 5 * 1024 * 1024;
+const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*', methods: ['GET','POST','PATCH','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json({ limit: '8mb' }));
@@ -36,7 +37,18 @@ async function auth(req, res, next) {
 }
 
 function publicUser(user, { includeSensitive = false } = {}) {
-  const data = { id: user._id, name: user.name, email: user.email, phone: user.phone, role: user.role, country: user.country, ruc: user.ruc, profile: user.profile };
+  const data = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    role: user.role,
+    country: user.country,
+    ruc: user.ruc,
+    profile: user.profile,
+    hasProfilePhoto: Boolean(user.profilePhoto?.data?.length),
+    profilePhotoUpdatedAt: user.profilePhoto?.updatedAt || null
+  };
   if (includeSensitive && user.role === 'candidate') {
     data.conadisNumber = user.conadisNumber;
     data.hasCv = Boolean(user.cv?.data?.length);
@@ -405,6 +417,81 @@ app.post('/api/profile/cv/analyze', auth, async (req, res) => {
     res.status(e.statusCode || 500).json({
       message: e.statusCode ? e.message : 'No se pudo analizar el CV.'
     });
+  }
+});
+
+app.post('/api/profile/photo', auth, async (req, res) => {
+  try {
+    const { fileName, mimeType, data } = req.body || {};
+    if (!fileName || !data) {
+      return res.status(400).json({ message: 'Selecciona una foto de perfil.' });
+    }
+
+    const extension = String(fileName).toLowerCase().split('.').pop();
+    const allowed = {
+      jpg: { mime: 'image/jpeg' },
+      jpeg: { mime: 'image/jpeg' },
+      png: { mime: 'image/png' },
+      webp: { mime: 'image/webp' }
+    };
+    const format = allowed[extension];
+    if (!format) {
+      return res.status(415).json({ message: 'La foto debe estar en formato JPG, PNG o WEBP.' });
+    }
+    if (mimeType && ![format.mime, 'application/octet-stream'].includes(String(mimeType).toLowerCase())) {
+      return res.status(415).json({ message: 'El tipo de archivo no coincide con la extensión de la foto.' });
+    }
+
+    const buffer = Buffer.from(String(data), 'base64');
+    if (!buffer.length) {
+      return res.status(400).json({ message: 'El archivo de imagen está vacío.' });
+    }
+    if (buffer.length > MAX_PROFILE_PHOTO_BYTES) {
+      return res.status(413).json({ message: 'La foto no puede superar los 2 MB.' });
+    }
+
+    const isJpeg = buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    const isPng = buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const isWebp = buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+    const validImage = format.mime === 'image/jpeg' ? isJpeg : format.mime === 'image/png' ? isPng : isWebp;
+    if (!validImage) {
+      return res.status(415).json({ message: 'El archivo no parece ser una imagen válida.' });
+    }
+
+    req.user.profilePhoto = {
+      fileName: String(fileName).trim().replace(/[\r\n"]/g, ''),
+      mimeType: format.mime,
+      data: buffer,
+      size: buffer.length,
+      updatedAt: new Date()
+    };
+    await req.user.save();
+
+    res.json({
+      message: 'Foto de perfil actualizada correctamente.',
+      hasProfilePhoto: true,
+      profilePhotoUpdatedAt: req.user.profilePhoto.updatedAt
+    });
+  } catch (error) {
+    console.error('Error guardando la foto de perfil:', error);
+    res.status(500).json({ message: 'No se pudo guardar la foto de perfil.' });
+  }
+});
+
+app.get('/api/profile/photo', auth, async (req, res) => {
+  try {
+    const photo = req.user.profilePhoto;
+    if (!photo?.data?.length) {
+      return res.status(404).json({ message: 'Todavía no hay una foto de perfil.' });
+    }
+    res.set('Content-Type', photo.mimeType || 'image/jpeg');
+    res.set('Content-Length', String(photo.size || photo.data.length));
+    res.set('Content-Disposition', 'inline');
+    res.set('Cache-Control', 'private, max-age=300');
+    return res.send(photo.data);
+  } catch (error) {
+    console.error('Error cargando la foto de perfil:', error);
+    return res.status(500).json({ message: 'No se pudo cargar la foto de perfil.' });
   }
 });
 
