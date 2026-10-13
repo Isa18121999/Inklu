@@ -29,9 +29,6 @@ jobs:
       - name: Get dependencies
         working-directory: flutter_app
         run: flutter pub get
-      - name: Apply accessibility enhancements
-        working-directory: flutter_app
-        run: python3 tool/apply_accessibility_patch.py
       - name: Analyze
         working-directory: flutter_app
         run: |
