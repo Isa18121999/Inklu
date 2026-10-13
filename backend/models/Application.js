@@ -6,7 +6,7 @@ const APPLICATION_STATUSES = [
   'En proceso',
   'Aceptado',
   'Proceso terminado',
-  // Compatibilidad con registros creados por versiones anteriores.
+  // Compatibilidad con postulaciones creadas antes del nuevo flujo.
   'Postulada',
   'En revisión',
   'Entrevista',
@@ -14,10 +14,17 @@ const APPLICATION_STATUSES = [
   'No seleccionada'
 ];
 
+const ApplicationStatusHistorySchema = new mongoose.Schema({
+  status: { type: String, enum: APPLICATION_STATUSES, required: true },
+  changedAt: { type: Date, default: Date.now },
+  changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { _id: false });
+
 const ApplicationSchema = new mongoose.Schema({
   jobId: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
   candidateId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  status: { type: String, enum: APPLICATION_STATUSES, default: 'Postulado' }
+  status: { type: String, enum: APPLICATION_STATUSES, default: 'Postulado' },
+  statusHistory: { type: [ApplicationStatusHistorySchema], default: [] }
 }, { timestamps: true });
 
 ApplicationSchema.index({ jobId: 1, candidateId: 1 }, { unique: true });
