@@ -105,3 +105,37 @@ test('no recomienda una oferta sin evidencia de coincidencia profesional', () =>
 
   assert.deepEqual(recommendJobsForUser(sparseCandidate, [unrelated]), []);
 });
+
+test('trata las habilidades deseables como coincidencias secundarias', () => {
+  const tailoredCandidate = candidate({
+    profile: {
+      education: 'Ingeniería de Sistemas',
+      experience: 1,
+      skills: ['Python'],
+      location: '',
+      modality: ''
+    },
+    cvAnalysis: {
+      skills: ['Python'],
+      keywords: [
+        { term: 'python', count: 4 },
+        { term: 'software', count: 3 }
+      ]
+    }
+  });
+  const job = makeJob({
+    _id: 'preferred-skill-job',
+    title: 'Desarrollador de software',
+    description: 'Desarrollo de soluciones de software.',
+    category: 'Tecnología',
+    requiredSkills: ['SQL avanzado'],
+    preferredSkills: ['Python'],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(tailoredCandidate, [job]);
+
+  assert.equal(results.length, 1);
+  assert.deepEqual(results[0].matchedPreferredSkills, ['Python']);
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('Habilidades deseables coincidentes')));
+});
