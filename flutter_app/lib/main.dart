@@ -139,6 +139,100 @@ Future<void> showNotifications(BuildContext context) async {
   }
 }
 
+Future<void> deleteAccountFlow(BuildContext context, String token) async {
+  final password = TextEditingController();
+  final confirmation = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Eliminar mi cuenta'),
+      content: Form(
+        key: formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Esta acción es permanente. Se eliminará tu cuenta y los datos asociados de INKLU, incluidas las postulaciones y conversaciones relacionadas.',
+                style: TextStyle(height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Contraseña actual'),
+                validator: (value) => (value ?? '').isEmpty ? 'Ingresa tu contraseña.' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: confirmation,
+                decoration: const InputDecoration(labelText: 'Escribe ELIMINAR para confirmar'),
+                validator: (value) => value?.trim() == 'ELIMINAR' ? null : 'Escribe ELIMINAR exactamente.',
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+          onPressed: () {
+            if (formKey.currentState?.validate() ?? false) {
+              Navigator.pop(dialogContext, true);
+            }
+          },
+          child: const Text('Eliminar cuenta'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) {
+    password.dispose();
+    confirmation.dispose();
+    return;
+  }
+
+  try {
+    final response = await api.deleteAccount(token, password.text);
+    await clearSavedSession();
+    sessionToken = null;
+    sessionUser = null;
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const Welcome()),
+      (_) => false,
+    );
+    toast(response['message']?.toString() ?? 'Tu cuenta fue eliminada.');
+  } catch (error) {
+    toast(error.toString().replaceFirst('Exception: ', ''));
+  } finally {
+    password.dispose();
+    confirmation.dispose();
+  }
+}
+
+class DeleteAccountButton extends StatelessWidget {
+  final String token;
+  const DeleteAccountButton({super.key, required this.token});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: OutlinedButton.icon(
+      onPressed: () => deleteAccountFlow(context, token),
+      icon: const Icon(Icons.delete_forever_outlined, color: Colors.red),
+      label: const Text('Eliminar mi cuenta', style: TextStyle(color: Colors.red)),
+      style: OutlinedButton.styleFrom(
+        side: const BorderSide(color: Color(0xFFF2B8B5)),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+      ),
+    ),
+  );
+}
+
 class AppStart extends StatefulWidget {
   const AppStart({super.key});
   @override
@@ -228,6 +322,13 @@ class Welcome extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const Login()),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () => Navigator.push(c, MaterialPageRoute(builder: (_) => const PrivacyPolicyPage())),
+                    icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                    label: const Text('Privacidad y uso de datos'),
+                    style: TextButton.styleFrom(foregroundColor: primary),
+                  ),
                 ],
               ),
             ),
@@ -235,6 +336,48 @@ class Welcome extends StatelessWidget {
         ),
       );
 }
+class PrivacyPolicyPage extends StatelessWidget {
+  const PrivacyPolicyPage({super.key});
+
+  Widget section(String title, String body) => Padding(
+    padding: const EdgeInsets.only(bottom: 18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: ink)),
+        const SizedBox(height: 6),
+        Text(body, style: const TextStyle(color: Color(0xFF4B5563), height: 1.45)),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Privacidad y datos')),
+    body: ListView(
+      padding: const EdgeInsets.all(22),
+      children: [
+        const Text('Cómo utiliza INKLU tu información', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: ink)),
+        const SizedBox(height: 10),
+        const Text(
+          'Esta información está diseñada para explicar de forma sencilla el uso de datos durante el piloto de INKLU.',
+          style: TextStyle(color: muted, height: 1.4),
+        ),
+        const SizedBox(height: 22),
+        section('Datos que puedes proporcionar', 'Datos de registro y contacto, información profesional, currículum, habilidades, experiencia, postulaciones, mensajes relacionados con procesos de selección y, para cuentas candidatas, información sobre acreditación de discapacidad cuando corresponda.'),
+        section('Para qué se utilizan', 'Para administrar tu cuenta, mostrar ofertas, analizar palabras clave de tu CV, estimar coincidencias profesionales, permitir postulaciones, comunicar cambios de estado y apoyar procesos de contratación inclusivos.'),
+        section('Quién puede consultar la información', 'Tu CV y los datos de postulación solo deben estar disponibles para las empresas pertinentes dentro del proceso de selección y para las funciones autorizadas de INKLU. No compartas contraseñas ni enlaces privados de recuperación.'),
+        section('Recomendaciones automáticas', 'Las sugerencias de empleo utilizan palabras clave del CV, habilidades, formación, experiencia y datos de las ofertas. Son orientativas: no garantizan una entrevista ni una contratación, y no deben ser la única base de una decisión laboral.'),
+        section('Seguridad', 'INKLU utiliza controles de acceso, autenticación y medidas técnicas para proteger la información. Ningún sistema conectado a Internet puede garantizar una seguridad absoluta.'),
+        section('Acceso y eliminación', 'Puedes revisar los datos de tu perfil y solicitar la eliminación de la cuenta desde la aplicación. Al eliminar la cuenta, se eliminan la información del perfil y los registros asociados contemplados por el sistema, incluidas postulaciones y conversaciones relacionadas.'),
+        section('Antes de un lanzamiento público', 'Esta pantalla es una explicación inicial para el piloto. Antes de abrir INKLU al público, el responsable del proyecto debe completar su identidad legal, canal de contacto para solicitudes de privacidad, plazos de conservación y los demás términos que correspondan, y revisar el texto con asesoría legal.'),
+        const SizedBox(height: 8),
+        Out('Volver', () => Navigator.pop(context)),
+      ],
+    ),
+  );
+}
+
 class Roles extends StatelessWidget{const Roles({super.key});@override Widget build(BuildContext c)=>Shell(title:'¿Cómo quieres registrarte?',sub:'Selecciona el tipo de cuenta que deseas crear.',child:Column(children:[CardRole('Soy candidato','Busco oportunidades laborales inclusivas.',Icons.person,()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>const CandidateRegister()))),const SizedBox(height:14),CardRole('Soy empresa','Quiero publicar ofertas y encontrar talento.',Icons.business,()=>Navigator.push(c,MaterialPageRoute(builder:(_)=>const CompanyRegister())))]));}
 class CandidateRegister extends StatefulWidget{const CandidateRegister({super.key});@override State<CandidateRegister> createState()=>_CandidateRegisterState();}
 class _CandidateRegisterState extends State<CandidateRegister>{int step=0;final n=TextEditingController(),a=TextEditingController(),e=TextEditingController(),p=TextEditingController(),birth=TextEditingController(),phone=TextEditingController(),address=TextEditingController(text:'Lima, Perú'),conadis=TextEditingController();String? cvPath,cvName;bool terms=false,busy=false;DateTime? bd;
@@ -2053,6 +2196,11 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           const SizedBox(height: 8),
           Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
         ],
+        const SizedBox(height: 20),
+        const Section('Privacidad y cuenta'),
+        const Text('Puedes eliminar tu cuenta y los datos asociados desde aquí.', style: TextStyle(color: muted, fontSize: 12)),
+        const SizedBox(height: 8),
+        DeleteAccountButton(token: widget.token),
       ],
     );
   }
@@ -2954,6 +3102,11 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
           const SizedBox(height: 8),
           Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
         ],
+        const SizedBox(height: 20),
+        const Section('Privacidad y cuenta'),
+        const Text('Puedes eliminar la cuenta empresarial y sus datos asociados.', style: TextStyle(color: muted, fontSize: 12)),
+        const SizedBox(height: 8),
+        DeleteAccountButton(token: widget.token),
       ],
     );
   }
