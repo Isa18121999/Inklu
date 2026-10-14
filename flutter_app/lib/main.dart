@@ -215,6 +215,11 @@ class _CompanyRegisterState extends State<CompanyRegister> {
         phone: '',
         password: pass.text,
         ruc: ruc.text,
+        sector: sector!,
+        size: size.text.trim(),
+        address: address.text.trim(),
+        website: web.text.trim(),
+        description: desc.text.trim(),
       );
       sessionToken = r['token'];
       sessionUser = r['user'];
@@ -1695,11 +1700,114 @@ class _ProfileValue extends StatelessWidget {
       );
 }
 
+class _CompanyMetric extends StatelessWidget {
+  final String value;
+  final String label;
+  final IconData icon;
+  const _CompanyMetric({required this.value, required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.85), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE5E0FA))),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: primary, size: 18),
+      const SizedBox(width: 7),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Color(0xFF211B43))),
+        Text(label, style: const TextStyle(fontSize: 11, color: muted)),
+      ]),
+    ]),
+  );
+}
+
+class _EmptyCompanyOffers extends StatelessWidget {
+  final VoidCallback onCreate;
+  const _EmptyCompanyOffers({required this.onCreate});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(22),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE6E1F5))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      Container(
+        width: 68,
+        height: 68,
+        decoration: const BoxDecoration(color: Color(0xFFF0EDFF), shape: BoxShape.circle),
+        child: const Icon(Icons.work_outline_rounded, color: primary, size: 34),
+      ),
+      const SizedBox(height: 12),
+      const Text('Tu primera oferta empieza aquí', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Color(0xFF211B43))),
+      const SizedBox(height: 6),
+      const Text('Publica una vacante clara y accesible para que las personas candidatas puedan conocerla y postular.', textAlign: TextAlign.center, style: TextStyle(color: muted, height: 1.4)),
+      const SizedBox(height: 14),
+      OutlinedButton.icon(onPressed: onCreate, icon: const Icon(Icons.add), label: const Text('Publicar mi primera oferta')),
+    ]),
+  );
+}
+
+class _CompanyOfferCard extends StatelessWidget {
+  final Map<String, dynamic> job;
+  const _CompanyOfferCard({required this.job});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = (job['title'] ?? 'Oferta laboral').toString();
+    final description = (job['description'] ?? '').toString().trim();
+    final location = (job['location'] ?? '').toString().trim();
+    final modality = (job['modality'] ?? '').toString().trim();
+    final category = (job['category'] ?? '').toString().trim();
+    final contractType = (job['contractType'] ?? '').toString().trim();
+    final active = job['active'] != false;
+    final tags = <String>[if (category.isNotEmpty) category, if (modality.isNotEmpty) modality, if (contractType.isNotEmpty) contractType];
+
+    return Card(
+      color: Colors.white,
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE5E0FA))),
+      child: Padding(
+        padding: const EdgeInsets.all(15),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(color: const Color(0xFFEDE9FF), borderRadius: BorderRadius.circular(13)),
+              child: const Icon(Icons.work_outline_rounded, color: primary, size: 24),
+            ),
+            const SizedBox(width: 11),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF211B43))),
+              const SizedBox(height: 4),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: active ? const Color(0xFFE4F8EE) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(99)), child: Text(active ? 'Activa' : 'Cerrada', style: TextStyle(color: active ? const Color(0xFF137B4B) : muted, fontSize: 11, fontWeight: FontWeight.w800))),
+                ...tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF4F1FF), borderRadius: BorderRadius.circular(99)), child: Text(tag, style: const TextStyle(color: Color(0xFF59508A), fontSize: 11, fontWeight: FontWeight.w600)))),
+              ]),
+            ])),
+          ]),
+          if (location.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(children: [const Icon(Icons.location_on_outlined, size: 16, color: muted), const SizedBox(width: 5), Expanded(child: Text(location, style: const TextStyle(color: muted, fontSize: 12)))]),
+          ],
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(description, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5F5A77), fontSize: 12, height: 1.35)),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
 class CompanyHome extends StatefulWidget{const CompanyHome({super.key});@override State<CompanyHome> createState()=>_CompanyHomeState();}
 class _CompanyHomeState extends State<CompanyHome> {
   int tab = 0;
   List<dynamic> mine = [];
   List<dynamic> apps = [];
+  bool loading = true;
+  String? loadError;
 
   @override
   void initState() {
@@ -1707,13 +1815,32 @@ class _CompanyHomeState extends State<CompanyHome> {
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load({bool showLoading = true}) async {
+    if (showLoading && mounted) {
+      setState(() {
+        loading = true;
+        loadError = null;
+      });
+    }
     try {
-      mine = await api.myJobs(sessionToken!);
-      apps = await api.applications(sessionToken!);
-      if (mounted) setState(() {});
+      final token = sessionToken;
+      if (token == null || token.isEmpty) {
+        throw Exception('Tu sesión ha expirado. Inicia sesión nuevamente.');
+      }
+      final jobs = await api.myJobs(token);
+      if (mounted) setState(() => mine = jobs);
+      final applications = await api.applications(token);
+      if (mounted) {
+        setState(() {
+          apps = applications;
+          loadError = null;
+        });
+      }
     } catch (x) {
-      if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
+      final message = x.toString().replaceFirst('Exception: ', '');
+      if (mounted) setState(() => loadError = message);
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -1823,26 +1950,137 @@ class _CompanyHomeState extends State<CompanyHome> {
   Widget build(BuildContext c) => Dash(
         title: 'Hola, ${sessionUser?['name'] ?? 'empresa'}',
         tab: tab,
-        onTab: (x) => setState(() => tab = x),
+        onTab: (x) {
+          setState(() => tab = x);
+          if (x == 0 || x == 1 || x == 2) load(showLoading: false);
+        },
         labels: const ['Inicio', 'Ofertas', 'Candidatos', 'Perfil'],
         children: tab == 0
             ? [
-                const Text('Gestiona tus ofertas y conecta con talento diverso.',
-                    style: TextStyle(color: muted)),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFF0EDFF), Color(0xFFFDFBFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    border: Border.all(color: const Color(0xFFE5E0FA)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.white,
+                            child: Icon(Icons.diversity_3_outlined, color: primary),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Talento sin barreras',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF211B43)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Publica oportunidades accesibles y encuentra personas con talento que pueden aportar a tu equipo.',
+                        style: TextStyle(color: Color(0xFF5E5878), height: 1.4),
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _CompanyMetric(value: loading && mine.isEmpty ? '—' : '${mine.length}', label: 'Ofertas publicadas', icon: Icons.work_outline),
+                          _CompanyMetric(value: loading && apps.isEmpty ? '—' : '${apps.length}', label: 'Postulaciones', icon: Icons.groups_outlined),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Btn('+ Crear nueva oferta', create),
-                const SizedBox(height: 20),
-                const Section('Mis ofertas'),
-                if (mine.isEmpty)
-                  const Info('Todavía no hay ofertas',
-                      'Crea una oferta para empezar a recibir candidatos.')
-                else
-                  ...mine.map((j) => JobCard(j)),
+                const SizedBox(height: 22),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Expanded(child: Section('Mis ofertas')),
+                    IconButton(
+                      tooltip: 'Actualizar ofertas',
+                      onPressed: loading ? null : () => load(),
+                      icon: const Icon(Icons.refresh, color: primary),
+                    ),
+                  ],
+                ),
+                if (loading && mine.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (mine.isEmpty && loadError != null) ...[
+                  Info('No se pudieron cargar tus ofertas', loadError!),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => load(),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reintentar'),
+                  ),
+                ]
+                else if (mine.isEmpty)
+                  _EmptyCompanyOffers(onCreate: create)
+                else ...[
+                  ...mine.take(3).map((job) => _CompanyOfferCard(job: Map<String, dynamic>.from(job))),
+                  if (mine.length > 3)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => setState(() => tab = 1),
+                        icon: const Icon(Icons.arrow_forward),
+                        label: Text('Ver las ${mine.length} ofertas'),
+                      ),
+                    ),
+                ],
+                if (loadError != null && mine.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text('Aviso de actualización: $loadError', style: const TextStyle(color: Colors.deepOrange, fontSize: 12)),
+                  ),
               ]
             : tab == 1
                 ? [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(child: Section('Todas tus ofertas')),
+                        IconButton(
+                          tooltip: 'Actualizar ofertas',
+                          onPressed: loading ? null : () => load(),
+                          icon: const Icon(Icons.refresh, color: primary),
+                        ),
+                      ],
+                    ),
                     Btn('+ Crear oferta', create),
-                    ...mine.map((j) => JobCard(j)),
+                    const SizedBox(height: 14),
+                    if (loading && mine.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(28),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (mine.isEmpty && loadError != null) ...[
+                      Info('No se pudieron cargar tus ofertas', loadError!),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(onPressed: () => load(), icon: const Icon(Icons.refresh), label: const Text('Reintentar')),
+                    ]
+                    else if (mine.isEmpty)
+                      _EmptyCompanyOffers(onCreate: create)
+                    else
+                      ...mine.map((job) => _CompanyOfferCard(job: Map<String, dynamic>.from(job))),
                   ]
                 : tab == 2
                     ? [
@@ -1852,9 +2090,18 @@ class _CompanyHomeState extends State<CompanyHome> {
                           style: TextStyle(color: muted, fontSize: 12),
                         ),
                         const SizedBox(height: 10),
-                        if (apps.isEmpty)
-                          const Info('Aún no hay postulaciones',
-                              'Las postulaciones a tus ofertas aparecerán aquí.')
+                        if (loading && apps.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (apps.isEmpty && loadError != null) ...[
+                          Info('No se pudieron cargar las postulaciones', loadError!),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(onPressed: () => load(), icon: const Icon(Icons.refresh), label: const Text('Reintentar')),
+                        ]
+                        else if (apps.isEmpty)
+                          const Info('Aún no hay postulaciones', 'Cuando una persona postule a tus ofertas, aparecerá aquí para que puedas actualizar su etapa y conversar cuando corresponda.')
                         else
                           ...apps.map((a) => CompanyApplicationCard(
                                 application: Map<String, dynamic>.from(a),
@@ -1970,8 +2217,14 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
   Map<String, dynamic>? user;
   bool loading = true;
   bool uploadingPhoto = false;
+  bool savingProfile = false;
   Uint8List? profilePhotoBytes;
   String? error;
+
+  Map<String, dynamic> get companyProfile {
+    final value = user?['companyProfile'];
+    return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+  }
 
   @override
   void initState() {
@@ -1986,13 +2239,15 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
     });
     try {
       final result = await api.profile(widget.token);
-      Uint8List? photoBytes;
-      if (result['hasProfilePhoto'] == true) {
+      Uint8List? photoBytes = profilePhotoBytes;
+      if (result['hasProfilePhoto'] == true && photoBytes == null) {
         try {
           photoBytes = await api.profilePhoto(widget.token);
         } catch (_) {
-          // Profile details remain available even if photo retrieval fails.
+          // The profile should remain usable if its image is unavailable.
         }
+      } else if (result['hasProfilePhoto'] != true) {
+        photoBytes = null;
       }
       if (mounted) {
         setState(() {
@@ -2024,6 +2279,7 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
     setState(() => uploadingPhoto = true);
     try {
       await api.uploadProfilePhoto(widget.token, path);
+      profilePhotoBytes = null;
       await load();
       toast('Foto de perfil de empresa actualizada.');
     } catch (e) {
@@ -2033,9 +2289,97 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
     }
   }
 
-  String show(dynamic value) {
+  String showValue(dynamic value) {
     final text = value?.toString().trim() ?? '';
     return text.isEmpty ? 'Pendiente de completar' : text;
+  }
+
+  Future<void> editCompanyProfile() async {
+    final data = user ?? <String, dynamic>{};
+    final profile = companyProfile;
+    final name = TextEditingController(text: data['name']?.toString() ?? '');
+    final phone = TextEditingController(text: data['phone']?.toString() ?? '');
+    final sector = TextEditingController(text: profile['sector']?.toString() ?? '');
+    final size = TextEditingController(text: profile['size']?.toString() ?? '');
+    final address = TextEditingController(text: profile['address']?.toString() ?? '');
+    final website = TextEditingController(text: profile['website']?.toString() ?? '');
+    final description = TextEditingController(text: profile['description']?.toString() ?? '');
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Completar perfil de empresa'),
+        content: SizedBox(
+          width: 440,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                F(name, 'Nombre de la empresa'),
+                F(phone, 'Teléfono de contacto', type: TextInputType.phone),
+                F(sector, 'Sector'),
+                F(size, 'Tamaño de la empresa (ej. 11-50 empleados)'),
+                F(address, 'Dirección'),
+                F(website, 'Sitio web', type: TextInputType.url),
+                F(description, 'Descripción de la empresa', max: 4),
+                const SizedBox(height: 4),
+                const Text(
+                  'Estos datos se guardarán en tu perfil y podrás modificarlos después.',
+                  style: TextStyle(color: muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () {
+              if (name.text.trim().isEmpty) {
+                toast('El nombre de la empresa es obligatorio.');
+                return;
+              }
+              Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Guardar cambios'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) {
+      for (final controller in [name, phone, sector, size, address, website, description]) {
+        controller.dispose();
+      }
+      return;
+    }
+
+    setState(() => savingProfile = true);
+    try {
+      final updated = await api.updateProfile(widget.token, {
+        'name': name.text.trim(),
+        'phone': phone.text.trim(),
+        'companyProfile': {
+          'sector': sector.text.trim(),
+          'size': size.text.trim(),
+          'address': address.text.trim(),
+          'website': website.text.trim(),
+          'description': description.text.trim(),
+        },
+      });
+      if (mounted) {
+        setState(() => user = updated);
+        if (sessionUser != null) sessionUser = {...sessionUser!, ...updated};
+      }
+      toast('Perfil de empresa guardado correctamente.');
+    } catch (e) {
+      toast(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      for (final controller in [name, phone, sector, size, address, website, description]) {
+        controller.dispose();
+      }
+      if (mounted) setState(() => savingProfile = false);
+    }
   }
 
   @override
@@ -2059,7 +2403,18 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
         ],
       );
     }
+
     final data = user ?? <String, dynamic>{};
+    final profile = companyProfile;
+    final email = data['email']?.toString() ?? '';
+    final completionFields = [
+      data['name'], data['email'], data['ruc'], data['phone'],
+      profile['sector'], profile['size'], profile['address'],
+      profile['website'], profile['description'],
+    ];
+    final completeCount = completionFields.where((value) => value != null && value.toString().trim().isNotEmpty).length;
+    final completion = completeCount / completionFields.length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2067,69 +2422,123 @@ class _CompanyProfilePanelState extends State<CompanyProfilePanel> {
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: const Color(0xFFF8F7FF),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF8F7FF), Color(0xFFF0EDFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             border: Border.all(color: line),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 32,
+                radius: 34,
                 backgroundColor: const Color(0xFFEDE9FE),
-                backgroundImage: profilePhotoBytes == null
-                    ? null
-                    : MemoryImage(profilePhotoBytes!),
-                child: profilePhotoBytes == null
-                    ? const Icon(Icons.business_outlined, color: primary, size: 32)
-                    : null,
+                backgroundImage: profilePhotoBytes == null ? null : MemoryImage(profilePhotoBytes!),
+                child: profilePhotoBytes == null ? const Icon(Icons.business_outlined, color: primary, size: 33) : null,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(show(data['name']),
-                        style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 3),
-                    const Text('Perfil de empresa', style: TextStyle(color: muted)),
+                    Text(
+                      showValue(data['name']),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: Color(0xFF211B43)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      (profile['sector']?.toString().trim().isNotEmpty ?? false) ? profile['sector'].toString() : 'Perfil de empresa',
+                      style: const TextStyle(color: muted),
+                    ),
                   ],
                 ),
               ),
               IconButton(
                 tooltip: 'Actualizar perfil',
                 onPressed: loading ? null : load,
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh, color: primary),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: uploadingPhoto ? null : uploadProfilePhoto,
-            icon: uploadingPhoto
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.add_a_photo_outlined),
-            label: Text(
-              uploadingPhoto
-                  ? 'Subiendo foto...'
-                  : profilePhotoBytes == null
-                      ? 'Subir foto de perfil'
-                      : 'Cambiar foto de perfil',
-            ),
+        OutlinedButton.icon(
+          onPressed: uploadingPhoto ? null : uploadProfilePhoto,
+          icon: uploadingPhoto
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.add_a_photo_outlined),
+          label: Text(uploadingPhoto ? 'Subiendo foto...' : profilePhotoBytes == null ? 'Subir foto de perfil' : 'Cambiar foto de perfil'),
+        ),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: line), borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(child: Text('Completitud del perfil', style: TextStyle(fontWeight: FontWeight.w800))),
+                  Text('${(completion * 100).round()}%', style: const TextStyle(color: primary, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 9),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(value: completion, minHeight: 8, backgroundColor: line, color: primary),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                completion >= 1 ? '¡Perfil completo! Tu empresa ya cuenta con la información principal.' : 'Completa los datos de tu empresa para que los candidatos conozcan mejor tu organización.',
+                style: const TextStyle(color: muted, fontSize: 12, height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: savingProfile ? null : editCompanyProfile,
+                  icon: savingProfile ? const SizedBox(width: 17, height: 17, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.edit_outlined),
+                  label: Text(savingProfile ? 'Guardando...' : 'Editar información de empresa'),
+                  style: FilledButton.styleFrom(backgroundColor: primary),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 22),
         const Section('Datos registrados'),
-        _ProfileValue(icon: Icons.email_outlined, label: 'Correo institucional', value: show(data['email'])),
-        _ProfileValue(icon: Icons.business_outlined, label: 'RUC', value: show(data['ruc'])),
-        _ProfileValue(icon: Icons.phone_outlined, label: 'Teléfono', value: show(data['phone'])),
+        _ProfileValue(icon: Icons.email_outlined, label: 'Correo institucional', value: showValue(email)),
+        _ProfileValue(icon: Icons.business_outlined, label: 'RUC', value: showValue(data['ruc'])),
+        _ProfileValue(icon: Icons.phone_outlined, label: 'Teléfono', value: showValue(data['phone'])),
         const SizedBox(height: 12),
-        const Info(
-          'Información de la empresa',
-          'El perfil muestra los datos que actualmente guarda la cuenta. El sector, tamaño, dirección, sitio web y descripción aún necesitan integrarse con el almacenamiento del backend.',
+        const Section('Información de la empresa'),
+        _ProfileValue(icon: Icons.category_outlined, label: 'Sector', value: showValue(profile['sector'])),
+        _ProfileValue(icon: Icons.groups_outlined, label: 'Tamaño', value: showValue(profile['size'])),
+        _ProfileValue(icon: Icons.location_on_outlined, label: 'Dirección', value: showValue(profile['address'])),
+        _ProfileValue(icon: Icons.language_outlined, label: 'Sitio web', value: showValue(profile['website'])),
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: line), borderRadius: BorderRadius.circular(14)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Descripción', style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Text(
+                profile['description']?.toString().trim().isNotEmpty == true ? profile['description'].toString() : 'Añade una descripción para presentar tu empresa y su compromiso con la inclusión laboral.',
+                style: TextStyle(color: profile['description']?.toString().trim().isNotEmpty == true ? ink : muted, height: 1.4),
+              ),
+            ],
+          ),
         ),
+        if (loading) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 2)),
         if (error != null) ...[
           const SizedBox(height: 8),
           Text(error!, style: const TextStyle(color: Colors.red, fontSize: 12)),
