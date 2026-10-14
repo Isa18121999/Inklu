@@ -10,6 +10,7 @@ const User = require('./models/User');
 const Job = require('./models/Job');
 const Application = require('./models/Application');
 const ChatMessage = require('./models/ChatMessage');
+const Notification = require('./models/Notification');
 const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 
@@ -19,7 +20,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-render';
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*', methods: ['GET','POST','PATCH','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*', methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json({ limit: '8mb' }));
 
 function normalizeConadis(value) { return String(value || '').replace(/\s+/g, '').trim(); }
@@ -768,6 +769,45 @@ app.patch('/api/profile/me', auth, async (req, res) => {
   }
 });
 
+app.get('/api/notifications', auth, async (req, res) => {
+  try {
+    const items = await Notification.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json(items.map(item => ({
+      id: String(item._id),
+      title: item.title,
+      message: item.message,
+      type: item.type,
+      relatedId: item.relatedId ? String(item.relatedId) : null,
+      read: Boolean(item.readAt),
+      createdAt: item.createdAt
+    })));
+  } catch (error) {
+    console.error('Error cargando notificaciones:', error);
+    res.status(500).json({ message: 'No se pudieron cargar las notificaciones.' });
+  }
+});
+
+app.patch('/api/notifications/:id/read', auth, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Notificación no válida.' });
+    }
+    const item = await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user._id, readAt: null },
+      { $set: { readAt: new Date() } },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ message: 'No se encontró una notificación pendiente.' });
+    res.json({ success: true, id: String(item._id), read: true });
+  } catch (error) {
+    console.error('Error actualizando notificación:', error);
+    res.status(500).json({ message: 'No se pudo actualizar la notificación.' });
+  }
+});
+
 app.get('/api/recommendations', auth, async (req, res) => {
   try {
     if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Las recomendaciones están disponibles para candidatos.' });
@@ -784,6 +824,47 @@ app.get('/api/recommendations', auth, async (req, res) => {
     });
   } catch (e) {
     res.status(e.statusCode || 500).json({ message: e.statusCode ? e.message : 'No se pudieron calcular las recomendaciones.' });
+  }
+});
+
+app.get('/api/jobs/saved', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Las ofertas guardadas están disponibles para candidatos.' });
+    const candidate = await User.findById(req.user._id).select('savedJobs');
+    const ids = candidate?.savedJobs || [];
+    const jobs = await Job.find({ _id: { $in: ids }, active: true })
+      .populate('companyId', 'name')
+      .sort({ updatedAt: -1 });
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error cargando ofertas guardadas:', error);
+    res.status(500).json({ message: 'No se pudieron cargar las ofertas guardadas.' });
+  }
+});
+
+app.post('/api/jobs/:id/save', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden guardar ofertas.' });
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Oferta no válida.' });
+    const job = await Job.findOne({ _id: req.params.id, active: true });
+    if (!job) return res.status(404).json({ message: 'La oferta no existe o ya no está disponible.' });
+    await User.updateOne({ _id: req.user._id }, { $addToSet: { savedJobs: job._id } });
+    res.json({ saved: true, jobId: String(job._id) });
+  } catch (error) {
+    console.error('Error guardando oferta:', error);
+    res.status(500).json({ message: 'No se pudo guardar la oferta.' });
+  }
+});
+
+app.delete('/api/jobs/:id/save', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden administrar ofertas guardadas.' });
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Oferta no válida.' });
+    await User.updateOne({ _id: req.user._id }, { $pull: { savedJobs: new mongoose.Types.ObjectId(req.params.id) } });
+    res.json({ saved: false, jobId: req.params.id });
+  } catch (error) {
+    console.error('Error quitando oferta guardada:', error);
+    res.status(500).json({ message: 'No se pudo quitar la oferta guardada.' });
   }
 });
 
@@ -907,6 +988,17 @@ app.post('/api/applications', auth, async (req, res) => {
       status: 'Postulado',
       statusHistory: [{ status: 'Postulado', changedAt: new Date(), changedBy: req.user._id }]
     });
+    try {
+      await Notification.create({
+        userId: job.companyId,
+        title: 'Nueva postulación',
+        message: `${req.user.name} se postuló a la oferta “${job.title}”.`,
+        type: 'application',
+        relatedId: application._id
+      });
+    } catch (notificationError) {
+      console.error('No se pudo crear la notificación de postulación:', notificationError.message);
+    }
     res.status(201).json(application);
   } catch (e) { if (e?.code === 11000) return res.status(409).json({ message: 'Ya te postulaste a esta oferta.' }); console.error(e); res.status(500).json({ message: 'No se pudo registrar la postulación.' }); }
 });
@@ -928,6 +1020,17 @@ app.patch('/api/applications/:id/status', auth, async (req, res) => {
         changedBy: req.user._id
       });
       await application.save();
+      try {
+        await Notification.create({
+          userId: application.candidateId,
+          title: 'Actualización de tu postulación',
+          message: `Tu postulación a “${application.jobId.title}” cambió a: ${nextStatus}.`,
+          type: 'application_status',
+          relatedId: application._id
+        });
+      } catch (notificationError) {
+        console.error('No se pudo crear la notificación de estado:', notificationError.message);
+      }
     }
     res.json({
       ...application.toObject(),
