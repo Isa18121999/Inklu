@@ -37,6 +37,14 @@ const ProfilePhotoSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+const CompanyProfileSchema = new mongoose.Schema({
+  sector: { type: String, trim: true, default: '' },
+  size: { type: String, trim: true, default: '' },
+  address: { type: String, trim: true, default: '' },
+  website: { type: String, trim: true, default: '' },
+  description: { type: String, trim: true, default: '' }
+}, { _id: false });
+
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -45,6 +53,7 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ['candidate', 'company'], required: true },
   country: { type: String, default: 'PE' },
   ruc: { type: String, trim: true },
+  companyProfile: { type: CompanyProfileSchema, default: () => ({}) },
   conadisNumber: { type: String, trim: true, default: null },
   accreditationType: { type: String, trim: true, default: 'Carné CONADIS' },
   profile: { type: CandidateProfileSchema, default: () => ({}) },
