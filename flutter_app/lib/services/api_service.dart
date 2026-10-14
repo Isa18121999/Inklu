@@ -56,6 +56,15 @@ class ApiService {
     return _decodeMap(r);
   }
   Future<List<dynamic>> jobs(String token) async => _getList('/jobs', token);
+  Future<List<dynamic>> savedJobs(String token) async => _getList('/jobs/saved', token);
+  Future<Map<String, dynamic>> saveJob(String token, String jobId) async =>
+      _postAuth('/jobs/$jobId/save', token, {});
+  Future<Map<String, dynamic>> unsaveJob(String token, String jobId) async =>
+      _deleteMap('/jobs/$jobId/save', token);
+  Future<List<dynamic>> notifications(String token) async =>
+      _getList('/notifications', token);
+  Future<Map<String, dynamic>> markNotificationRead(String token, String id) async =>
+      _patch('/notifications/$id/read', token, {'read': true});
 
   Future<List<dynamic>> searchJobs(
     String token, {
@@ -153,6 +162,7 @@ class ApiService {
     on FormatException { throw Exception('El servidor de INKLU devolvió una respuesta inválida.'); }
   }
   Future<Map<String,dynamic>> _postAuth(String path,String token,Map<String,dynamic> body)async{final r=await http.post(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
+  Future<Map<String,dynamic>> _deleteMap(String path,String token)async{final r=await http.delete(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _patch(String path,String token,Map<String,dynamic> body)async{final r=await http.patch(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _getMap(String path,String token)async{final r=await http.get(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<List<dynamic>> _getList(String path,String token)async{final r=await http.get(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25));return _decodeList(r);}
