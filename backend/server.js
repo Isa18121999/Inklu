@@ -795,6 +795,48 @@ app.patch('/api/profile/me', auth, async (req, res) => {
   }
 });
 
+app.delete('/api/profile/me', auth, async (req, res) => {
+  try {
+    const password = String(req.body?.password || '');
+    if (!password || !(await bcrypt.compare(password, req.user.passwordHash))) {
+      return res.status(401).json({ message: 'La contraseña actual no es correcta.' });
+    }
+
+    const userId = req.user._id;
+    let applicationIds = [];
+    let jobIds = [];
+
+    if (req.user.role === 'company') {
+      const jobs = await Job.find({ companyId: userId }).select('_id').lean();
+      jobIds = jobs.map(job => job._id);
+      if (jobIds.length) {
+        const applications = await Application.find({ jobId: { $in: jobIds } }).select('_id').lean();
+        applicationIds = applications.map(application => application._id);
+      }
+    } else {
+      const applications = await Application.find({ candidateId: userId }).select('_id').lean();
+      applicationIds = applications.map(application => application._id);
+    }
+
+    if (applicationIds.length) {
+      await ChatMessage.deleteMany({ applicationId: { $in: applicationIds } });
+      await Application.deleteMany({ _id: { $in: applicationIds } });
+      await Notification.deleteMany({ relatedId: { $in: applicationIds } });
+    }
+    if (jobIds.length) {
+      await Application.deleteMany({ jobId: { $in: jobIds } });
+      await Job.deleteMany({ _id: { $in: jobIds } });
+    }
+
+    await Notification.deleteMany({ userId });
+    await User.deleteOne({ _id: userId });
+    return res.json({ success: true, message: 'La cuenta y los datos asociados se eliminaron.' });
+  } catch (error) {
+    console.error('Error eliminando cuenta:', error);
+    return res.status(500).json({ message: 'No se pudo eliminar la cuenta. Inténtalo de nuevo más tarde.' });
+  }
+});
+
 app.get('/api/notifications', auth, async (req, res) => {
   try {
     const items = await Notification.find({ userId: req.user._id })
