@@ -457,7 +457,7 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (e) { console.error(e); return res.status(500).json({ message: 'No se pudo iniciar sesión.' }); }
 });
 
-// La recuperación envía un enlace por correo con Resend. No revela si una cuenta existe.
+// La recuperación envía un enlace con un proveedor de correo configurado. No revela si una cuenta existe.
 app.post('/api/auth/forgot-password', async (req, res) => {
   const genericMessage = 'Si existe una cuenta con ese correo y la recuperación está habilitada, recibirás un enlace para restablecer tu contraseña.';
   try {
