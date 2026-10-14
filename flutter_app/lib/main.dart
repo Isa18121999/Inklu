@@ -2960,29 +2960,100 @@ void showOffer(
   dynamic d,
   Future<void> Function(String) apply,
 ) {
+  final requiredSkills = d['requiredSkills'] is List
+      ? (d['requiredSkills'] as List).map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
+      : <String>[];
+  final accessibility = d['accessibilityDetails']?.toString().trim() ?? '';
+  final company = d['companyId'] is Map
+      ? (d['companyId']['name']?.toString() ?? 'Empresa')
+      : 'Empresa';
+  final years = (d['experienceRequired'] as num?)?.toInt() ?? 0;
   showModalBottomSheet(
     context: c,
     isScrollControlled: true,
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            d['title']?.toString() ?? 'Oferta',
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            d['companyId']?['name']?.toString() ?? 'Empresa',
-            style: const TextStyle(color: muted),
-          ),
-          const SizedBox(height: 14),
-          Text(d['description']?.toString() ?? ''),
-          const SizedBox(height: 18),
-          Btn('Postular ahora', () => apply(d['_id'].toString())),
-        ],
+    useSafeArea: true,
+    builder: (sheetContext) => FractionallySizedBox(
+      heightFactor: 0.88,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(color: line, borderRadius: BorderRadius.circular(99)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              d['title']?.toString() ?? 'Oferta',
+              style: const TextStyle(fontSize: 24, height: 1.2, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(company, style: const TextStyle(color: muted, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if ((d['category']?.toString() ?? '').trim().isNotEmpty)
+                  Chip(avatar: const Icon(Icons.work_outline, size: 17), label: Text(d['category'].toString())),
+                if ((d['location']?.toString() ?? '').trim().isNotEmpty)
+                  Chip(avatar: const Icon(Icons.location_on_outlined, size: 17), label: Text(d['location'].toString())),
+                if ((d['modality']?.toString() ?? '').trim().isNotEmpty)
+                  Chip(avatar: const Icon(Icons.laptop_mac_outlined, size: 17), label: Text(d['modality'].toString())),
+                if ((d['contractType']?.toString() ?? '').trim().isNotEmpty)
+                  Chip(avatar: const Icon(Icons.description_outlined, size: 17), label: Text(d['contractType'].toString())),
+                Chip(
+                  avatar: const Icon(Icons.work_history_outlined, size: 17),
+                  label: Text(years == 0 ? 'Sin experiencia mínima' : '$years año(s) de experiencia'),
+                ),
+                if ((d['salary']?.toString() ?? '').trim().isNotEmpty)
+                  Chip(avatar: const Icon(Icons.payments_outlined, size: 17), label: Text(d['salary'].toString())),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Section('Sobre el puesto'),
+            Text(d['description']?.toString() ?? 'La empresa no ha añadido una descripción.'),
+            const SizedBox(height: 18),
+            const Section('Habilidades requeridas'),
+            if (requiredSkills.isEmpty)
+              const Text('La empresa todavía no especifica habilidades concretas.', style: TextStyle(color: muted))
+            else
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: requiredSkills.map((skill) => Chip(
+                  avatar: const Icon(Icons.check_circle_outline, size: 17),
+                  label: Text(skill),
+                  backgroundColor: const Color(0xFFF0EDFF),
+                )).toList(),
+              ),
+            const SizedBox(height: 18),
+            const Section('Accesibilidad del puesto'),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8F7FF),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: line),
+              ),
+              child: Text(
+                accessibility.isNotEmpty
+                    ? accessibility
+                    : 'La empresa no ha detallado los ajustes o condiciones de accesibilidad. Puedes solicitar más información antes de continuar.',
+                style: TextStyle(color: accessibility.isNotEmpty ? ink : muted, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Btn('Postular ahora', () => apply((d['_id'] ?? d['id'] ?? '').toString())),
+            const SizedBox(height: 8),
+            Out('Cerrar detalles', () => Navigator.pop(sheetContext)),
+          ],
+        ),
       ),
     ),
   );
