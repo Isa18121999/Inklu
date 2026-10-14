@@ -45,6 +45,7 @@ function publicUser(user, { includeSensitive = false } = {}) {
     role: user.role,
     country: user.country,
     ruc: user.ruc,
+    companyProfile: user.companyProfile,
     profile: user.profile,
     hasProfilePhoto: Boolean(user.profilePhoto?.data?.length),
     profilePhotoUpdatedAt: user.profilePhoto?.updatedAt || null
@@ -341,7 +342,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true, service: 'INKLU API' }
 
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, phone, password, role, country, ruc, accreditationType, accreditationNumber } = req.body || {};
+    const { name, email, phone, password, role, country, ruc, accreditationType, accreditationNumber, companyProfile } = req.body || {};
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'Completa los campos obligatorios.' });
     if (!['candidate', 'company'].includes(role)) return res.status(400).json({ message: 'Tipo de cuenta inválido.' });
     if (password.length < 8) return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' });
@@ -355,7 +356,24 @@ app.post('/api/auth/register', async (req, res) => {
       if (await User.exists({ conadisNumber })) return res.status(409).json({ message: 'Este número de CONADIS ya está registrado.' });
     }
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ name: String(name).trim(), email: normalizedEmail, phone: String(phone || '').trim(), passwordHash, role, country: country || 'PE', ruc: role === 'company' ? String(ruc || '').trim() : undefined, conadisNumber, accreditationType: role === 'candidate' ? (accreditationType || 'Carné CONADIS') : undefined });
+    const user = await User.create({
+      name: String(name).trim(),
+      email: normalizedEmail,
+      phone: String(phone || '').trim(),
+      passwordHash,
+      role,
+      country: country || 'PE',
+      ruc: role === 'company' ? String(ruc || '').trim() : undefined,
+      companyProfile: role === 'company' ? {
+        sector: String(companyProfile?.sector || '').trim(),
+        size: String(companyProfile?.size || '').trim(),
+        address: String(companyProfile?.address || '').trim(),
+        website: String(companyProfile?.website || '').trim(),
+        description: String(companyProfile?.description || '').trim()
+      } : undefined,
+      conadisNumber,
+      accreditationType: role === 'candidate' ? (accreditationType || 'Carné CONADIS') : undefined
+    });
     return res.status(201).json({ token: tokenFor(user), user: publicUser(user, { includeSensitive: true }) });
   } catch (e) {
     if (e?.code === 11000) {
@@ -498,13 +516,43 @@ app.get('/api/profile/photo', auth, async (req, res) => {
 app.get('/api/profile/me', auth, async (req, res) => res.json(publicUser(req.user, { includeSensitive: true })));
 app.patch('/api/profile/me', auth, async (req, res) => {
   try {
-    const allowed = ['birth', 'address', 'education', 'experience', 'skills', 'modality', 'location'];
+    const body = req.body || {};
     const updates = {};
-    for (const key of allowed) if (Object.prototype.hasOwnProperty.call(req.body || {}, key)) updates[`profile.${key}`] = req.body[key];
-    if (Object.keys(updates).length === 0) return res.status(400).json({ message: 'No hay datos de perfil para actualizar.' });
+
+    if (req.user.role === 'candidate') {
+      const allowed = ['birth', 'address', 'education', 'experience', 'skills', 'modality', 'location'];
+      for (const key of allowed) {
+        if (Object.prototype.hasOwnProperty.call(body, key)) updates[`profile.${key}`] = body[key];
+      }
+    } else if (req.user.role === 'company') {
+      if (Object.prototype.hasOwnProperty.call(body, 'name')) {
+        const name = String(body.name || '').trim();
+        if (!name) return res.status(400).json({ message: 'El nombre de la empresa es obligatorio.' });
+        updates.name = name;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'phone')) updates.phone = String(body.phone || '').trim();
+
+      const companyProfile = body.companyProfile && typeof body.companyProfile === 'object'
+        ? body.companyProfile
+        : {};
+      const allowedCompanyFields = ['sector', 'size', 'address', 'website', 'description'];
+      for (const key of allowedCompanyFields) {
+        if (Object.prototype.hasOwnProperty.call(companyProfile, key)) {
+          updates[`companyProfile.${key}`] = String(companyProfile[key] ?? '').trim();
+        }
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No hay datos de perfil para actualizar.' });
+    }
     const user = await User.findByIdAndUpdate(req.user._id, { $set: updates }, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: 'No se encontró la cuenta.' });
     res.json(publicUser(user, { includeSensitive: true }));
-  } catch (e) { console.error(e); res.status(500).json({ message: 'No se pudo actualizar el perfil.' }); }
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'No se pudo actualizar el perfil.' });
+  }
 });
 
 app.get('/api/recommendations', auth, async (req, res) => {
