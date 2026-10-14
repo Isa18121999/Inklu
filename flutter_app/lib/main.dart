@@ -2081,6 +2081,7 @@ class _CompanyHomeState extends State<CompanyHome> {
   Future<void> create() async {
     final title = TextEditingController();
     final description = TextEditingController();
+    final experience = TextEditingController(text: '0');
     final location = TextEditingController(text: 'Lima, Perú');
     const modalities = ['Remoto', 'Híbrido', 'Presencial'];
     const categories = ['Tecnología', 'Administración', 'Diseño', 'Atención al cliente', 'Educación', 'Salud', 'Finanzas', 'Logística', 'Marketing', 'Otro'];
@@ -2099,6 +2100,7 @@ class _CompanyHomeState extends State<CompanyHome> {
               children: [
                 F(title, 'Título del puesto'),
                 F(description, 'Descripción', max: 5),
+                F(experience, 'Experiencia requerida en años (0 = sin requisito)', type: TextInputType.number, format: digits(2)),
                 F(location, 'Ubicación'),
                 DropdownButtonFormField<String>(
                   initialValue: category,
@@ -2158,6 +2160,7 @@ class _CompanyHomeState extends State<CompanyHome> {
           'category': category,
           'modality': modality,
           'contractType': contractType,
+          'experienceRequired': int.tryParse(experience.text.trim()) ?? 0,
         });
         toast('Oferta publicada correctamente.');
         await load();
@@ -2167,6 +2170,7 @@ class _CompanyHomeState extends State<CompanyHome> {
     }
     title.dispose();
     description.dispose();
+    experience.dispose();
     location.dispose();
   }
 
