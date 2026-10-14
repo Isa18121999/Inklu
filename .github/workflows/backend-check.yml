@@ -31,3 +31,5 @@ jobs:
           for file in models/*.js; do node --check "$file"; done
       - name: Verify CV parsers load
         run: node -e "const { PDFParse } = require('pdf-parse'); const mammoth = require('mammoth'); if (!PDFParse || !mammoth.extractRawText) process.exit(1); console.log('CV parsers loaded successfully')"
+      - name: Run backend tests
+        run: npm test
