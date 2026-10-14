@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 
@@ -24,26 +25,24 @@ final GlobalKey<NavigatorState> _nav=GlobalKey<NavigatorState>();
 class InkluApp extends StatelessWidget{const InkluApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,navigatorKey:_nav,title:'INKLU',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:Colors.white,colorScheme:ColorScheme.fromSeed(seedColor:primary)),home:const AppStart());}
 const String _rememberKey='inklu_remember_session';
 const String _tokenKey='inklu_saved_token';
-const String _userKey='inklu_saved_user';
+const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
 
 Future<void> saveLoginSession(bool remember) async {
   final prefs = await SharedPreferences.getInstance();
-  if (remember && sessionToken != null && sessionUser != null) {
+  if (remember && sessionToken != null && sessionToken!.isNotEmpty) {
+    // Keep the preference only for the non-sensitive toggle; the JWT stays
+    // in OS-backed secure storage (Android Keystore / iOS Keychain).
+    await _secureStorage.write(key: _tokenKey, value: sessionToken);
     await prefs.setBool(_rememberKey, true);
-    await prefs.setString(_tokenKey, sessionToken!);
-    await prefs.setString(_userKey, jsonEncode(sessionUser));
   } else {
-    await prefs.remove(_rememberKey);
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_userKey);
+    await clearSavedSession();
   }
 }
 
 Future<void> clearSavedSession() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.remove(_rememberKey);
-  await prefs.remove(_tokenKey);
-  await prefs.remove(_userKey);
+  await _secureStorage.delete(key: _tokenKey);
 }
 
 Future<void> confirmLogout(BuildContext context) async {
@@ -95,19 +94,20 @@ class _AppStartState extends State<AppStart> {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool(_rememberKey) == true) {
-        final token = prefs.getString(_tokenKey);
-        final rawUser = prefs.getString(_userKey);
-        if (token != null && token.isNotEmpty && rawUser != null) {
-          final decoded = jsonDecode(rawUser);
-          if (decoded is Map) {
-            sessionToken = token;
-            sessionUser = Map<String, dynamic>.from(decoded);
-            restored = true;
-          }
+        final token = await _secureStorage.read(key: _tokenKey);
+        if (token != null && token.isNotEmpty) {
+          // Ask the API to validate the token. Expired sessions are not restored.
+          final currentUser = await api.profile(token);
+          sessionToken = token;
+          sessionUser = currentUser;
+          restored = true;
         }
       }
     } catch (_) {
       restored = false;
+      sessionToken = null;
+      sessionUser = null;
+      try { await clearSavedSession(); } catch (_) {}
     }
     if (mounted) setState(() => loading = false);
   }
