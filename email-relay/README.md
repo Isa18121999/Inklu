@@ -1,6 +1,6 @@
-# Activar el correo de recuperación de INKLU con Gmail
+# Activar los correos de INKLU con Gmail
 
-El registro de Render muestra un **Connection timeout** al intentar enviar correo mediante SMTP. Para evitar ese bloqueo, INKLU también admite un pequeño relay por HTTPS con Google Apps Script. No se necesita comprar un dominio.
+El registro de Render mostró un **Connection timeout** al intentar enviar correo mediante SMTP. Para evitar ese bloqueo, INKLU también admite un relay HTTPS con Google Apps Script. No se necesita comprar un dominio. El mismo relay se utiliza para **recuperación de contraseña** y **verificación de correo**.
 
 ## 1. Crear el relay de Gmail
 
@@ -23,9 +23,13 @@ En Render, abre el servicio `inklu-api` → **Environment** y añade estas dos v
 
 Guarda los cambios y espera a que Render termine el nuevo despliegue. El servidor prioriza este relay por HTTPS; si la configuración está correcta, ya no intentará Gmail SMTP.
 
-## 3. Probar
+## 3. Probar recuperación de contraseña
 
 Abre INKLU → **¿Olvidaste tu contraseña?** → introduce el correo de una cuenta registrada. Revisa Recibidos y Spam. El enlace caduca en 30 minutos y solo puede utilizarse una vez.
+
+## 4. Probar verificación de correo
+
+En INKLU, inicia sesión y pulsa **Verificar / reenviar correo** en el aviso que aparece arriba del panel. Abre el enlace recibido; caduca en 24 horas y solo puede utilizarse una vez. Cuando vuelvas a la app, pulsa el mismo botón para actualizar el estado de verificación.
 
 Si no llega, abre los registros de Render y busca `relay de correo`. No pegues capturas que muestren el token ni compartas la clave.
 
