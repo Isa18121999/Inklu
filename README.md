@@ -410,3 +410,14 @@ Queda prohibida la reproducción, distribución, modificación, publicación o u
 INKLU es una startup tecnológica que busca transformar la manera en que las personas con discapacidad acceden a oportunidades laborales y cómo las empresas incorporan talento diverso.
 
 > La inclusión no es solo una oportunidad. Es una forma de construir un futuro laboral para todos.
+
+
+## Recuperación de contraseña
+
+La pantalla de inicio de sesión incluye **¿Olvidaste tu contraseña?**. Para activar el envío real de enlaces, configura en Render las variables:
+
+- `RESEND_API_KEY`: clave API de Resend.
+- `EMAIL_FROM`: remitente de un dominio verificado en Resend, por ejemplo `INKLU <no-reply@tu-dominio.com>`.
+- `PASSWORD_RESET_URL`: URL pública de la página de restablecimiento. Valor previsto: `https://isa18121999.github.io/Inklu/reset-password.html`.
+
+Los enlaces caducan a los 30 minutos, el token se guarda solo como hash y queda invalidado tras usarse. La nueva contraseña debe incluir al menos ocho caracteres, mayúscula, minúscula, número y símbolo. Hasta configurar un remitente y una clave de correo válidos, la API indicará que la recuperación no está habilitada; no afirmará que se haya enviado un correo.
