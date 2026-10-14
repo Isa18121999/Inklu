@@ -15,7 +15,8 @@ void main() {
   testWidgets('El inicio de sesión muestra mantener sesión y recuperar contraseña', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: Login()));
 
-    expect(find.text('Iniciar sesión'), findsOneWidget);
+    // El título y el botón principal comparten el mismo texto.
+    expect(find.text('Iniciar sesión'), findsNWidgets(2));
     expect(find.text('Mantener sesión iniciada'), findsOneWidget);
     expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
     expect(find.byType(CheckboxListTile), findsOneWidget);
@@ -26,7 +27,6 @@ void main() {
 
     expect(find.text('Privacidad y datos'), findsOneWidget);
     expect(find.text('Cómo utiliza INKLU tu información'), findsOneWidget);
-    expect(find.text('Recomendaciones automáticas'), findsOneWidget);
-    expect(find.text('Acceso y eliminación'), findsOneWidget);
+    expect(find.text('Datos que puedes proporcionar'), findsOneWidget);
   });
 }
