@@ -82,14 +82,16 @@ function recommendJobsForUser(user, jobs) {
 
   const jobDocuments = jobs.map(job => {
     const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
-    const content = [job.title, job.description, job.category, ...requiredSkills].join(' ');
-    const categoryTitleSkills = normalizeText([job.category, job.title, ...requiredSkills].join(' '));
+    const preferredSkills = Array.isArray(job.preferredSkills) ? job.preferredSkills : [];
+    const content = [job.title, job.description, job.category, ...requiredSkills, ...preferredSkills].join(' ');
+    const categoryTitleSkills = normalizeText([job.category, job.title, ...requiredSkills, ...preferredSkills].join(' '));
     const jobGroups = careerGroups
       .filter(group => group.signals.some(signal => categoryTitleSkills.includes(normalizeText(signal))))
       .map(group => group.key);
     return {
       job,
       requiredSkills,
+      preferredSkills,
       content,
       categoryTitleSkills,
       jobGroups,
@@ -106,7 +108,7 @@ function recommendJobsForUser(user, jobs) {
   }
 
   return jobDocuments.map(document => {
-    const { job, requiredSkills, categoryTitleSkills, jobGroups, keywords } = document;
+    const { job, requiredSkills, preferredSkills, categoryTitleSkills, jobGroups, keywords } = document;
     const jobText = normalizeText([
       job.title,
       job.description,
@@ -121,6 +123,12 @@ function recommendJobsForUser(user, jobs) {
     });
     const matchedRequired = requiredSkills.filter(required => {
       const normalized = normalizeText(required);
+      return normalized.length > 1 && normalizedSkills.some(skill =>
+        skill.includes(normalized) || normalized.includes(skill)
+      );
+    });
+    const matchedPreferred = preferredSkills.filter(preferred => {
+      const normalized = normalizeText(preferred);
       return normalized.length > 1 && normalizedSkills.some(skill =>
         skill.includes(normalized) || normalized.includes(skill)
       );
@@ -147,13 +155,14 @@ function recommendJobsForUser(user, jobs) {
     const reasons = [];
     if (careerCategoryMatch) reasons.push('Área profesional relacionada con tu carrera o CV');
     if (matchedSkills.length) reasons.push('Habilidades relacionadas: ' + matchedSkills.slice(0, 4).join(', '));
+    if (matchedPreferred.length) reasons.push('Habilidades deseables coincidentes: ' + matchedPreferred.slice(0, 4).join(', '));
     if (matchedCareerTerms.length) reasons.push('Coincidencias con tu CV: ' + matchedCareerTerms.slice(0, 4).join(', '));
     if (location && normalizeText(job.location).includes(location)) reasons.push('Coincide con tu ubicación preferida');
     if (modality && normalizeText(job.modality).includes(modality)) reasons.push('Coincide con tu modalidad preferida');
 
     const experienceRequired = Math.max(0, Number(job.experienceRequired || 0));
     const experienceGap = Math.max(0, experienceRequired - candidateExperience);
-    const evidenceCount = matchedSkills.length + matchedRequired.length + sharedKeywords.length +
+    const evidenceCount = matchedSkills.length + matchedRequired.length + matchedPreferred.length + sharedKeywords.length +
       matchedCareerTerms.length + (careerCategoryMatch ? 2 : 0);
 
     let score = Math.round(similarity * 60);
@@ -161,6 +170,8 @@ function recommendJobsForUser(user, jobs) {
     score += Math.min(20, matchedCareerTerms.length * 4);
     if (careerCategoryMatch) score += 15;
     if (matchedRequired.length) score += Math.min(10, matchedRequired.length * 3);
+    // Las habilidades deseables suman menos puntos que los requisitos obligatorios.
+    if (matchedPreferred.length) score += Math.min(6, matchedPreferred.length * 2);
     if (experienceGap === 0) {
       score += 8;
       reasons.push('Experiencia requerida compatible con tu perfil');
@@ -178,6 +189,7 @@ function recommendJobsForUser(user, jobs) {
       matchScore: score,
       matchReasons: reasons,
       matchedSkills,
+      matchedPreferredSkills: matchedPreferred,
       textSimilarity: Number(similarity.toFixed(4)),
       careerMatch: evidenceCount > 0,
       experienceFit: experienceGap === 0
