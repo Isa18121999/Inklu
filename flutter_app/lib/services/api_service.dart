@@ -65,6 +65,8 @@ class ApiService {
       _getList('/notifications', token);
   Future<Map<String, dynamic>> markNotificationRead(String token, String id) async =>
       _patch('/notifications/$id/read', token, {'read': true});
+  Future<Map<String, dynamic>> deleteAccount(String token, String password) async =>
+      _deleteAuth('/profile/me', token, {'password': password});
 
   Future<List<dynamic>> searchJobs(
     String token, {
@@ -162,6 +164,7 @@ class ApiService {
     on FormatException { throw Exception('El servidor de INKLU devolvió una respuesta inválida.'); }
   }
   Future<Map<String,dynamic>> _postAuth(String path,String token,Map<String,dynamic> body)async{final r=await http.post(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
+  Future<Map<String,dynamic>> _deleteAuth(String path,String token,Map<String,dynamic> body)async{final r=await http.delete(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _deleteMap(String path,String token)async{final r=await http.delete(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _patch(String path,String token,Map<String,dynamic> body)async{final r=await http.patch(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _getMap(String path,String token)async{final r=await http.get(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25));return _decodeMap(r);}
