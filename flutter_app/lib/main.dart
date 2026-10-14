@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -575,7 +574,7 @@ class _CompanyRegisterState extends State<CompanyRegister> {
               ),
             ] else ...[
               DropdownButtonFormField<String>(
-                value: sector,
+                initialValue: sector,
                 decoration: const InputDecoration(labelText: 'Sector'),
                 items: sectors
                     .map((x) => DropdownMenuItem(value: x, child: Text(x)))
@@ -668,8 +667,9 @@ class _LoginState extends State<Login> {
                 setDialogState(() => sending = true);
                 try {
                   final response = await api.requestPasswordReset(emailController.text);
-                  if (!dialogContext.mounted) return;
+                  if (!mounted || !dialogContext.mounted) return;
                   Navigator.pop(dialogContext);
+                  if (!mounted) return;
                   await showDialog<void>(
                     context: context,
                     builder: (messageContext) => AlertDialog(
