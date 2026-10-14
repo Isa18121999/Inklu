@@ -1103,11 +1103,15 @@ bool chatAvailableForStatus(String status) =>
 class JobRecommendationCard extends StatelessWidget {
   final Map<String, dynamic> job;
   final VoidCallback onTap;
+  final bool isSaved;
+  final VoidCallback? onSave;
 
   const JobRecommendationCard({
     super.key,
     required this.job,
     required this.onTap,
+    this.isSaved = false,
+    this.onSave,
   });
 
   @override
@@ -1162,7 +1166,18 @@ class JobRecommendationCard extends StatelessWidget {
           ),
         ),
         isThreeLine: true,
-        trailing: const Icon(Icons.chevron_right, color: primary),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onSave != null)
+              IconButton(
+                tooltip: isSaved ? 'Quitar de ofertas guardadas' : 'Guardar oferta',
+                onPressed: onSave,
+                icon: Icon(isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: primary),
+              ),
+            const Icon(Icons.chevron_right, color: primary),
+          ],
+        ),
       ),
     );
   }
@@ -3067,7 +3082,37 @@ class Btn extends StatelessWidget{final String text;final VoidCallback? on;const
 class Out extends StatelessWidget{final String text;final VoidCallback on;const Out(this.text,this.on,{super.key});@override Widget build(BuildContext c)=>SizedBox(width:double.infinity,height:46,child:OutlinedButton(onPressed:on,child:Text(text)));}
 class CardRole extends StatelessWidget{final String title,sub;final IconData icon;final VoidCallback on;const CardRole(this.title,this.sub,this.icon,this.on,{super.key});@override Widget build(BuildContext c)=>InkWell(onTap:on,borderRadius:BorderRadius.circular(14),child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(border:Border.all(color:line),borderRadius:BorderRadius.circular(14)),child:Row(children:[CircleAvatar(radius:28,backgroundColor:const Color(0xFFEDE9FE),child:Icon(icon,color:primary,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),Text(sub,style:const TextStyle(color:muted,fontSize:12))])),const Icon(Icons.arrow_forward_ios,color:primary,size:16)])));}
 class Dots extends StatelessWidget{final int i;const Dots(this.i,{super.key});@override Widget build(BuildContext c)=>Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(3,(x)=>Container(width:x==i?8:6,height:x==i?8:6,margin:const EdgeInsets.all(3),decoration:BoxDecoration(shape:BoxShape.circle,color:x==i?primary:line))));}
-class JobCard extends StatelessWidget{final dynamic j;final VoidCallback? onTap;const JobCard(this.j,{super.key,this.onTap});@override Widget build(BuildContext c)=>Card(elevation:0,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12),side:const BorderSide(color:line)),child:ListTile(onTap:onTap,title:Text(j['title']?.toString()??'Oferta',style:const TextStyle(fontWeight:FontWeight.w800)),subtitle:Text('${j['companyId']?['name']?.toString()??'Empresa'}\n${j['location']??''} · ${j['modality']??''}'),trailing:const Icon(Icons.chevron_right)));}
+class JobCard extends StatelessWidget {
+  final dynamic j;
+  final VoidCallback? onTap;
+  final bool isSaved;
+  final VoidCallback? onSave;
+
+  const JobCard(this.j, {super.key, this.onTap, this.isSaved = false, this.onSave});
+
+  @override
+  Widget build(BuildContext c) => Card(
+    elevation: 0,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: line)),
+    child: ListTile(
+      onTap: onTap,
+      title: Text(j['title']?.toString() ?? 'Oferta', style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Text('${j['companyId'] is Map ? (j['companyId']['name'] ?? 'Empresa') : 'Empresa'}\n${j['location'] ?? ''} · ${j['modality'] ?? ''}'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (onSave != null)
+            IconButton(
+              tooltip: isSaved ? 'Quitar de ofertas guardadas' : 'Guardar oferta',
+              onPressed: onSave,
+              icon: Icon(isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: primary),
+            ),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+    ),
+  );
+}
 class ProfileCard extends StatelessWidget{const ProfileCard({super.key});@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(border:Border.all(color:line),borderRadius:BorderRadius.circular(14)),child:const Row(children:[CircleAvatar(radius:27,child:Icon(Icons.person)),SizedBox(width:12),Expanded(child:Text('Tu perfil\nCompleta tu perfil para recibir mejores recomendaciones.',style:TextStyle(fontWeight:FontWeight.w700)))]));}
 class Section extends StatelessWidget{final String s;const Section(this.s,{super.key});@override Widget build(BuildContext c)=>Padding(padding:const EdgeInsets.only(bottom:9),child:Text(s,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800)));}
 class Info extends StatelessWidget{final String a,b;const Info(this.a,this.b,{super.key});@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(18),decoration:BoxDecoration(border:Border.all(color:line),borderRadius:BorderRadius.circular(12)),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(a,style:const TextStyle(fontWeight:FontWeight.w800)),const SizedBox(height:5),Text(b,style:const TextStyle(color:muted))]));}
