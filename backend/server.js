@@ -977,7 +977,8 @@ app.get('/api/jobs', auth, async (req, res) => {
         { title: regex },
         { description: regex },
         { category: regex },
-        { requiredSkills: regex }
+        { requiredSkills: regex },
+        { preferredSkills: regex }
       ];
       if (companies.length) alternatives.push({ companyId: { $in: companies.map(company => company._id) } });
       filter.$or = alternatives;
@@ -1004,10 +1005,12 @@ app.get('/api/company/my-jobs', auth, async (req, res) => { if (req.user.role !=
 app.post('/api/company/jobs', auth, async (req, res) => {
   try {
     if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden publicar ofertas.' });
-    const { title, description, category, modality, location, contractType, salary, requiredSkills, experienceRequired, accessibilityDetails } = req.body || {};
+    const { title, description, category, modality, location, contractType, salary, requiredSkills, preferredSkills, experienceRequired, accessibilityDetails } = req.body || {};
     if (!title || !description) return res.status(400).json({ message: 'El título y la descripción son obligatorios.' });
     const rawSkills = Array.isArray(requiredSkills) ? requiredSkills : String(requiredSkills || '').split(',');
     const skills = rawSkills.map(skill => String(skill || '').trim().slice(0, 80)).filter(Boolean).slice(0, 40);
+    const rawPreferredSkills = Array.isArray(preferredSkills) ? preferredSkills : String(preferredSkills || '').split(',');
+    const desirableSkills = rawPreferredSkills.map(skill => String(skill || '').trim().slice(0, 80)).filter(Boolean).slice(0, 40);
     const years = Number(experienceRequired || 0);
     if (!Number.isFinite(years) || years < 0 || years > 60) {
       return res.status(400).json({ message: 'Los años de experiencia requeridos deben estar entre 0 y 60.' });
@@ -1022,6 +1025,7 @@ app.post('/api/company/jobs', auth, async (req, res) => {
       contractType: String(contractType || '').trim().slice(0, 80),
       salary: String(salary || '').trim().slice(0, 100),
       requiredSkills: skills,
+      preferredSkills: desirableSkills,
       accessibilityDetails: String(accessibilityDetails || '').trim().slice(0, 1200),
       experienceRequired: years
     });
