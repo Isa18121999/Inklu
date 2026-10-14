@@ -49,10 +49,14 @@ jobs:
       - name: Analyze Flutter app
         working-directory: flutter_app
         run: |
-          flutter analyze > analyze.txt 2>&1 || true
-          cat analyze.txt
+          flutter analyze --no-pub 2>&1 | tee analyze.txt
+      - name: Run widget tests
+        working-directory: flutter_app
+        run: flutter test --reporter expanded
+
 
       - name: Upload analyzer report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: INKLU-analyze-latest
