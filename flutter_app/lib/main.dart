@@ -318,6 +318,71 @@ class _LoginState extends State<Login> {
     }
   }
 
+  Future<void> forgotPassword() async {
+    final emailController = TextEditingController(text: e.text.trim());
+    final formKey = GlobalKey<FormState>();
+    bool sending = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !busy,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('¿Olvidaste tu contraseña?'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Escribe el correo asociado a tu cuenta de INKLU. Te enviaremos un enlace para crear una nueva contraseña.',
+                  style: TextStyle(color: muted, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: emailController,
+                  autofocus: true,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Correo electrónico', prefixIcon: Icon(Icons.email_outlined)),
+                  validator: (value) => validEmail(value ?? '') ? null : 'Introduce un correo válido.',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: sending ? null : () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+            FilledButton(
+              onPressed: sending ? null : () async {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                setDialogState(() => sending = true);
+                try {
+                  final response = await api.requestPasswordReset(emailController.text);
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
+                  await showDialog<void>(
+                    context: context,
+                    builder: (messageContext) => AlertDialog(
+                      title: const Text('Revisa tu correo'),
+                      content: Text(response['message']?.toString() ?? 'Si la cuenta existe y la recuperación está habilitada, recibirás instrucciones por correo.'),
+                      actions: [FilledButton(onPressed: () => Navigator.pop(messageContext), child: const Text('Entendido'))],
+                    ),
+                  );
+                } catch (error) {
+                  if (!dialogContext.mounted) return;
+                  toast(error.toString().replaceFirst('Exception: ', ''));
+                  setDialogState(() => sending = false);
+                }
+              },
+              child: sending
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Enviar enlace'),
+            ),
+          ],
+        ),
+      ),
+    );
+    emailController.dispose();
+  }
+
   @override
   Widget build(BuildContext c) => Shell(
         title: 'Iniciar sesión',
@@ -326,6 +391,16 @@ class _LoginState extends State<Login> {
           children: [
             F(e, 'Correo electrónico', type: TextInputType.emailAddress),
             F(p, 'Contraseña', obscure: true),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: busy ? null : forgotPassword,
+                icon: const Icon(Icons.lock_reset_rounded, size: 18),
+                label: const Text('¿Olvidaste tu contraseña?'),
+                style: TextButton.styleFrom(foregroundColor: primary),
+              ),
+            ),
+            const SizedBox(height: 4),
             Btn(busy ? 'Ingresando...' : 'Iniciar sesión', busy ? null : go),
           ],
         ),
