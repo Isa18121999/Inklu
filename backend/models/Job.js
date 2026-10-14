@@ -10,6 +10,7 @@ const JobSchema = new mongoose.Schema({
   contractType: { type: String, trim: true },
   salary: { type: String, trim: true },
   requiredSkills: { type: [String], default: [] },
+  preferredSkills: { type: [String], default: [] },
   accessibilityDetails: { type: String, trim: true, maxlength: 1200, default: '' },
   experienceRequired: { type: Number, min: 0, default: 0 },
   active: { type: Boolean, default: true }
