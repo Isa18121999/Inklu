@@ -942,10 +942,27 @@ app.get('/api/company/my-jobs', auth, async (req, res) => { if (req.user.role !=
 app.post('/api/company/jobs', auth, async (req, res) => {
   try {
     if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden publicar ofertas.' });
-    const { title, description, category, modality, location, contractType, salary, requiredSkills, experienceRequired } = req.body || {};
+    const { title, description, category, modality, location, contractType, salary, requiredSkills, experienceRequired, accessibilityDetails } = req.body || {};
     if (!title || !description) return res.status(400).json({ message: 'El título y la descripción son obligatorios.' });
-    const skills = Array.isArray(requiredSkills) ? requiredSkills : String(requiredSkills || '').split(',').map(s => s.trim()).filter(Boolean);
-    const job = await Job.create({ companyId: req.user._id, title, description, category: String(category || '').trim(), modality, location, contractType, salary, requiredSkills: skills, experienceRequired: Number(experienceRequired || 0) });
+    const rawSkills = Array.isArray(requiredSkills) ? requiredSkills : String(requiredSkills || '').split(',');
+    const skills = rawSkills.map(skill => String(skill || '').trim().slice(0, 80)).filter(Boolean).slice(0, 40);
+    const years = Number(experienceRequired || 0);
+    if (!Number.isFinite(years) || years < 0 || years > 60) {
+      return res.status(400).json({ message: 'Los años de experiencia requeridos deben estar entre 0 y 60.' });
+    }
+    const job = await Job.create({
+      companyId: req.user._id,
+      title: String(title).trim().slice(0, 160),
+      description: String(description).trim().slice(0, 5000),
+      category: String(category || '').trim().slice(0, 100),
+      modality: String(modality || '').trim().slice(0, 40),
+      location: String(location || '').trim().slice(0, 160),
+      contractType: String(contractType || '').trim().slice(0, 80),
+      salary: String(salary || '').trim().slice(0, 100),
+      requiredSkills: skills,
+      accessibilityDetails: String(accessibilityDetails || '').trim().slice(0, 1200),
+      experienceRequired: years
+    });
     res.status(201).json(job);
   } catch (e) { console.error(e); res.status(500).json({ message: 'No se pudo publicar la oferta.' }); }
 });
