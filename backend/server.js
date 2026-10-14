@@ -514,7 +514,21 @@ async function findChatApplication(req, res) {
   return application;
 }
 
-app.get('/api/health', (req, res) => res.json({ ok: true, service: 'INKLU API' }));
+app.get('/api/health', (req, res) => {
+  const relayConfigured = Boolean(process.env.EMAIL_RELAY_URL && process.env.EMAIL_RELAY_TOKEN);
+  const smtpConfigured = Boolean(process.env.SMTP_USER && process.env.SMTP_APP_PASSWORD);
+  const resendConfigured = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  const emailProvider = relayConfigured ? 'https-relay' : smtpConfigured ? 'smtp' : resendConfigured ? 'resend' : 'not-configured';
+  // Expose only a boolean/provider label, never secret values.
+  res.json({
+    ok: true,
+    service: 'INKLU API',
+    emailDelivery: {
+      configured: emailDeliveryConfigured(),
+      provider: emailProvider
+    }
+  });
+});
 
 app.post('/api/auth/register', authRateLimit, async (req, res) => {
   try {
