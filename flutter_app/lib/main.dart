@@ -1665,6 +1665,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     final address = TextEditingController(text: profile['address']?.toString() ?? '');
     final education = TextEditingController(text: profile['education']?.toString() ?? '');
     final experience = TextEditingController(text: profile['experience']?.toString() ?? '0');
+    final skillsController = TextEditingController(text: profile['skills'] is List ? (profile['skills'] as List).join(', ') : '');
     const locationOptions = [
       'Lima Metropolitana',
       'Callao',
@@ -1701,6 +1702,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
                 F(address, 'Dirección'),
                 F(education, 'Carrera o formación profesional'),
                 F(experience, 'Años de experiencia', type: TextInputType.number, format: digits(2)),
+                F(skillsController, 'Habilidades (separadas por comas)', max: 3),
                 const SizedBox(height: 4),
                 const Text(
                   'Estos datos, junto con las palabras clave de tu CV, nos ayudan a mostrar ofertas adecuadas a tu perfil.',
@@ -1773,6 +1775,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           'address': address.text.trim(),
           'education': education.text.trim(),
           'experience': int.tryParse(experience.text.trim()) ?? 0,
+          'skills': skillsController.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
           'location': selectedLocation,
           'modality': selectedModality,
         });
@@ -1791,6 +1794,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     address.dispose();
     education.dispose();
     experience.dispose();
+    skillsController.dispose();
   }
 
   Future<void> replaceCv() async {
@@ -1985,6 +1989,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         _ProfileValue(icon: Icons.location_on_outlined, label: 'Dirección', value: valueOf(address)),
         _ProfileValue(icon: Icons.school_outlined, label: 'Carrera o formación', value: valueOf(profile['education'])),
         _ProfileValue(icon: Icons.work_history_outlined, label: 'Años de experiencia', value: valueOf(profile['experience'])),
+        _ProfileValue(icon: Icons.stars_outlined, label: 'Habilidades', value: valueOf(profile['skills'] is List ? (profile['skills'] as List).join(', ') : '')),
         _ProfileValue(icon: Icons.map_outlined, label: 'Ubicación preferida', value: valueOf(profile['location'])),
         _ProfileValue(icon: Icons.work_outline, label: 'Modalidad laboral', value: valueOf(profile['modality'])),
         _ProfileValue(icon: Icons.verified_user_outlined, label: 'Número de CONADIS', value: valueOf(conadis)),
