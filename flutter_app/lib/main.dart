@@ -2392,6 +2392,7 @@ class _CompanyHomeState extends State<CompanyHome> {
     final description = TextEditingController();
     final experience = TextEditingController(text: '0');
     final requiredSkills = TextEditingController();
+    final preferredSkills = TextEditingController();
     final accessibilityDetails = TextEditingController();
     final salary = TextEditingController();
     final location = TextEditingController(text: 'Lima, Perú');
@@ -2412,7 +2413,8 @@ class _CompanyHomeState extends State<CompanyHome> {
               children: [
                 F(title, 'Título del puesto'),
                 F(description, 'Descripción del puesto', max: 5),
-                F(requiredSkills, 'Habilidades requeridas (separadas por comas)', max: 3),
+                F(requiredSkills, 'Habilidades obligatorias (separadas por comas)', max: 3),
+                F(preferredSkills, 'Habilidades deseables (separadas por comas)', max: 3),
                 F(experience, 'Experiencia requerida en años (0 = sin requisito)', type: TextInputType.number, format: digits(2)),
                 F(accessibilityDetails, 'Accesibilidad y ajustes disponibles', max: 4),
                 F(salary, 'Salario o rango salarial (opcional)'),
@@ -2477,6 +2479,7 @@ class _CompanyHomeState extends State<CompanyHome> {
           'contractType': contractType,
           'experienceRequired': int.tryParse(experience.text.trim()) ?? 0,
           'requiredSkills': requiredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
+          'preferredSkills': preferredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
           'accessibilityDetails': accessibilityDetails.text.trim(),
           'salary': salary.text.trim(),
         });
@@ -2490,6 +2493,7 @@ class _CompanyHomeState extends State<CompanyHome> {
     description.dispose();
     experience.dispose();
     requiredSkills.dispose();
+    preferredSkills.dispose();
     accessibilityDetails.dispose();
     salary.dispose();
     location.dispose();
@@ -3120,6 +3124,9 @@ void showOffer(
   final requiredSkills = d['requiredSkills'] is List
       ? (d['requiredSkills'] as List).map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
       : <String>[];
+  final preferredSkills = d['preferredSkills'] is List
+      ? (d['preferredSkills'] as List).map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
+      : <String>[];
   final accessibility = d['accessibilityDetails']?.toString().trim() ?? '';
   final company = d['companyId'] is Map
       ? (d['companyId']['name']?.toString() ?? 'Empresa')
@@ -3188,6 +3195,21 @@ void showOffer(
                   backgroundColor: const Color(0xFFF0EDFF),
                 )).toList(),
               ),
+            if (preferredSkills.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              const Section('Habilidades deseables'),
+              const Text('Son habilidades valoradas, pero no deberían tratarse como requisitos obligatorios.', style: TextStyle(color: muted, fontSize: 12)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: preferredSkills.map((skill) => Chip(
+                  avatar: const Icon(Icons.star_outline_rounded, size: 17),
+                  label: Text(skill),
+                  backgroundColor: const Color(0xFFF7F5FF),
+                )).toList(),
+              ),
+            ],
             const SizedBox(height: 18),
             const Section('Accesibilidad del puesto'),
             Container(
