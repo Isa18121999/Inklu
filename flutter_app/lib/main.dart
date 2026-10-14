@@ -709,9 +709,13 @@ class _CandidateHomeState extends State<CandidateHome> {
     try {
       final analysis = await api.analyzeCv(sessionToken!);
       final results = await api.recommendations(sessionToken!);
+      // Tras analizar el CV, recarga la pestaña de ofertas para aplicar el filtro
+      // profesional del servidor en las búsquedas de este candidato.
+      final filteredJobs = await api.jobs(sessionToken!);
       if (!mounted) return;
       setState(() {
         cvSkills = (analysis['skills'] as List?) ?? [];
+        jobs = filteredJobs;
         recommendations = results;
         recommendationMessage = results.isEmpty
             ? 'No encontramos coincidencias claras todavía. Completa tus preferencias o revisa todas las ofertas.'
@@ -748,7 +752,7 @@ class _CandidateHomeState extends State<CandidateHome> {
               const ProfileCard(),
               const SizedBox(height: 20),
               const Section('Ofertas sugeridas por análisis de CV'),
-              const Text('Analiza el texto de tu CV y compáralo con las ofertas publicadas.', style: TextStyle(color: muted, fontSize: 12)),
+              const Text('Las sugerencias consideran tu CV, carrera, habilidades y años de experiencia.', style: TextStyle(color: muted, fontSize: 12)),
               const SizedBox(height: 10),
               Btn(scanningRecommendations ? 'Analizando CV...' : 'Analizar mi CV y sugerir ofertas', scanningRecommendations ? null : scanCvAndRecommend),
               if (cvSkills.isNotEmpty) ...[
@@ -1485,6 +1489,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     if (user == null) return;
     final birth = TextEditingController(text: profile['birth']?.toString() ?? '');
     final address = TextEditingController(text: profile['address']?.toString() ?? '');
+    final education = TextEditingController(text: profile['education']?.toString() ?? '');
+    final experience = TextEditingController(text: profile['experience']?.toString() ?? '0');
     const locationOptions = [
       'Lima Metropolitana',
       'Callao',
@@ -1519,6 +1525,14 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
               children: [
                 F(birth, 'Fecha de nacimiento (dd/mm/aaaa)'),
                 F(address, 'Dirección'),
+                F(education, 'Carrera o formación profesional'),
+                F(experience, 'Años de experiencia', type: TextInputType.number, format: digits(2)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Estos datos, junto con las palabras clave de tu CV, nos ayudan a mostrar ofertas adecuadas a tu perfil.',
+                  style: TextStyle(color: muted, fontSize: 12),
+                ),
+                const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   key: ValueKey('location-$selectedLocation'),
                   initialValue: selectedLocation,
@@ -1559,8 +1573,13 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
             ),
             FilledButton(
               onPressed: () {
+                final years = int.tryParse(experience.text.trim());
                 if (selectedLocation == null || selectedModality == null) {
                   toast('Selecciona tu ubicación y modalidad laboral.');
+                  return;
+                }
+                if (experience.text.trim().isNotEmpty && (years == null || years < 0 || years > 60)) {
+                  toast('Introduce años de experiencia válidos entre 0 y 60.');
                   return;
                 }
                 Navigator.pop(dialogContext, true);
@@ -1578,6 +1597,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         final updated = await api.updateProfile(widget.token, {
           'birth': birth.text.trim(),
           'address': address.text.trim(),
+          'education': education.text.trim(),
+          'experience': int.tryParse(experience.text.trim()) ?? 0,
           'location': selectedLocation,
           'modality': selectedModality,
         });
@@ -1594,6 +1615,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
 
     birth.dispose();
     address.dispose();
+    education.dispose();
+    experience.dispose();
   }
 
   Future<void> replaceCv() async {
@@ -1786,6 +1809,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         _ProfileValue(icon: Icons.phone_outlined, label: 'Teléfono', value: phone),
         _ProfileValue(icon: Icons.cake_outlined, label: 'Fecha de nacimiento', value: valueOf(birth)),
         _ProfileValue(icon: Icons.location_on_outlined, label: 'Dirección', value: valueOf(address)),
+        _ProfileValue(icon: Icons.school_outlined, label: 'Carrera o formación', value: valueOf(profile['education'])),
+        _ProfileValue(icon: Icons.work_history_outlined, label: 'Años de experiencia', value: valueOf(profile['experience'])),
         _ProfileValue(icon: Icons.map_outlined, label: 'Ubicación preferida', value: valueOf(profile['location'])),
         _ProfileValue(icon: Icons.work_outline, label: 'Modalidad laboral', value: valueOf(profile['modality'])),
         _ProfileValue(icon: Icons.verified_user_outlined, label: 'Número de CONADIS', value: valueOf(conadis)),
