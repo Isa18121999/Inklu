@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const User = require('./models/User');
 const Job = require('./models/Job');
 const Application = require('./models/Application');
@@ -403,8 +404,12 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return res.status(400).json({ message: 'Introduce un correo electrónico válido.' });
     }
-    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
-      return res.status(503).json({ message: 'La recuperación por correo todavía no está habilitada en INKLU. Contacta al equipo de soporte para recuperar tu acceso.' });
+    const smtpConfigured = Boolean(process.env.SMTP_USER && process.env.SMTP_APP_PASSWORD);
+    const resendConfigured = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+    if (!smtpConfigured && !resendConfigured) {
+      return res.status(503).json({
+        message: 'La recuperación por correo aún necesita configuración. En Render, configura SMTP_USER y SMTP_APP_PASSWORD de una cuenta Gmail con contraseña de aplicación. No uses tu contraseña normal de Gmail.'
+      });
     }
 
     const user = await User.findOne({ email }).select('+passwordResetTokenHash +passwordResetExpires +passwordResetRequestedAt');
@@ -428,25 +433,50 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const safeName = String(user.name || '').replace(/[&<>"]/g, '');
     const html = `<!doctype html><html><body style="margin:0;background:#f8f7ff;font-family:Arial,sans-serif;color:#19162d"><div style="max-width:560px;margin:32px auto;padding:28px;background:#fff;border:1px solid #e7e2fb;border-radius:18px"><h1 style="color:#4f46e5">Recupera tu acceso a INKLU</h1><p>Hola ${safeName},</p><p>Recibimos una solicitud para cambiar la contraseña de tu cuenta de INKLU.</p><p style="text-align:center;margin:28px 0"><a href="${resetUrl.toString()}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:bold">Crear nueva contraseña</a></p><p>El enlace caduca en 30 minutos y solo se puede utilizar una vez. Si no solicitaste este cambio, ignora este mensaje.</p><p style="color:#64748b;font-size:12px">Por seguridad, nunca compartas este enlace con otras personas.</p><p><strong>INKLU</strong> · Tecnología para la inclusión laboral.</p></div></body></html>`;
 
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: process.env.EMAIL_FROM,
-        to: [email],
-        subject: 'Recupera tu contraseña de INKLU',
-        html,
-        text: `Recibimos una solicitud para cambiar la contraseña de INKLU. Abre este enlace dentro de los próximos 30 minutos: ${resetUrl.toString()} Si no lo solicitaste, ignora este mensaje.`
-      })
-    });
+    const text = `Recibimos una solicitud para cambiar la contraseña de INKLU. Abre este enlace dentro de los próximos 30 minutos: ${resetUrl.toString()} Si no lo solicitaste, ignora este mensaje.`;
 
-    if (!emailResponse.ok) {
+    try {
+      if (smtpConfigured) {
+        // Sin dominio propio: permite utilizar una cuenta Gmail mediante contraseña de aplicación.
+        const transport = nodemailer.createTransport({
+          service: process.env.SMTP_SERVICE || 'gmail',
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_APP_PASSWORD
+          }
+        });
+        await transport.sendMail({
+          from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+          to: email,
+          subject: 'Recupera tu contraseña de INKLU',
+          html,
+          text
+        });
+      } else {
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM,
+            to: [email],
+            subject: 'Recupera tu contraseña de INKLU',
+            html,
+            text
+          })
+        });
+        if (!emailResponse.ok) {
+          const providerError = await emailResponse.text().catch(() => '');
+          console.error('Resend no pudo enviar el correo de recuperación. Status:', emailResponse.status, providerError.slice(0, 400));
+          throw new Error('El proveedor de correo rechazó el envío.');
+        }
+      }
+    } catch (deliveryError) {
       user.passwordResetTokenHash = undefined;
       user.passwordResetExpires = undefined;
       user.passwordResetRequestedAt = undefined;
       await user.save();
-      console.error('Resend no pudo enviar el correo de recuperación. Status:', emailResponse.status);
-      return res.status(502).json({ message: 'No se pudo enviar el correo de recuperación. Inténtalo más tarde o contacta con INKLU.' });
+      console.error('No se pudo entregar el correo de recuperación:', deliveryError?.message || deliveryError);
+      return res.status(502).json({ message: 'No se pudo enviar el correo de recuperación. Revisa la configuración de correo o inténtalo más tarde.' });
     }
     return res.json({ message: genericMessage });
   } catch (error) {
