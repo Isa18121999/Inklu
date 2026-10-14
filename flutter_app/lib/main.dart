@@ -74,6 +74,71 @@ Future<void> confirmLogout(BuildContext context) async {
   );
 }
 
+Future<void> showNotifications(BuildContext context) async {
+  final token = sessionToken;
+  if (token == null || token.isEmpty) {
+    toast('Inicia sesión para consultar tus notificaciones.');
+    return;
+  }
+  try {
+    final response = await api.notifications(token);
+    if (!context.mounted) return;
+    final items = response.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Notificaciones'),
+          content: SizedBox(
+            width: 460,
+            height: 360,
+            child: items.isEmpty
+                ? const Center(child: Text('Todavía no tienes notificaciones.', textAlign: TextAlign.center))
+                : ListView.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final read = item['read'] == true;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          read ? Icons.notifications_none_rounded : Icons.notifications_active_rounded,
+                          color: read ? muted : primary,
+                        ),
+                        title: Text(
+                          item['title']?.toString() ?? 'Notificación',
+                          style: TextStyle(fontWeight: read ? FontWeight.w500 : FontWeight.w800),
+                        ),
+                        subtitle: Text(item['message']?.toString() ?? ''),
+                        onTap: read ? null : () async {
+                          final id = item['id']?.toString() ?? '';
+                          if (id.isEmpty) return;
+                          try {
+                            await api.markNotificationRead(token, id);
+                            setDialogState(() => items[index]['read'] = true);
+                          } catch (error) {
+                            toast(error.toString().replaceFirst('Exception: ', ''));
+                          }
+                        },
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  } catch (error) {
+    toast(error.toString().replaceFirst('Exception: ', ''));
+  }
+}
+
 class AppStart extends StatefulWidget {
   const AppStart({super.key});
   @override
@@ -525,6 +590,9 @@ class _CandidateHomeState extends State<CandidateHome> {
   List<dynamic> jobs = [];
   List<dynamic> apps = [];
   List<dynamic> recommendations = [];
+  List<dynamic> savedJobs = [];
+  Set<String> savedJobIds = <String>{};
+  bool showSavedOnly = false;
   List<dynamic> cvSkills = [];
   bool scanningRecommendations = false;
   String? recommendationMessage;
@@ -544,8 +612,15 @@ class _CandidateHomeState extends State<CandidateHome> {
   Future<void> load() async {
     try {
       final results = await Future.wait([api.jobs(sessionToken!), api.applications(sessionToken!)]);
+      List<dynamic> currentSaved = [];
+      try { currentSaved = await api.savedJobs(sessionToken!); } catch (_) {}
       if (!mounted) return;
-      setState(() { jobs = results[0]; apps = results[1]; });
+      setState(() {
+        jobs = results[0];
+        apps = results[1];
+        savedJobs = currentSaved;
+        savedJobIds = currentSaved.map((item) => (item['_id'] ?? item['id'] ?? '').toString()).where((id) => id.isNotEmpty).toSet();
+      });
 
       // Intenta personalizar las ofertas automáticamente al abrir Inicio.
       // Si todavía no hay CV, las ofertas siguen disponibles y se muestra una guía.
@@ -571,6 +646,35 @@ class _CandidateHomeState extends State<CandidateHome> {
       if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
     }
   }
+
+  String _jobId(dynamic job) => (job['_id'] ?? job['id'] ?? '').toString();
+
+  Future<void> toggleSavedJob(dynamic job) async {
+    final id = _jobId(job);
+    if (id.isEmpty) {
+      toast('No se pudo identificar esta oferta.');
+      return;
+    }
+    final isSaved = savedJobIds.contains(id);
+    try {
+      if (isSaved) {
+        await api.unsaveJob(sessionToken!, id);
+      } else {
+        await api.saveJob(sessionToken!, id);
+      }
+      final latestSaved = await api.savedJobs(sessionToken!);
+      if (!mounted) return;
+      setState(() {
+        savedJobs = latestSaved;
+        savedJobIds = latestSaved.map((item) => _jobId(item)).where((value) => value.isNotEmpty).toSet();
+      });
+      toast(isSaved ? 'Oferta quitada de Guardadas.' : 'Oferta guardada.');
+    } catch (error) {
+      toast(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  bool isJobSaved(dynamic job) => savedJobIds.contains(_jobId(job));
 
   @override
   void dispose() {
@@ -786,13 +890,23 @@ class _CandidateHomeState extends State<CandidateHome> {
               ],
               const SizedBox(height: 12),
               if (recommendations.isNotEmpty)
-                ...recommendations.map((j) => JobRecommendationCard(job: Map<String, dynamic>.from(j), onTap: () => showOffer(c, j, apply)))
+                ...recommendations.map((j) => JobRecommendationCard(
+                  job: Map<String, dynamic>.from(j),
+                  onTap: () => showOffer(c, j, apply),
+                  isSaved: isJobSaved(j),
+                  onSave: () => toggleSavedJob(j),
+                ))
               else ...[
                 const Section('Ofertas recientes'),
                 if (jobs.isEmpty)
                   const Info('Todavía no hay ofertas', 'Vuelve a revisar pronto.')
                 else
-                  ...jobs.take(3).map((j) => JobCard(j, onTap: () => showOffer(c, j, apply))),
+                  ...jobs.take(3).map((j) => JobCard(
+                    j,
+                    onTap: () => showOffer(c, j, apply),
+                    isSaved: isJobSaved(j),
+                    onSave: () => toggleSavedJob(j),
+                  )),
               ],
             ]
           : tab == 1
@@ -868,26 +982,50 @@ class _CandidateHomeState extends State<CandidateHome> {
                     const SizedBox(height: 12),
                     buildJobFilters(),
                   ],
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Todas las ofertas'),
+                        selected: !showSavedOnly,
+                        onSelected: (_) => setState(() => showSavedOnly = false),
+                      ),
+                      ChoiceChip(
+                        label: Text('Guardadas (${savedJobs.length})'),
+                        selected: showSavedOnly,
+                        onSelected: (_) => setState(() => showSavedOnly = true),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Expanded(child: Text('Ofertas disponibles', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: ink))),
-                      Text('${jobs.length} resultado${jobs.length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 12, color: muted)),
+                      Expanded(child: Text(showSavedOnly ? 'Ofertas guardadas' : 'Ofertas disponibles', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: ink))),
+                      Text('${(showSavedOnly ? savedJobs : jobs).length} resultado${(showSavedOnly ? savedJobs : jobs).length == 1 ? '' : 's'}', style: const TextStyle(fontSize: 12, color: muted)),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  if (searchingJobs)
+                  if (showSavedOnly && savedJobs.isEmpty)
+                    const Info('Todavía no guardaste ofertas', 'Toca el icono de marcador en cualquier oferta para guardar una oportunidad y revisarla después.')
+                  else if (!showSavedOnly && searchingJobs)
                     const Padding(
                       padding: EdgeInsets.all(25),
                       child: Center(child: CircularProgressIndicator()),
                     )
-                  else if (jobs.isEmpty)
+                  else if ((showSavedOnly ? savedJobs : jobs).isEmpty)
                     const Info(
                       'No encontramos ofertas con esos filtros',
                       'Prueba otra palabra o limpia alguno de los filtros para ver más oportunidades.',
                     )
                   else
-                    ...jobs.map((job) => JobCard(job, onTap: () => showOffer(c, job, apply))),
+                    ...(showSavedOnly ? savedJobs : jobs).map((job) => JobCard(
+                      job,
+                      onTap: () => showOffer(c, job, apply),
+                      isSaved: isJobSaved(job),
+                      onSave: () => toggleSavedJob(job),
+                    )),
                 ]
               : tab == 2
                   ? [
@@ -2876,6 +3014,11 @@ class Dash extends StatelessWidget {
         const Text('INKLU', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF19162D))),
       ]),
       actions: [
+        IconButton(
+          tooltip: 'Notificaciones',
+          onPressed: () => showNotifications(c),
+          icon: const Icon(Icons.notifications_active_outlined, color: primary),
+        ),
         IconButton(
           tooltip: 'Cerrar sesión',
           onPressed: () => confirmLogout(c),
