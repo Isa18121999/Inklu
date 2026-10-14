@@ -29,4 +29,19 @@ void main() {
     expect(find.text('Cómo utiliza INKLU tu información'), findsOneWidget);
     expect(find.text('Datos que puedes proporcionar'), findsOneWidget);
   });
+  testWidgets('El panel muestra el aviso para verificar el correo', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: EmailVerificationBanner(token: 'test-token'),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Verifica tu correo electrónico'), findsOneWidget);
+    expect(find.text('Verificar / reenviar correo'), findsOneWidget);
+  });
+
 }
