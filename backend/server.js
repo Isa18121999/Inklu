@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const { rateLimit } = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
@@ -20,8 +22,32 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-render';
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
+app.set('trust proxy', 1);
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*', methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
 app.use(express.json({ limit: '8mb' }));
+
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.' }
+});
+const recoveryRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Se alcanzó el límite temporal de recuperación. Inténtalo más tarde.' }
+});
+const passwordResetRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Demasiados intentos para cambiar la contraseña. Inténtalo más tarde.' }
+});
 
 function normalizeConadis(value) { return String(value || '').replace(/\s+/g, '').trim(); }
 function validConadis(value) { return /^[A-Za-z0-9-]{5,30}$/.test(value); }
@@ -404,7 +430,7 @@ async function findChatApplication(req, res) {
 
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'INKLU API' }));
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authRateLimit, async (req, res) => {
   try {
     const { name, email, phone, password, role, country, ruc, accreditationType, accreditationNumber, companyProfile } = req.body || {};
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'Completa los campos obligatorios.' });
@@ -448,7 +474,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authRateLimit, async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const password = String(req.body?.password || '');
@@ -459,7 +485,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // La recuperación envía un enlace con un proveedor de correo configurado. No revela si una cuenta existe.
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', recoveryRateLimit, async (req, res) => {
   const genericMessage = 'Si existe una cuenta con ese correo y la recuperación está habilitada, recibirás un enlace para restablecer tu contraseña.';
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
@@ -575,7 +601,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   }
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', passwordResetRateLimit, async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const token = String(req.body?.token || '').trim();
