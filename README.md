@@ -416,8 +416,9 @@ INKLU es una startup tecnológica que busca transformar la manera en que las per
 
 La pantalla de inicio de sesión incluye **¿Olvidaste tu contraseña?**. Para activar el envío real de enlaces, configura en Render las variables:
 
-- `RESEND_API_KEY`: clave API de Resend.
-- `EMAIL_FROM`: remitente de un dominio verificado en Resend, por ejemplo `INKLU <no-reply@tu-dominio.com>`.
-- `PASSWORD_RESET_URL`: URL pública de la página de restablecimiento. Valor previsto: `https://isa18121999.github.io/Inklu/reset-password.html`.
+- **Sin dominio propio:** configura `SMTP_USER` con una cuenta Gmail, `SMTP_APP_PASSWORD` con una contraseña de aplicación de Google y `SMTP_SERVICE=gmail`. Usa una dirección remitente `EMAIL_FROM` igual a `SMTP_USER` o déjala sin configurar para que use esa misma dirección.
+- Para generar una contraseña de aplicación, la cuenta debe tener verificación en dos pasos habilitada. No uses tu contraseña normal de Gmail ni la compartas por chat.
+- **Alternativa con dominio verificado:** configura `RESEND_API_KEY` y `EMAIL_FROM` con una dirección de ese dominio.
+- `PASSWORD_RESET_URL`: URL pública de la página de restablecimiento: `https://isa18121999.github.io/Inklu/reset-password.html`.
 
-Los enlaces caducan a los 30 minutos, el token se guarda solo como hash y queda invalidado tras usarse. La nueva contraseña debe incluir al menos ocho caracteres, mayúscula, minúscula, número y símbolo. Hasta configurar un remitente y una clave de correo válidos, la API indicará que la recuperación no está habilitada; no afirmará que se haya enviado un correo.
+Los enlaces caducan a los 30 minutos, el token se almacena como hash y se invalida después de usarlo. La nueva contraseña debe incluir al menos ocho caracteres, mayúscula, minúscula, número y símbolo. Si no existe configuración de correo válida, la API informa del problema sin afirmar que se envió el correo.
