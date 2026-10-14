@@ -48,6 +48,20 @@ const passwordResetRateLimit = rateLimit({
   legacyHeaders: false,
   message: { message: 'Demasiados intentos para cambiar la contraseña. Inténtalo más tarde.' }
 });
+const emailVerificationRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Demasiadas solicitudes de verificación. Inténtalo más tarde.' }
+});
+const verifyEmailRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Demasiados intentos de verificación. Inténtalo más tarde.' }
+});
 
 function normalizeConadis(value) { return String(value || '').replace(/\s+/g, '').trim(); }
 function validConadis(value) { return /^[A-Za-z0-9-]{5,30}$/.test(value); }
@@ -79,6 +93,7 @@ function publicUser(user, { includeSensitive = false } = {}) {
     hasProfilePhoto: Boolean(user.profilePhoto?.data?.length),
     profilePhotoUpdatedAt: user.profilePhoto?.updatedAt || null
   };
+  data.emailVerified = user.emailVerified !== false;
   if (includeSensitive && user.role === 'candidate') {
     data.conadisNumber = user.conadisNumber;
     data.hasCv = Boolean(user.cv?.data?.length);
@@ -90,6 +105,77 @@ function publicUser(user, { includeSensitive = false } = {}) {
     } : null;
   }
   return data;
+}
+
+function emailDeliveryConfigured() {
+  return Boolean(
+    (process.env.EMAIL_RELAY_URL && process.env.EMAIL_RELAY_TOKEN) ||
+    (process.env.SMTP_USER && process.env.SMTP_APP_PASSWORD) ||
+    (process.env.RESEND_API_KEY && process.env.EMAIL_FROM)
+  );
+}
+
+async function sendTransactionalEmail({ to, subject, html, text }) {
+  const relayConfigured = Boolean(process.env.EMAIL_RELAY_URL && process.env.EMAIL_RELAY_TOKEN);
+  const smtpConfigured = Boolean(process.env.SMTP_USER && process.env.SMTP_APP_PASSWORD);
+  const resendConfigured = Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+  if (!relayConfigured && !smtpConfigured && !resendConfigured) {
+    throw new Error('El servicio de correo todavía no está configurado.');
+  }
+
+  if (relayConfigured) {
+    const response = await fetch(process.env.EMAIL_RELAY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: process.env.EMAIL_RELAY_TOKEN,
+        to,
+        subject,
+        html,
+        text
+      }),
+      signal: AbortSignal.timeout(20000)
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.success !== true) {
+      console.error('Relay de correo rechazó el envío. HTTP:', response.status, result.error || 'sin detalle');
+      throw new Error('El relay de correo no pudo enviar el mensaje.');
+    }
+    return;
+  }
+
+  if (smtpConfigured) {
+    const transport = nodemailer.createTransport({
+      service: process.env.SMTP_SERVICE || 'gmail',
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_APP_PASSWORD },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000
+    });
+    await transport.sendMail({
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      html,
+      text
+    });
+    return;
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [to], subject, html, text }),
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    console.error('Proveedor de correo rechazó el envío. HTTP:', response.status, errorText.slice(0, 300));
+    throw new Error('El proveedor de correo no pudo enviar el mensaje.');
+  }
 }
 
 const CV_SKILL_CATALOG = [
@@ -451,6 +537,7 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
       email: normalizedEmail,
       phone: String(phone || '').trim(),
       passwordHash,
+      emailVerified: false,
       role,
       country: country || 'PE',
       ruc: role === 'company' ? String(ruc || '').trim() : undefined,
@@ -482,6 +569,101 @@ app.post('/api/auth/login', authRateLimit, async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
     return res.json({ token: tokenFor(user), user: publicUser(user, { includeSensitive: user.role === 'candidate' }) });
   } catch (e) { console.error(e); return res.status(500).json({ message: 'No se pudo iniciar sesión.' }); }
+});
+
+app.post('/api/auth/request-email-verification', auth, emailVerificationRateLimit, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('+emailVerificationTokenHash +emailVerificationExpires +emailVerificationRequestedAt');
+    if (!user) return res.status(401).json({ message: 'Inicia sesión nuevamente.' });
+    if (user.emailVerified === true) {
+      return res.json({ success: true, alreadyVerified: true, message: 'Tu correo ya está verificado.' });
+    }
+    if (!emailDeliveryConfigured()) {
+      return res.status(503).json({
+        message: 'El envío de correo aún no está configurado. Completa la configuración de EMAIL_RELAY_URL y EMAIL_RELAY_TOKEN en Render.'
+      });
+    }
+
+    const now = Date.now();
+    if (user.emailVerificationRequestedAt && now - new Date(user.emailVerificationRequestedAt).getTime() < 60 * 1000) {
+      return res.status(429).json({ message: 'Espera un minuto antes de solicitar otro enlace.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const emailVerificationTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const emailVerificationExpires = new Date(now + 24 * 60 * 60 * 1000);
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { emailVerificationTokenHash, emailVerificationExpires, emailVerificationRequestedAt: new Date(now) } }
+    );
+
+    const verifyUrl = new URL(String(process.env.EMAIL_VERIFICATION_URL || 'https://isa18121999.github.io/Inklu/verify-email.html'));
+    verifyUrl.searchParams.set('token', token);
+    verifyUrl.searchParams.set('email', user.email);
+    const safeName = String(user.name || '').replace(/[&<>"]/g, '');
+    const html = `<!doctype html><html lang="es"><body style="font-family:Arial,sans-serif;background:#f8f7ff;color:#19162d;padding:24px"><main style="max-width:560px;margin:auto;background:#fff;padding:28px;border-radius:18px;border:1px solid #e7e2fb"><h1 style="color:#4f46e5">Verifica tu correo de INKLU</h1><p>Hola ${safeName},</p><p>Confirma que esta dirección de correo te pertenece para mantener tu cuenta de INKLU actualizada.</p><p style="text-align:center;margin:28px 0"><a href="${verifyUrl.toString()}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:bold">Verificar mi correo</a></p><p>Este enlace caduca en 24 horas. Si no has creado una cuenta en INKLU, puedes ignorar este mensaje.</p><p><strong>INKLU</strong> · Tecnología para la inclusión laboral.</p></main></body></html>`;
+    const plainText = `Confirma tu correo de INKLU abriendo este enlace (caduca en 24 horas): ${verifyUrl.toString()}`;
+
+    try {
+      await sendTransactionalEmail({
+        to: user.email,
+        subject: 'Verifica tu correo de INKLU',
+        html,
+        text: plainText
+      });
+    } catch (deliveryError) {
+      await User.updateOne(
+        { _id: user._id },
+        { $unset: { emailVerificationTokenHash: 1, emailVerificationExpires: 1, emailVerificationRequestedAt: 1 } }
+      );
+      console.error('No se pudo enviar la verificación de correo:', deliveryError?.message || deliveryError);
+      return res.status(502).json({ message: 'No se pudo enviar el correo de verificación. Inténtalo más tarde.' });
+    }
+
+    return res.json({ success: true, message: 'Te enviamos un enlace de verificación. Revisa tu bandeja de entrada y Spam.' });
+  } catch (error) {
+    console.error('Error solicitando verificación de correo:', error);
+    return res.status(500).json({ message: 'No se pudo procesar la solicitud. Inténtalo más tarde.' });
+  }
+});
+
+app.post('/api/auth/verify-email', verifyEmailRateLimit, async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const token = String(req.body?.token || '').trim();
+    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || !/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({ message: 'El enlace de verificación no es válido.' });
+    }
+
+    const user = await User.findOne({ email }).select('+emailVerificationTokenHash +emailVerificationExpires');
+    if (!user) return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita otro desde INKLU.' });
+    if (user.emailVerified === true) {
+      return res.json({ success: true, message: 'Tu correo ya estaba verificado. Puedes volver a INKLU.' });
+    }
+    if (!user.emailVerificationTokenHash || !user.emailVerificationExpires ||
+        new Date(user.emailVerificationExpires).getTime() <= Date.now()) {
+      return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita otro desde INKLU.' });
+    }
+
+    const incomingHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expected = Buffer.from(user.emailVerificationTokenHash, 'hex');
+    const incoming = Buffer.from(incomingHash, 'hex');
+    if (expected.length !== incoming.length || !crypto.timingSafeEqual(expected, incoming)) {
+      return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita otro desde INKLU.' });
+    }
+
+    const updated = await User.updateOne(
+      { _id: user._id, emailVerificationTokenHash: user.emailVerificationTokenHash, emailVerificationExpires: { $gt: new Date() } },
+      { $set: { emailVerified: true }, $unset: { emailVerificationTokenHash: 1, emailVerificationExpires: 1, emailVerificationRequestedAt: 1 } }
+    );
+    if (!updated.modifiedCount) {
+      return res.status(400).json({ message: 'El enlace ya no es válido. Solicita otro desde INKLU.' });
+    }
+    return res.json({ success: true, message: 'Correo verificado correctamente. Ya puedes volver a INKLU.' });
+  } catch (error) {
+    console.error('Error verificando correo:', error);
+    return res.status(500).json({ message: 'No se pudo verificar el correo. Inténtalo más tarde.' });
+  }
 });
 
 // La recuperación envía un enlace con un proveedor de correo configurado. No revela si una cuenta existe.
