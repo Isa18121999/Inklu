@@ -631,7 +631,7 @@ app.post('/api/auth/verify-email', verifyEmailRateLimit, async (req, res) => {
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const token = String(req.body?.token || '').trim();
-    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || !/^[a-f0-9]{64}$/i.test(token)) {
+    if (!/^[^@\s]+@[^\s]+\.[^\s]+$/.test(email) || !/^[a-f0-9]{64}$/i.test(token)) {
       return res.status(400).json({ message: 'El enlace de verificación no es válido.' });
     }
 
