@@ -251,11 +251,47 @@ function recommendJobsForUser(user, jobs) {
   const location = normalizeText(user.profile?.location);
   const modality = normalizeText(user.profile?.modality);
   const cvKeywords = user.cvAnalysis?.keywords || [];
+  const education = String(user.profile?.education || '');
+  const cvCareerTerms = cvKeywords.slice(0, 25).map(item => item.term || '');
+  const careerSource = [education, ...skills, ...(user.profile?.skills || []), ...cvCareerTerms].join(' ');
+  const careerTerms = new Set(keywordCounts(careerSource, 100).map(item => item.term));
+  const candidateExperience = Math.max(0, Number(user.profile?.experience || 0));
+
+  // Agrupación aproximada de carreras/áreas, además de la similitud textual del CV.
+  const careerGroups = [
+    { key: 'tecnologia', signals: ['tecnologia', 'informatica', 'computacion', 'sistemas', 'software', 'programacion', 'desarrollo web', 'flutter', 'javascript', 'sql', 'ciberseguridad', 'redes'] },
+    { key: 'administracion', signals: ['administracion', 'administrativo', 'gestion empresarial', 'negocios', 'contabilidad', 'finanzas', 'economia', 'recursos humanos', 'reclutamiento'] },
+    { key: 'diseno', signals: ['diseno', 'ux', 'ui', 'figma', 'photoshop', 'illustrator', 'diseno grafico'] },
+    { key: 'datos', signals: ['analisis de datos', 'estadistica', 'power bi', 'tableau', 'data analysis', 'bases de datos'] },
+    { key: 'salud', signals: ['salud', 'enfermeria', 'clinica', 'medicina', 'atencion sanitaria', 'terapia'] },
+    { key: 'educacion', signals: ['educacion', 'docencia', 'ensenanza', 'pedagogia', 'docente', 'profesor'] },
+    { key: 'logistica', signals: ['logistica', 'inventario', 'almacen', 'cadena de suministro', 'transporte'] },
+    { key: 'marketing', signals: ['marketing', 'publicidad', 'comunicacion', 'redes sociales', 'contenido'] },
+    { key: 'atencion', signals: ['atencion al cliente', 'servicio al cliente', 'ventas', 'soporte', 'mesa de ayuda', 'help desk'] },
+    { key: 'proyectos', signals: ['gestion de proyectos', 'project management', 'scrum', 'agile'] }
+  ];
+  const candidateCareerText = normalizeText([education, ...skills, ...(user.profile?.skills || []), ...cvCareerTerms].join(' '));
+  const candidateGroups = new Set(careerGroups
+    .filter(group => group.signals.some(signal => candidateCareerText.includes(normalizeText(signal))))
+    .map(group => group.key));
+
   const jobDocuments = jobs.map(job => {
     const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
-    const content = [job.title, job.description, ...requiredSkills].join(' ');
-    return { job, requiredSkills, content, keywords: keywordCounts(content, 200) };
+    const content = [job.title, job.description, job.category, ...requiredSkills].join(' ');
+    const categoryTitleSkills = normalizeText([job.category, job.title, ...requiredSkills].join(' '));
+    const jobGroups = careerGroups
+      .filter(group => group.signals.some(signal => categoryTitleSkills.includes(normalizeText(signal))))
+      .map(group => group.key);
+    return {
+      job,
+      requiredSkills,
+      content,
+      categoryTitleSkills,
+      jobGroups,
+      keywords: keywordCounts(content, 200)
+    };
   });
+
   const documentFrequency = new Map();
   for (const document of jobDocuments) {
     const uniqueTerms = new Set(document.keywords.map(item => item.term));
@@ -265,26 +301,37 @@ function recommendJobsForUser(user, jobs) {
   }
 
   return jobDocuments.map(document => {
-    const { job, requiredSkills, content, keywords } = document;
+    const { job, requiredSkills, categoryTitleSkills, jobGroups, keywords } = document;
     const jobText = normalizeText([
       job.title,
       job.description,
+      job.category,
       job.modality,
       job.location,
       ...requiredSkills
     ].join(' '));
-    const matchedSkills = skills.filter(skill => jobText.includes(normalizeText(skill)));
-    const matchedRequired = requiredSkills.filter(required =>
-      normalizedSkills.some(skill =>
-        skill.includes(normalizeText(required)) || normalizeText(required).includes(skill)
-      )
-    );
+    const matchedSkills = skills.filter(skill => {
+      const normalized = normalizeText(skill);
+      return normalized.length > 1 && jobText.includes(normalized);
+    });
+    const matchedRequired = requiredSkills.filter(required => {
+      const normalized = normalizeText(required);
+      return normalized.length > 1 && normalizedSkills.some(skill =>
+        skill.includes(normalized) || normalized.includes(skill)
+      );
+    });
     const candidateTerms = new Set(cvKeywords.map(item => item.term));
     const sharedKeywords = keywords
       .filter(item => candidateTerms.has(item.term))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
       .map(item => item.term);
+    const matchedCareerTerms = keywords
+      .filter(item => careerTerms.has(item.term))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map(item => item.term);
+    const careerCategoryMatch = jobGroups.some(group => candidateGroups.has(group));
 
     const similarity = tfidfCosineSimilarity(
       cvKeywords,
@@ -293,19 +340,32 @@ function recommendJobsForUser(user, jobs) {
       Math.max(jobDocuments.length, 1)
     );
     const reasons = [];
+    if (careerCategoryMatch) reasons.push('Área profesional relacionada con tu carrera o CV');
     if (matchedSkills.length) reasons.push('Habilidades relacionadas: ' + matchedSkills.slice(0, 4).join(', '));
-    if (sharedKeywords.length) reasons.push('Palabras coincidentes: ' + sharedKeywords.slice(0, 4).join(', '));
+    if (matchedCareerTerms.length) reasons.push('Coincidencias con tu CV: ' + matchedCareerTerms.slice(0, 4).join(', '));
     if (location && normalizeText(job.location).includes(location)) reasons.push('Coincide con tu ubicación preferida');
     if (modality && normalizeText(job.modality).includes(modality)) reasons.push('Coincide con tu modalidad preferida');
 
-    let score = Math.round(similarity * 75);
-    if (matchedSkills.length) {
-      score = Math.max(score, Math.round((matchedSkills.length / Math.min(skills.length, 5)) * 65));
+    const experienceRequired = Math.max(0, Number(job.experienceRequired || 0));
+    const experienceGap = Math.max(0, experienceRequired - candidateExperience);
+    const evidenceCount = matchedSkills.length + matchedRequired.length + sharedKeywords.length +
+      matchedCareerTerms.length + (careerCategoryMatch ? 2 : 0);
+
+    let score = Math.round(similarity * 60);
+    if (matchedSkills.length) score = Math.max(score, Math.min(50, matchedSkills.length * 10));
+    score += Math.min(20, matchedCareerTerms.length * 4);
+    if (careerCategoryMatch) score += 15;
+    if (matchedRequired.length) score += Math.min(10, matchedRequired.length * 3);
+    if (experienceGap === 0) {
+      score += 8;
+      reasons.push('Experiencia requerida compatible con tu perfil');
+    } else {
+      score -= Math.min(35, experienceGap * 12);
+      reasons.push('La oferta solicita ' + experienceRequired + ' año(s) de experiencia y tu perfil indica ' + candidateExperience + '.');
     }
-    if (matchedRequired.length) score += Math.min(15, matchedRequired.length * 5);
-    if (location && normalizeText(job.location).includes(location)) score += 5;
-    if (modality && normalizeText(job.modality).includes(modality)) score += 5;
-    score = Math.min(100, score);
+    if (location && normalizeText(job.location).includes(location)) score += 3;
+    if (modality && normalizeText(job.modality).includes(modality)) score += 3;
+    score = Math.max(0, Math.min(100, score));
 
     const record = job.toObject();
     return {
@@ -313,14 +373,15 @@ function recommendJobsForUser(user, jobs) {
       matchScore: score,
       matchReasons: reasons,
       matchedSkills,
-      textSimilarity: Number(similarity.toFixed(4))
+      textSimilarity: Number(similarity.toFixed(4)),
+      careerMatch: evidenceCount > 0,
+      experienceFit: experienceGap === 0
     };
   })
-    .filter(job => job.matchScore > 0)
+    .filter(job => job.matchScore > 0 && job.careerMatch)
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 10);
 }
-
 async function findChatApplication(req, res) {
   const application = await Application.findById(req.params.id).populate('jobId');
   if (!application || !application.jobId) {
@@ -694,9 +755,9 @@ app.get('/api/recommendations', auth, async (req, res) => {
       engine: 'skill-match-mvp',
       cvSkills: analysis.skills,
       recommendations,
-      message: analysis.skills.length
-        ? 'Ofertas ordenadas por coincidencia entre las habilidades del CV y los requisitos.'
-        : 'No detectamos habilidades conocidas en el CV. Puedes revisar todas las ofertas mientras mejoras el documento.'
+      message: recommendations.length
+        ? 'Ofertas filtradas y ordenadas por carrera, palabras clave del CV, habilidades y experiencia requerida.'
+        : 'No encontramos ofertas suficientemente relacionadas con tu CV y experiencia. Completa tu formación y años de experiencia en tu perfil, o mejora el CV.'
     });
   } catch (e) {
     res.status(e.statusCode || 500).json({ message: e.statusCode ? e.message : 'No se pudieron calcular las recomendaciones.' });
@@ -734,7 +795,12 @@ app.get('/api/jobs', auth, async (req, res) => {
     if (contractType) filter.contractType = new RegExp('^' + escapeRegex(contractType) + '$', 'i');
     if (category) filter.category = new RegExp('^' + escapeRegex(category) + '$', 'i');
 
-    const jobs = await Job.find(filter).populate('companyId', 'name').sort({ createdAt: -1 }).limit(100);
+    let jobs = await Job.find(filter).populate('companyId', 'name').sort({ createdAt: -1 }).limit(100);
+    // Una vez que el CV ya fue analizado, las búsquedas de candidatos priorizan
+    // únicamente las ofertas con evidencia de relación profesional y compatibilidad.
+    if (req.user.role === 'candidate' && req.user.cvAnalysis?.keywords?.length) {
+      jobs = recommendJobsForUser(req.user, jobs);
+    }
     res.json(jobs);
   } catch (error) {
     console.error('Error buscando ofertas:', error);
