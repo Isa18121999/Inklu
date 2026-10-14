@@ -546,6 +546,27 @@ class _CandidateHomeState extends State<CandidateHome> {
       final results = await Future.wait([api.jobs(sessionToken!), api.applications(sessionToken!)]);
       if (!mounted) return;
       setState(() { jobs = results[0]; apps = results[1]; });
+
+      // Intenta personalizar las ofertas automáticamente al abrir Inicio.
+      // Si todavía no hay CV, las ofertas siguen disponibles y se muestra una guía.
+      try {
+        final suggested = await api.recommendations(sessionToken!);
+        final relevantJobs = await api.jobs(sessionToken!);
+        if (!mounted) return;
+        setState(() {
+          recommendations = suggested;
+          jobs = relevantJobs;
+          recommendationMessage = suggested.isEmpty
+              ? 'Aún no encontramos ofertas relacionadas. Completa carrera y experiencia, y revisa que tu CV tenga texto seleccionable.'
+              : 'Mostramos ofertas según las coincidencias con tu CV, carrera y experiencia.';
+        });
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            recommendationMessage = 'Sube un CV y completa carrera y años de experiencia para recibir ofertas personalizadas.';
+          });
+        }
+      }
     } catch (x) {
       if (mounted) toast(x.toString().replaceFirst('Exception: ', ''));
     }
