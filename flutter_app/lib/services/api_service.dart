@@ -13,7 +13,33 @@ class ApiService {
     if (cvPath != null && cvPath.isNotEmpty && data['token'] != null) await uploadCv(data['token'].toString(), cvPath);
     return data;
   }
-  Future<Map<String, dynamic>> registerCompany({required String name, required String email, required String phone, required String password, required String ruc}) => _post('/auth/register', {'name': name, 'email': email, 'phone': phone, 'password': password, 'role': 'company', 'country': 'PE', 'ruc': ruc});
+  Future<Map<String, dynamic>> registerCompany({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+    required String ruc,
+    String sector = '',
+    String size = '',
+    String address = '',
+    String website = '',
+    String description = '',
+  }) => _post('/auth/register', {
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'password': password,
+    'role': 'company',
+    'country': 'PE',
+    'ruc': ruc,
+    'companyProfile': {
+      'sector': sector,
+      'size': size,
+      'address': address,
+      'website': website,
+      'description': description,
+    },
+  });
   Future<Map<String, dynamic>> login(String email, String password) => _post('/auth/login', {'email': email, 'password': password});
 
   Future<Map<String, dynamic>> uploadCv(String token, String path) async {
