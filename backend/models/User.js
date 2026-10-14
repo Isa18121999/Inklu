@@ -13,7 +13,7 @@ const CandidateProfileSchema = new mongoose.Schema({
 const CvSchema = new mongoose.Schema({
   fileName: { type: String, trim: true },
   mimeType: { type: String, trim: true },
-  data: { type: Buffer },
+  data: { type: Buffer, select: false },
   size: { type: Number, min: 0 },
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
@@ -32,7 +32,7 @@ const CvAnalysisSchema = new mongoose.Schema({
 const ProfilePhotoSchema = new mongoose.Schema({
   fileName: { type: String, trim: true },
   mimeType: { type: String, enum: ['image/jpeg', 'image/png', 'image/webp'], required: true },
-  data: { type: Buffer, required: true },
+  data: { type: Buffer, required: true, select: false },
   size: { type: Number, min: 1, required: true },
   updatedAt: { type: Date, default: Date.now }
 }, { _id: false });
