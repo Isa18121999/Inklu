@@ -421,10 +421,15 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    user.passwordResetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    user.passwordResetExpires = new Date(now + 30 * 60 * 1000);
-    user.passwordResetRequestedAt = new Date(now);
-    await user.save();
+    const passwordResetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const passwordResetExpires = new Date(now + 30 * 60 * 1000);
+    const passwordResetRequestedAt = new Date(now);
+    // Actualiza solo los campos de recuperación: algunas cuentas antiguas pueden
+    // no tener passwordHash y el save() del documento completo falla la validación.
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { passwordResetTokenHash, passwordResetExpires, passwordResetRequestedAt } }
+    );
 
     const resetBase = String(process.env.PASSWORD_RESET_URL || 'https://isa18121999.github.io/Inklu/reset-password.html').trim();
     const resetUrl = new URL(resetBase);
@@ -471,10 +476,10 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         }
       }
     } catch (deliveryError) {
-      user.passwordResetTokenHash = undefined;
-      user.passwordResetExpires = undefined;
-      user.passwordResetRequestedAt = undefined;
-      await user.save();
+      await User.updateOne(
+        { _id: user._id },
+        { $unset: { passwordResetTokenHash: 1, passwordResetExpires: 1, passwordResetRequestedAt: 1 } }
+      );
       console.error('No se pudo entregar el correo de recuperación:', deliveryError?.message || deliveryError);
       return res.status(502).json({ message: 'No se pudo enviar el correo de recuperación. Revisa la configuración de correo o inténtalo más tarde.' });
     }
