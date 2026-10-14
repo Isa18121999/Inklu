@@ -4,6 +4,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const User = require('./models/User');
 const Job = require('./models/Job');
 const Application = require('./models/Application');
@@ -392,6 +393,99 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) return res.status(401).json({ message: 'Correo o contraseña incorrectos.' });
     return res.json({ token: tokenFor(user), user: publicUser(user, { includeSensitive: user.role === 'candidate' }) });
   } catch (e) { console.error(e); return res.status(500).json({ message: 'No se pudo iniciar sesión.' }); }
+});
+
+// La recuperación envía un enlace por correo con Resend. No revela si una cuenta existe.
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const genericMessage = 'Si existe una cuenta con ese correo y la recuperación está habilitada, recibirás un enlace para restablecer tu contraseña.';
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+      return res.status(400).json({ message: 'Introduce un correo electrónico válido.' });
+    }
+    if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
+      return res.status(503).json({ message: 'La recuperación por correo todavía no está habilitada en INKLU. Contacta al equipo de soporte para recuperar tu acceso.' });
+    }
+
+    const user = await User.findOne({ email }).select('+passwordResetTokenHash +passwordResetExpires +passwordResetRequestedAt');
+    if (!user) return res.json({ message: genericMessage });
+
+    const now = Date.now();
+    if (user.passwordResetRequestedAt && now - new Date(user.passwordResetRequestedAt).getTime() < 60 * 1000) {
+      return res.json({ message: genericMessage });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    user.passwordResetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    user.passwordResetExpires = new Date(now + 30 * 60 * 1000);
+    user.passwordResetRequestedAt = new Date(now);
+    await user.save();
+
+    const resetBase = String(process.env.PASSWORD_RESET_URL || 'https://isa18121999.github.io/Inklu/reset-password.html').trim();
+    const resetUrl = new URL(resetBase);
+    resetUrl.searchParams.set('token', token);
+    resetUrl.searchParams.set('email', email);
+    const safeName = String(user.name || '').replace(/[&<>"]/g, '');
+    const html = `<!doctype html><html><body style="margin:0;background:#f8f7ff;font-family:Arial,sans-serif;color:#19162d"><div style="max-width:560px;margin:32px auto;padding:28px;background:#fff;border:1px solid #e7e2fb;border-radius:18px"><h1 style="color:#4f46e5">Recupera tu acceso a INKLU</h1><p>Hola ${safeName},</p><p>Recibimos una solicitud para cambiar la contraseña de tu cuenta de INKLU.</p><p style="text-align:center;margin:28px 0"><a href="${resetUrl.toString()}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:bold">Crear nueva contraseña</a></p><p>El enlace caduca en 30 minutos y solo se puede utilizar una vez. Si no solicitaste este cambio, ignora este mensaje.</p><p style="color:#64748b;font-size:12px">Por seguridad, nunca compartas este enlace con otras personas.</p><p><strong>INKLU</strong> · Tecnología para la inclusión laboral.</p></div></body></html>`;
+
+    const emailResponse = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM,
+        to: [email],
+        subject: 'Recupera tu contraseña de INKLU',
+        html,
+        text: `Recibimos una solicitud para cambiar la contraseña de INKLU. Abre este enlace dentro de los próximos 30 minutos: ${resetUrl.toString()} Si no lo solicitaste, ignora este mensaje.`
+      })
+    });
+
+    if (!emailResponse.ok) {
+      user.passwordResetTokenHash = undefined;
+      user.passwordResetExpires = undefined;
+      user.passwordResetRequestedAt = undefined;
+      await user.save();
+      console.error('Resend no pudo enviar el correo de recuperación. Status:', emailResponse.status);
+      return res.status(502).json({ message: 'No se pudo enviar el correo de recuperación. Inténtalo más tarde o contacta con INKLU.' });
+    }
+    return res.json({ message: genericMessage });
+  } catch (error) {
+    console.error('Error solicitando recuperación de contraseña:', error);
+    return res.status(500).json({ message: 'No se pudo procesar la solicitud. Inténtalo más tarde.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const token = String(req.body?.token || '').trim();
+    const password = String(req.body?.password || '');
+    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || !token) {
+      return res.status(400).json({ message: 'El enlace de recuperación no es válido.' });
+    }
+    if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      return res.status(400).json({ message: 'Usa al menos 8 caracteres e incluye mayúscula, minúscula, número y símbolo.' });
+    }
+    const user = await User.findOne({ email }).select('+passwordResetTokenHash +passwordResetExpires');
+    if (!user || !user.passwordResetTokenHash || !user.passwordResetExpires || new Date(user.passwordResetExpires).getTime() <= Date.now()) {
+      return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita uno nuevo.' });
+    }
+    const incomingHash = crypto.createHash('sha256').update(token).digest('hex');
+    const expected = Buffer.from(user.passwordResetTokenHash, 'hex');
+    const incoming = Buffer.from(incomingHash, 'hex');
+    if (expected.length !== incoming.length || !crypto.timingSafeEqual(expected, incoming)) {
+      return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita uno nuevo.' });
+    }
+    user.passwordHash = await bcrypt.hash(password, 12);
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetExpires = undefined;
+    user.passwordResetRequestedAt = undefined;
+    await user.save();
+    return res.json({ message: 'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión en INKLU.' });
+  } catch (error) {
+    console.error('Error restableciendo contraseña:', error);
+    return res.status(500).json({ message: 'No se pudo restablecer la contraseña. Inténtalo más tarde.' });
+  }
 });
 
 app.post('/api/profile/cv', auth, async (req, res) => {
