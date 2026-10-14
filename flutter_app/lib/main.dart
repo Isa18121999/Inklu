@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 
 const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
@@ -20,7 +21,108 @@ void toast(String s) {
   }
 }
 final GlobalKey<NavigatorState> _nav=GlobalKey<NavigatorState>();
-class InkluApp extends StatelessWidget{const InkluApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,navigatorKey:_nav,title:'INKLU',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:Colors.white,colorScheme:ColorScheme.fromSeed(seedColor:primary)),home:const Welcome());}
+class InkluApp extends StatelessWidget{const InkluApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,navigatorKey:_nav,title:'INKLU',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:Colors.white,colorScheme:ColorScheme.fromSeed(seedColor:primary)),home:const AppStart());}
+const String _rememberKey='inklu_remember_session';
+const String _tokenKey='inklu_saved_token';
+const String _userKey='inklu_saved_user';
+
+Future<void> saveLoginSession(bool remember) async {
+  final prefs = await SharedPreferences.getInstance();
+  if (remember && sessionToken != null && sessionUser != null) {
+    await prefs.setBool(_rememberKey, true);
+    await prefs.setString(_tokenKey, sessionToken!);
+    await prefs.setString(_userKey, jsonEncode(sessionUser));
+  } else {
+    await prefs.remove(_rememberKey);
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userKey);
+  }
+}
+
+Future<void> clearSavedSession() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove(_rememberKey);
+  await prefs.remove(_tokenKey);
+  await prefs.remove(_userKey);
+}
+
+Future<void> confirmLogout(BuildContext context) async {
+  final shouldLogout = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Cerrar sesión'),
+      content: const Text('¿Deseas salir de tu cuenta de INKLU?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Cerrar sesión'),
+        ),
+      ],
+    ),
+  );
+  if (shouldLogout != true || !context.mounted) return;
+  try {
+    await clearSavedSession();
+  } catch (_) {}
+  sessionToken = null;
+  sessionUser = null;
+  if (!context.mounted) return;
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => const Welcome()),
+    (_) => false,
+  );
+}
+
+class AppStart extends StatefulWidget {
+  const AppStart({super.key});
+  @override
+  State<AppStart> createState() => _AppStartState();
+}
+
+class _AppStartState extends State<AppStart> {
+  bool loading = true;
+  bool restored = false;
+
+  @override
+  void initState() {
+    super.initState();
+    restoreSession();
+  }
+
+  Future<void> restoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_rememberKey) == true) {
+        final token = prefs.getString(_tokenKey);
+        final rawUser = prefs.getString(_userKey);
+        if (token != null && token.isNotEmpty && rawUser != null) {
+          final decoded = jsonDecode(rawUser);
+          if (decoded is Map) {
+            sessionToken = token;
+            sessionUser = Map<String, dynamic>.from(decoded);
+            restored = true;
+          }
+        }
+      }
+    } catch (_) {
+      restored = false;
+    }
+    if (mounted) setState(() => loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: primary)));
+    }
+    if (restored && sessionToken != null && sessionUser != null) {
+      return sessionUser?['role'] == 'company' ? const CompanyHome() : const CandidateHome();
+    }
+    return const Welcome();
+  }
+}
 class Logo extends StatefulWidget{final double size;const Logo({super.key,this.size=110});@override State<Logo> createState()=>_LogoState();}
 class _LogoState extends State<Logo>{Uint8List? b;@override void initState(){super.initState();rootBundle.loadString('assets/logo.b64').then((x){if(mounted)setState(()=>b=base64Decode(x.trim()));});}@override Widget build(BuildContext c)=>b==null?SizedBox(width:widget.size,height:widget.size):Semantics(label:'Logo INKLU',image:true,child:Image.memory(b!,width:widget.size,height:widget.size,fit:BoxFit.contain));}
 class Welcome extends StatelessWidget {
@@ -289,6 +391,7 @@ class _LoginState extends State<Login> {
   final e = TextEditingController();
   final p = TextEditingController();
   bool busy = false;
+  bool rememberSession = false;
 
   Future<void> go() async {
     if (!validEmail(e.text) || p.text.isEmpty) {
@@ -300,6 +403,7 @@ class _LoginState extends State<Login> {
       final r = await api.login(e.text.trim(), p.text);
       sessionToken = r['token'];
       sessionUser = r['user'];
+      await saveLoginSession(rememberSession);
       final company = sessionUser?['role'] == 'company';
       if (mounted) {
         Navigator.pushAndRemoveUntil(
@@ -391,6 +495,15 @@ class _LoginState extends State<Login> {
           children: [
             F(e, 'Correo electrónico', type: TextInputType.emailAddress),
             F(p, 'Contraseña', obscure: true),
+            CheckboxListTile(
+              value: rememberSession,
+              onChanged: busy ? null : (value) => setState(() => rememberSession = value ?? false),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              dense: true,
+              title: const Text('Mantener sesión iniciada', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              subtitle: const Text('Guarda tu acceso en este dispositivo.', style: TextStyle(fontSize: 11, color: muted)),
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
@@ -2712,6 +2825,14 @@ class Dash extends StatelessWidget {
         const SizedBox(width: 6),
         const Text('INKLU', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF19162D))),
       ]),
+      actions: [
+        IconButton(
+          tooltip: 'Cerrar sesión',
+          onPressed: () => confirmLogout(c),
+          icon: const Icon(Icons.logout_rounded, color: primary),
+        ),
+        const SizedBox(width: 4),
+      ],
     ),
     body: ListView(
       padding: const EdgeInsets.fromLTRB(18, 15, 18, 24),
