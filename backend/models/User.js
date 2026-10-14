@@ -48,6 +48,10 @@ const CompanyProfileSchema = new mongoose.Schema({
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  emailVerified: { type: Boolean, default: true }, // cuentas antiguas se consideran verificadas para no bloquearlas
+  emailVerificationTokenHash: { type: String, select: false },
+  emailVerificationExpires: { type: Date, select: false },
+  emailVerificationRequestedAt: { type: Date, select: false },
   phone: { type: String, trim: true },
   passwordHash: { type: String, required: true },
   passwordResetTokenHash: { type: String, select: false },
