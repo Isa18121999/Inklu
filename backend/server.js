@@ -90,13 +90,13 @@ function publicUser(user, { includeSensitive = false } = {}) {
     ruc: user.ruc,
     companyProfile: user.companyProfile,
     profile: user.profile,
-    hasProfilePhoto: Boolean(user.profilePhoto?.data?.length),
+    hasProfilePhoto: Boolean(user.profilePhoto?.size || user.profilePhoto?.data?.length),
     profilePhotoUpdatedAt: user.profilePhoto?.updatedAt || null
   };
   data.emailVerified = user.emailVerified !== false;
   if (includeSensitive && user.role === 'candidate') {
     data.conadisNumber = user.conadisNumber;
-    data.hasCv = Boolean(user.cv?.data?.length);
+    data.hasCv = Boolean(user.cv?.size || user.cv?.data?.length);
     data.cvFileName = user.cv?.fileName || null;
     data.cvAnalysis = user.cvAnalysis ? {
       skills: user.cvAnalysis.skills || [],
@@ -834,16 +834,24 @@ app.post('/api/profile/cv', auth, async (req, res) => {
 
 app.get('/api/profile/cv', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'candidate' || !req.user.cv?.data?.length) return res.status(404).json({ message: 'No hay un CV registrado.' });
-    res.set('Content-Type', req.user.cv.mimeType || 'application/octet-stream');
-    res.set('Content-Disposition', `attachment; filename="${String(req.user.cv.fileName || 'CV').replace(/"/g, '')}"`);
-    res.send(req.user.cv.data);
+    if (req.user.role !== 'candidate') return res.status(404).json({ message: 'No hay un CV registrado.' });
+    // Los bytes del CV se consultan solo en el endpoint que realmente los entrega.
+    const candidate = await User.findById(req.user._id).select('+cv.data');
+    if (!candidate?.cv?.data?.length) return res.status(404).json({ message: 'No hay un CV registrado.' });
+    const safeFileName = String(candidate.cv.fileName || 'CV').replace(/["\r\n]/g, '');
+    res.set('Content-Type', candidate.cv.mimeType || 'application/octet-stream');
+    res.set('Content-Disposition', `attachment; filename="${safeFileName}"`);
+    res.set('Cache-Control', 'private, no-store');
+    res.send(candidate.cv.data);
   } catch (e) { console.error(e); res.status(500).json({ message: 'No se pudo descargar el CV.' }); }
 });
 
 app.post('/api/profile/cv/analyze', auth, async (req, res) => {
   try {
-    const analysis = await analyzeCandidateCv(req.user);
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden analizar un CV.' });
+    const candidate = await User.findById(req.user._id).select('+cv.data');
+    if (!candidate) return res.status(401).json({ message: 'Inicia sesión nuevamente.' });
+    const analysis = await analyzeCandidateCv(candidate);
     res.json({
       message: analysis.cached ? 'El CV ya estaba analizado.' : 'CV analizado correctamente.',
       skills: analysis.skills,
@@ -920,14 +928,16 @@ app.post('/api/profile/photo', auth, async (req, res) => {
 
 app.get('/api/profile/photo', auth, async (req, res) => {
   try {
-    const photo = req.user.profilePhoto;
+    // La foto binaria no se incluye en cada consulta autenticada; se lee aquí.
+    const photoUser = await User.findById(req.user._id).select('+profilePhoto.data');
+    const photo = photoUser?.profilePhoto;
     if (!photo?.data?.length) {
       return res.status(404).json({ message: 'Todavía no hay una foto de perfil.' });
     }
     res.set('Content-Type', photo.mimeType || 'image/jpeg');
     res.set('Content-Length', String(photo.size || photo.data.length));
     res.set('Content-Disposition', 'inline');
-    res.set('Cache-Control', 'private, max-age=300');
+    res.set('Cache-Control', 'private, no-store');
     return res.send(photo.data);
   } catch (error) {
     console.error('Error cargando la foto de perfil:', error);
