@@ -3252,6 +3252,92 @@ class Shell extends StatelessWidget {
         ),
       );
 }
+class EmailVerificationBanner extends StatefulWidget {
+  final String token;
+  const EmailVerificationBanner({super.key, required this.token});
+
+  @override
+  State<EmailVerificationBanner> createState() => _EmailVerificationBannerState();
+}
+
+class _EmailVerificationBannerState extends State<EmailVerificationBanner> {
+  bool sending = false;
+  bool verified = false;
+
+  Future<void> checkOrSendVerification() async {
+    if (sending) return;
+    setState(() => sending = true);
+    try {
+      // Reconsulta el perfil para reconocer un enlace que ya se abrió en el navegador.
+      final currentProfile = await api.profile(widget.token);
+      final merged = Map<String, dynamic>.from(sessionUser ?? <String, dynamic>{});
+      merged.addAll(currentProfile);
+      sessionUser = merged;
+      if (currentProfile['emailVerified'] == true) {
+        if (mounted) setState(() => verified = true);
+        toast('Tu correo ya está verificado.');
+        return;
+      }
+
+      final response = await api.requestEmailVerification(widget.token);
+      toast(response['message']?.toString() ??
+          'Si el envío está configurado, recibirás un enlace de verificación.');
+    } catch (error) {
+      toast(error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (verified) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.mark_email_unread_outlined, color: Color(0xFF92400E)),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Verifica tu correo electrónico',
+                  style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF78350F)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Confirma que la dirección de tu cuenta te pertenece. El enlace se enviará cuando el servicio de correo de INKLU esté configurado.',
+            style: TextStyle(color: Color(0xFF78350F), fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: sending ? null : checkOrSendVerification,
+            icon: sending
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.mark_email_read_outlined),
+            label: Text(sending ? 'Comprobando...' : 'Verificar / reenviar correo'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF92400E),
+              side: const BorderSide(color: Color(0xFFF59E0B)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class Dash extends StatelessWidget {
   final String title;
   final int tab;
@@ -3303,6 +3389,8 @@ class Dash extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+        if (sessionUser?['emailVerified'] == false && sessionToken != null)
+          EmailVerificationBanner(token: sessionToken!),
         ...children,
       ],
     ),
