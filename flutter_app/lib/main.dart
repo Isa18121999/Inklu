@@ -2245,6 +2245,7 @@ class _CompanyHomeState extends State<CompanyHome> {
     final experience = TextEditingController(text: '0');
     final requiredSkills = TextEditingController();
     final accessibilityDetails = TextEditingController();
+    final salary = TextEditingController();
     final location = TextEditingController(text: 'Lima, Perú');
     const modalities = ['Remoto', 'Híbrido', 'Presencial'];
     const categories = ['Tecnología', 'Administración', 'Diseño', 'Atención al cliente', 'Educación', 'Salud', 'Finanzas', 'Logística', 'Marketing', 'Otro'];
@@ -2266,6 +2267,7 @@ class _CompanyHomeState extends State<CompanyHome> {
                 F(requiredSkills, 'Habilidades requeridas (separadas por comas)', max: 3),
                 F(experience, 'Experiencia requerida en años (0 = sin requisito)', type: TextInputType.number, format: digits(2)),
                 F(accessibilityDetails, 'Accesibilidad y ajustes disponibles', max: 4),
+                F(salary, 'Salario o rango salarial (opcional)'),
                 F(location, 'Ubicación'),
                 DropdownButtonFormField<String>(
                   initialValue: category,
@@ -2328,6 +2330,7 @@ class _CompanyHomeState extends State<CompanyHome> {
           'experienceRequired': int.tryParse(experience.text.trim()) ?? 0,
           'requiredSkills': requiredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
           'accessibilityDetails': accessibilityDetails.text.trim(),
+          'salary': salary.text.trim(),
         });
         toast('Oferta publicada correctamente.');
         await load();
@@ -2340,6 +2343,7 @@ class _CompanyHomeState extends State<CompanyHome> {
     experience.dispose();
     requiredSkills.dispose();
     accessibilityDetails.dispose();
+    salary.dispose();
     location.dispose();
   }
 
