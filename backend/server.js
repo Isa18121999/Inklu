@@ -400,7 +400,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   const genericMessage = 'Si existe una cuenta con ese correo y la recuperación está habilitada, recibirás un enlace para restablecer tu contraseña.';
   try {
     const email = String(req.body?.email || '').trim().toLowerCase();
-    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       return res.status(400).json({ message: 'Introduce un correo electrónico válido.' });
     }
     if (!process.env.RESEND_API_KEY || !process.env.EMAIL_FROM) {
@@ -460,7 +460,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const token = String(req.body?.token || '').trim();
     const password = String(req.body?.password || '');
-    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || !token) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !token) {
       return res.status(400).json({ message: 'El enlace de recuperación no es válido.' });
     }
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
