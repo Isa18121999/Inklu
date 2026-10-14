@@ -62,7 +62,8 @@ const UserSchema = new mongoose.Schema({
   profile: { type: CandidateProfileSchema, default: () => ({}) },
   cv: { type: CvSchema, default: undefined },
   cvAnalysis: { type: CvAnalysisSchema, default: undefined },
-  profilePhoto: { type: ProfilePhotoSchema, default: undefined }
+  profilePhoto: { type: ProfilePhotoSchema, default: undefined },
+  savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }]
 }, { timestamps: true });
 
 UserSchema.index(
