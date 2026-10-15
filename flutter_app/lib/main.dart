@@ -1158,17 +1158,27 @@ class _CandidateHomeState extends State<CandidateHome> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if ((showSavedOnly ? savedJobs : jobs).isEmpty)
-                    const Info(
-                      'No encontramos ofertas con esos filtros',
-                      'Prueba otra palabra o limpia alguno de los filtros para ver más oportunidades.',
+                    Info(
+                      'No encontramos ofertas relacionadas con tu perfil',
+                      'Actualiza tu carrera, habilidades, experiencia y CV, o ajusta los filtros. INKLU prioriza ofertas profesionales relacionadas con tus datos.',
                     )
                   else
-                    ...(showSavedOnly ? savedJobs : jobs).map((job) => JobCard(
-                      job,
-                      onTap: () => showOffer(c, job, apply),
-                      isSaved: isJobSaved(job),
-                      onSave: () => toggleSavedJob(job),
-                    )),
+                    ...(showSavedOnly ? savedJobs : jobs).map((job) {
+                      if (!showSavedOnly && job is Map && job['matchScore'] is num) {
+                        return JobRecommendationCard(
+                          job: Map<String, dynamic>.from(job),
+                          onTap: () => showOffer(c, job, apply),
+                          isSaved: isJobSaved(job),
+                          onSave: () => toggleSavedJob(job),
+                        );
+                      }
+                      return JobCard(
+                        job,
+                        onTap: () => showOffer(c, job, apply),
+                        isSaved: isJobSaved(job),
+                        onSave: () => toggleSavedJob(job),
+                      );
+                    }),
                 ]
               : tab == 2
                   ? [
@@ -1243,6 +1253,66 @@ bool chatAvailableForStatus(String status) =>
     const ['En proceso', 'Aceptado', 'Proceso terminado']
         .contains(normalizeApplicationStatus(status));
 
+class JobMetadataChips extends StatelessWidget {
+  final Map<String, dynamic> job;
+  const JobMetadataChips({super.key, required this.job});
+
+  String _named(dynamic raw, String fallback) {
+    final value = raw?.toString().trim() ?? '';
+    if (value.isEmpty || RegExp(r'^\\d+(?:\\.\\d+)?$').hasMatch(value)) {
+      return fallback;
+    }
+    return value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final category = _named(job['category'], 'Área por confirmar');
+    final modality = _named(job['modality'], 'Modalidad por confirmar');
+    final contract = _named(job['contractType'], 'Tipo de contrato por confirmar');
+    final years = num.tryParse((job['experienceRequired'] ?? '').toString());
+    final experience = years == null
+        ? 'Experiencia no especificada'
+        : years <= 0
+            ? 'No requiere experiencia previa'
+            : 'Experiencia: ${years.toString()} ${years == 1 ? 'año' : 'años'}';
+    final tags = <String>[
+      'Área: $category',
+      'Modalidad: $modality',
+      contract,
+      experience,
+    ];
+    final rawSkills = job['requiredSkills'];
+    if (rawSkills is List) {
+      final skills = rawSkills
+          .map((item) => item?.toString().trim() ?? '')
+          .where((item) => item.isNotEmpty && !RegExp(r'^\\d+$').hasMatch(item))
+          .take(2);
+      tags.addAll(skills.map((skill) => 'Habilidad requerida: $skill'));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 5, bottom: 4),
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 3,
+        children: tags.map((tag) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1EEFF),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E0FA)),
+          ),
+          child: Text(
+            tag,
+            style: const TextStyle(fontSize: 10, color: Color(0xFF433D63), fontWeight: FontWeight.w600),
+          ),
+        )).toList(),
+      ),
+    );
+  }
+}
+
 class JobRecommendationCard extends StatelessWidget {
   final Map<String, dynamic> job;
   final VoidCallback onTap;
@@ -1292,9 +1362,9 @@ class JobRecommendationCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(company),
-              const SizedBox(height: 4),
+              JobMetadataChips(job: job),
               Text(
-                '$score% de coincidencia orientativa',
+                'Coincidencia estimada: $score%',
                 style: const TextStyle(
                   color: primary,
                   fontWeight: FontWeight.w800,
@@ -3750,27 +3820,49 @@ class JobCard extends StatelessWidget {
   const JobCard(this.j, {super.key, this.onTap, this.isSaved = false, this.onSave});
 
   @override
-  Widget build(BuildContext c) => Card(
-    elevation: 0,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: line)),
-    child: ListTile(
-      onTap: onTap,
-      title: Text(j['title']?.toString() ?? 'Oferta', style: const TextStyle(fontWeight: FontWeight.w800)),
-      subtitle: Text('${j['companyId'] is Map ? (j['companyId']['name'] ?? 'Empresa') : 'Empresa'}\n${j['location'] ?? ''} · ${j['modality'] ?? ''}'),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (onSave != null)
-            IconButton(
-              tooltip: isSaved ? 'Quitar de ofertas guardadas' : 'Guardar oferta',
-              onPressed: onSave,
-              icon: Icon(isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: primary),
-            ),
-          const Icon(Icons.chevron_right),
-        ],
+  Widget build(BuildContext c) {
+    final job = j is Map ? Map<String, dynamic>.from(j as Map) : <String, dynamic>{};
+    final rawTitle = job['title']?.toString().trim() ?? '';
+    final title = rawTitle.isEmpty || RegExp(r'^\\d+$').hasMatch(rawTitle)
+        ? 'Oferta laboral sin título descriptivo'
+        : rawTitle;
+    final rawCompany = job['companyId'] is Map
+        ? (job['companyId']['name']?.toString().trim() ?? '')
+        : '';
+    final company = rawCompany.isEmpty || RegExp(r'^\\d+$').hasMatch(rawCompany)
+        ? 'Empresa'
+        : rawCompany;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: line)),
+      child: ListTile(
+        onTap: onTap,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(company),
+            if ((job['location']?.toString().trim() ?? '').isNotEmpty)
+              Text(job['location'].toString()),
+            JobMetadataChips(job: job),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onSave != null)
+              IconButton(
+                tooltip: isSaved ? 'Quitar de ofertas guardadas' : 'Guardar oferta',
+                onPressed: onSave,
+                icon: Icon(isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded, color: primary),
+              ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 class ProfileCard extends StatelessWidget{const ProfileCard({super.key});@override Widget build(BuildContext c)=>Container(padding:const EdgeInsets.all(15),decoration:BoxDecoration(border:Border.all(color:line),borderRadius:BorderRadius.circular(14)),child:const Row(children:[CircleAvatar(radius:27,child:Icon(Icons.person)),SizedBox(width:12),Expanded(child:Text('Tu perfil\nCompleta tu perfil para recibir mejores recomendaciones.',style:TextStyle(fontWeight:FontWeight.w700)))]));}
 class Section extends StatelessWidget{final String s;const Section(this.s,{super.key});@override Widget build(BuildContext c)=>Padding(padding:const EdgeInsets.only(bottom:9),child:Text(s,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800)));}
