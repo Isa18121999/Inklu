@@ -77,6 +77,7 @@ class ApiService {
     String? modality,
     String? contractType,
     String? category,
+    bool withAccessibility = false,
   }) async {
     final filters = <String, String>{
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
@@ -84,6 +85,7 @@ class ApiService {
       if (modality != null && modality.trim().isNotEmpty) 'modality': modality.trim(),
       if (contractType != null && contractType.trim().isNotEmpty) 'contractType': contractType.trim(),
       if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
+      if (withAccessibility) 'withAccessibility': 'true',
     };
     final uri = Uri.parse('$baseUrl/jobs').replace(queryParameters: filters.isEmpty ? null : filters);
     final response = await http.get(uri, headers: _headers(token)).timeout(const Duration(seconds: 25));
