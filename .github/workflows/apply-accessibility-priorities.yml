@@ -1,4 +1,4 @@
-name: Apply accessibility priorities
+name: Validate accessibility priorities
 
 on:
   push:
@@ -6,37 +6,28 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout feature branch
         uses: actions/checkout@v4
         with:
           ref: feature/inklu-accessibility-priorities
-          fetch-depth: 0
-      - name: Apply priority patch
-        run: python3 tool/apply_priority_patch.py
-      - name: Validate backend syntax
-        run: node --check backend/server.js
-      - name: Validate Flutter formatting
+          fetch-depth: 1
+      - name: Validate backend JavaScript
+        run: |
+          node --check backend/server.js
+          node --check backend/models/User.js
+          node --check backend/models/Job.js
+          node --check backend/models/Report.js
+      - name: Validate Flutter source formatting
         working-directory: flutter_app
         run: |
           if command -v flutter >/dev/null 2>&1; then
-            dart format --output=none --set-exit-if-changed lib/main.dart lib/services/api_service.dart lib/services/accessibility_page.dart || true
+            dart format --output=none --set-exit-if-changed lib/main.dart lib/services/api_service.dart lib/services/accessibility_page.dart
           else
-            echo 'Flutter SDK unavailable on runner; source patch completed.'
+            echo 'Flutter SDK unavailable on runner; JavaScript validation completed.'
           fi
-      - name: Commit generated changes
-        run: |
-          if git diff --quiet; then
-            echo 'No changes to commit.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add backend flutter_app/lib
-          git commit -m 'feat: implement accessibility priorities'
-          git push origin feature/inklu-accessibility-priorities
