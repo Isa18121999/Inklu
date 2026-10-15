@@ -241,9 +241,17 @@ Crear un archivo `.env`:
 
 ```env
 MONGODB_URI=tu_conexion_mongodb
-JWT_SECRET=tu_clave_secreta
+JWT_SECRET=REEMPLAZAR_CON_UN_SECRETO_ALEATORIO_PRIVADO
 FRONTEND_ORIGIN=https://isa18121999.github.io
 ```
+
+Genera el valor de `JWT_SECRET` con un generador criptográficamente seguro. Con Node.js puedes ejecutar:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
+```
+
+Copia el resultado en `JWT_SECRET`; no uses el texto de ejemplo, no compartas el valor ni lo guardes en Git. El backend no arranca si el secreto falta o tiene menos de 32 caracteres. En Render configura el mismo tipo de secreto como variable privada, sin mostrarlo en capturas.
 
 Iniciar el servidor:
 
