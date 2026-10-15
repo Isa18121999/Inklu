@@ -69,7 +69,7 @@ void main() {
       ),
     );
 
-    expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
+    expect(find.text('82% de coincidencia orientativa'), findsNWidgets(2));
     await tester.ensureVisible(find.text('Ver por qué se recomienda'));
     await tester.tap(find.text('Ver por qué se recomienda'));
     await tester.pumpAndSettle();
