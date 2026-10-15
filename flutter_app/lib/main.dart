@@ -1228,7 +1228,7 @@ class _CandidateHomeState extends State<CandidateHome> {
           SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             value: onlyWithAccessibility,
-            activeColor: primary,
+            activeThumbColor: primary,
             title: const Text(
               'Solo ofertas con información de accesibilidad',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
@@ -3164,7 +3164,7 @@ class _CompanyHomeState extends State<CompanyHome> {
                   value: id.isEmpty ? 'Todas' : id,
                   child: Text(title, overflow: TextOverflow.ellipsis),
                 );
-              }).toList(),
+              }),
             ],
             onChanged: (value) => setState(() => selectedApplicantJobId = value ?? 'Todas'),
           ),
