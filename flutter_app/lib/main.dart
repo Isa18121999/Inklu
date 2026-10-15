@@ -1989,8 +1989,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     final professionalSummary = TextEditingController(text: profile['professionalSummary']?.toString() ?? '');
     final experience = TextEditingController(text: profile['experience']?.toString() ?? '0');
     final skillsController = TextEditingController(text: profile['skills'] is List ? (profile['skills'] as List).join(', ') : '');
-    final projectsController = TextEditingController(text: profile['projects'] is List ? (profile['projects'] as List).join('\\n') : '');
-    final certificationsController = TextEditingController(text: profile['certifications'] is List ? (profile['certifications'] as List).join('\\n') : '');
+    final projectsController = TextEditingController(text: profile['projects'] is List ? (profile['projects'] as List).join('\n') : '');
+    final certificationsController = TextEditingController(text: profile['certifications'] is List ? (profile['certifications'] as List).join('\n') : '');
     const locationOptions = [
       'Lima Metropolitana',
       'Callao',
@@ -2105,8 +2105,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           'professionalSummary': professionalSummary.text.trim(),
           'experience': int.tryParse(experience.text.trim()) ?? 0,
           'skills': skillsController.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
-          'projects': projectsController.text.split('\\n').map((item) => item.trim()).where((item) => item.isNotEmpty).take(20).toList(),
-          'certifications': certificationsController.text.split('\\n').map((item) => item.trim()).where((item) => item.isNotEmpty).take(20).toList(),
+          'projects': projectsController.text.split('\n').map((item) => item.trim()).where((item) => item.isNotEmpty).take(20).toList(),
+          'certifications': certificationsController.text.split('\n').map((item) => item.trim()).where((item) => item.isNotEmpty).take(20).toList(),
           'location': selectedLocation,
           'modality': selectedModality,
         });
