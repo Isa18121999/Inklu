@@ -122,4 +122,27 @@ void main() {
     expect(find.text('Curso de accesibilidad digital'), findsOneWidget);
   });
 
+  testWidgets('Las pantallas esenciales no desbordan con texto ampliado al 200%', (WidgetTester tester) async {
+    for (final page in <Widget>[
+      const Welcome(),
+      const Login(),
+      const PrivacyPolicyPage(),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(2.0),
+              ),
+              child: page,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    }
+  });
+
 }
