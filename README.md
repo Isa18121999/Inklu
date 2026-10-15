@@ -1,5 +1,7 @@
 # 🦋 INKLU
 
+**Preparación del piloto:** consulta [`docs/PILOTO_INKLU.md`](docs/PILOTO_INKLU.md) para los criterios de seguridad, accesibilidad y pruebas manuales de extremo a extremo.
+
 ### Plataforma digital para la inclusión laboral de personas con discapacidad
 
 INKLU es una startup tecnológica orientada a facilitar la conexión entre **personas con discapacidad que buscan oportunidades laborales** y **empresas comprometidas con la inclusión laboral**.
