@@ -1630,6 +1630,10 @@ class JobRecommendationCard extends StatelessWidget {
                     final preferredSkills = preferredSkillsRaw is List
                         ? preferredSkillsRaw.map((item) => item.toString()).toList()
                         : <String>[];
+                    final missingSkillsRaw = job['missingRequiredSkills'];
+                    final missingSkills = missingSkillsRaw is List
+                        ? missingSkillsRaw.map((item) => item.toString()).toList()
+                        : <String>[];
 
                     Widget sectionTitle(String title) => Padding(
                           padding: const EdgeInsets.only(top: 14, bottom: 6),
@@ -1728,6 +1732,24 @@ class JobRecommendationCard extends StatelessWidget {
                               if (preferredSkills.isNotEmpty) ...[
                                 sectionTitle('Habilidades deseables coincidentes'),
                                 skillChips(preferredSkills),
+                              ],
+                              if (missingSkills.isNotEmpty) ...[
+                                sectionTitle('Requisitos que no aparecen en tu perfil'),
+                                const Text(
+                                  'Esto no significa que no tengas estas habilidades; solo que no las encontramos en la información registrada.',
+                                  style: TextStyle(color: muted, fontSize: 12),
+                                ),
+                                const SizedBox(height: 5),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 0,
+                                  children: missingSkills.take(8).map((skill) => Chip(
+                                    label: Text(skill),
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: const Color(0xFFFFF1E6),
+                                    side: BorderSide.none,
+                                  )).toList(),
+                                ),
                               ],
                               sectionTitle('Experiencia requerida'),
                               Row(
