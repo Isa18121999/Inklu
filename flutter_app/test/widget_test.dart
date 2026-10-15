@@ -95,6 +95,33 @@ void main() {
     expect(find.textContaining('No garantiza una entrevista'), findsOneWidget);
   });
 
+  testWidgets('Las etiquetas de oferta muestran nombres legibles y no IDs numéricos', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: JobMetadataChips(
+            job: {
+              'professionalArea': '',
+              'category': '5',
+              'modality': '0',
+              'contractType': '0',
+              'experienceRequired': 0,
+              'requiredSkills': ['10', '99'],
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Área profesional: Salud'), findsOneWidget);
+    expect(find.text('Modalidad: Remoto'), findsOneWidget);
+    expect(find.text('Tipo de contrato: Tiempo completo'), findsOneWidget);
+    expect(find.text('Habilidad requerida: Python'), findsOneWidget);
+    expect(find.text('Área profesional: 5'), findsNothing);
+    expect(find.text('Habilidad requerida: 10'), findsNothing);
+    expect(find.text('Habilidad requerida: 99'), findsNothing);
+  });
+
   testWidgets('La empresa puede expandir la información profesional de un postulante', (WidgetTester tester) async {
     await tester.pumpWidget(
       MaterialApp(
