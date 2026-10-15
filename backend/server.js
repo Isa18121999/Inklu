@@ -17,18 +17,24 @@ const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser } = require('./services/recommendations');
 const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
-const { auditSecurityConfig, DEFAULT_JWT_PLACEHOLDER } = require('./services/security-config');
+const { auditSecurityConfig } = require('./services/security-config');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const JWT_SECRET = String(process.env.JWT_SECRET || DEFAULT_JWT_PLACEHOLDER).trim();
+const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
 const securityAudit = auditSecurityConfig(process.env);
 if (securityAudit.jwtSecretNeedsAttention) {
-  console.error('SECURITY WARNING: Configura en Render una JWT_SECRET privada y larga (al menos 32 caracteres) antes del piloto.');
+  const message = 'JWT_SECRET ausente o inseguro: configura en Render un secreto privado de al menos 32 caracteres antes de iniciar la API.';
+  console.error('SECURITY ERROR:', message);
+  throw new Error(message);
 }
 if (securityAudit.corsAllowsAnyOrigin) {
-  console.warn('SECURITY WARNING: FRONTEND_ORIGIN permite cualquier origen; configura los orígenes web explícitos antes del piloto.');
+  console.warn('SECURITY WARNING: FRONTEND_ORIGIN no está limitado; configura los orígenes web explícitos antes del piloto.');
 }
+const allowedFrontendOrigins = String(process.env.FRONTEND_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
