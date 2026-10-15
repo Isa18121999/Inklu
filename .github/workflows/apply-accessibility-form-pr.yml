@@ -1,0 +1,144 @@
+name: Apply accessibility form on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Apply the seven accessibility fields
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('flutter_app/lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+
+          old = "    final accessibilityDetails = TextEditingController();"
+          new = """    final accessibilityDetails = TextEditingController();
+    bool workplaceAdaptation = false;
+    bool assistiveTechnology = false;
+    bool flexibleSchedule = false;
+    bool physicalAccess = false;
+    bool accessibleRestroom = false;
+    bool elevator = false;
+    bool accessibleParking = false;"""
+          if old not in s:
+              raise SystemExit('state marker not found')
+          if 'bool workplaceAdaptation = false;' not in s:
+              s = s.replace(old, new, 1)
+
+          old = "                F(accessibilityDetails, 'Accesibilidad y ajustes disponibles', max: 4),"
+          new = """                F(accessibilityDetails, 'Información adicional de accesibilidad (opcional)', max: 4),
+                const SizedBox(height: 8),
+                const Text('Medidas de accesibilidad disponibles', style: TextStyle(fontWeight: FontWeight.w800, color: ink)),
+                const SizedBox(height: 4),
+                CheckboxListTile(
+                  value: workplaceAdaptation,
+                  onChanged: (v) => setState(() => workplaceAdaptation = v ?? false),
+                  title: const Text('Adaptaciones del puesto'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  value: assistiveTechnology,
+                  onChanged: (v) => setState(() => assistiveTechnology = v ?? false),
+                  title: const Text('💻 Tecnología asistiva'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  value: flexibleSchedule,
+                  onChanged: (v) => setState(() => flexibleSchedule = v ?? false),
+                  title: const Text('🕐 Horario flexible'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  value: physicalAccess,
+                  onChanged: (v) => setState(() => physicalAccess = v ?? false),
+                  title: const Text('♿ Acceso físico'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  value: accessibleRestroom,
+                  onChanged: (v) => setState(() => accessibleRestroom = v ?? false),
+                  title: const Text('🚻 Baño accesible'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  value: elevator,
+                  onChanged: (v) => setState(() => elevator = v ?? false),
+                  title: const Text('🛗 Ascensor'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                CheckboxListTile(
+                  value: accessibleParking,
+                  onChanged: (v) => setState(() => accessibleParking = v ?? false),
+                  title: const Text('🅿️ Estacionamiento accesible'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),"""
+          if old not in s:
+              raise SystemExit('form marker not found')
+          if 'Adaptaciones del puesto' not in s:
+              s = s.replace(old, new, 1)
+
+          old = """          'accessibility': {
+            'remote': modality.toLowerCase().contains('remoto'),
+            'hybrid': modality.toLowerCase().contains('híbrido') || modality.toLowerCase().contains('hibrido'),
+            'notes': accessibilityDetails.text.trim(),
+          },"""
+          new = """          'accessibility': {
+            'remote': modality.toLowerCase().contains('remoto'),
+            'hybrid': modality.toLowerCase().contains('híbrido') || modality.toLowerCase().contains('hibrido'),
+            'physicalAccess': physicalAccess,
+            'flexibleSchedule': flexibleSchedule,
+            'workplaceAdaptation': workplaceAdaptation,
+            'assistiveTechnology': assistiveTechnology,
+            'accessibleRestroom': accessibleRestroom,
+            'elevator': elevator,
+            'accessibleParking': accessibleParking,
+            'notes': accessibilityDetails.text.trim(),
+          },"""
+          if old not in s:
+              raise SystemExit('payload marker not found')
+          if "'workplaceAdaptation': workplaceAdaptation" not in s:
+              s = s.replace(old, new, 1)
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          rm -f .github/workflows/accessibility-form-patch.yml
+          rm -f .github/workflows/apply-accessibility-form-pr.yml
+          rm -f docs/ACCESSIBILITY_FORM_REQUEST.md docs/ACCESSIBILITY_FORM_SPEC.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart .github/workflows/accessibility-form-patch.yml .github/workflows/apply-accessibility-form-pr.yml docs/ACCESSIBILITY_FORM_REQUEST.md docs/ACCESSIBILITY_FORM_SPEC.md
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: add accessibility checklist to company job form"
+          git push origin HEAD:${BRANCH}
