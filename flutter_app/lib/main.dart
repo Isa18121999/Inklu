@@ -2891,15 +2891,55 @@ class CompanyApplicationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = normalizeApplicationStatus(application['status']?.toString());
-    final candidate = application['candidateId'] is Map
-        ? application['candidateId']['name']?.toString() ?? 'Candidato'
-        : 'Candidato';
+    final candidateData = application['candidateId'] is Map
+        ? Map<String, dynamic>.from(application['candidateId'])
+        : <String, dynamic>{};
+    final candidate = candidateData['name']?.toString() ?? 'Candidato';
+    final candidateProfile = candidateData['profile'] is Map
+        ? Map<String, dynamic>.from(candidateData['profile'])
+        : <String, dynamic>{};
+    final cvAnalysis = candidateData['cvAnalysis'] is Map
+        ? Map<String, dynamic>.from(candidateData['cvAnalysis'])
+        : <String, dynamic>{};
     final job = application['jobId'] is Map
         ? Map<String, dynamic>.from(application['jobId'])
         : <String, dynamic>{};
     final appId = (application['_id'] ?? application['id'] ?? '').toString();
     final jobTitle = job['title']?.toString() ?? 'Oferta';
     const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+
+    String fieldText(dynamic value) => value == null ? '' : value.toString().trim();
+
+    final profileSkills = candidateProfile['skills'] is List
+        ? (candidateProfile['skills'] as List).map((item) => item.toString().trim()).where((item) => item.isNotEmpty)
+        : const <String>[];
+    final cvSkills = cvAnalysis['skills'] is List
+        ? (cvAnalysis['skills'] as List).map((item) => item.toString().trim()).where((item) => item.isNotEmpty)
+        : const <String>[];
+    final skills = <String>{...profileSkills, ...cvSkills}.toList();
+
+    Widget profileField(String label, String value) {
+      if (value.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: muted)),
+            const SizedBox(height: 2),
+            Text(value, style: const TextStyle(color: ink)),
+          ],
+        ),
+      );
+    }
+
+    final hasProfessionalDetails = [
+      fieldText(candidateProfile['education']),
+      fieldText(candidateProfile['professionalSummary']),
+      fieldText(candidateProfile['experience']),
+      fieldText(candidateProfile['projects'] is List ? (candidateProfile['projects'] as List).join(' · ') : ''),
+      fieldText(candidateProfile['certifications'] is List ? (candidateProfile['certifications'] as List).join(' · ') : ''),
+    ].any((value) => value.isNotEmpty) || skills.isNotEmpty;
 
     return Card(
       elevation: 0,
@@ -2917,7 +2957,75 @@ class CompanyApplicationCard extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
             const SizedBox(height: 3),
             Text(jobTitle, style: const TextStyle(color: muted)),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 8),
+                leading: const Icon(Icons.badge_outlined, color: primary),
+                title: const Text(
+                  'Ver perfil profesional',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: ink),
+                ),
+                subtitle: const Text(
+                  'Formación, experiencia, habilidades y proyectos',
+                  style: TextStyle(fontSize: 11, color: muted),
+                ),
+                children: [
+                  if (!hasProfessionalDetails)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'La persona aún no ha completado estos datos en su perfil.',
+                        style: TextStyle(color: muted),
+                      ),
+                    ),
+                  profileField('Carrera o formación', fieldText(candidateProfile['education'])),
+                  profileField('Resumen profesional', fieldText(candidateProfile['professionalSummary'])),
+                  profileField(
+                    'Experiencia',
+                    candidateProfile['experience'] == null
+                        ? ''
+                        : '${candidateProfile['experience']} año(s)',
+                  ),
+                  if (skills.isNotEmpty) ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Habilidades', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: muted)),
+                    ),
+                    const SizedBox(height: 5),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: skills.take(16).map((skill) => Chip(
+                          label: Text(skill),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: const Color(0xFFF1EEFF),
+                          side: BorderSide.none,
+                        )).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  profileField(
+                    'Proyectos relevantes',
+                    fieldText(candidateProfile['projects'] is List ? (candidateProfile['projects'] as List).join(' · ') : ''),
+                  ),
+                  profileField(
+                    'Certificaciones y cursos',
+                    fieldText(candidateProfile['certifications'] is List ? (candidateProfile['certifications'] as List).join(' · ') : ''),
+                  ),
+                  const Text(
+                    'Solo se muestran los datos profesionales que la persona ha completado en su perfil.',
+                    style: TextStyle(color: muted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               key: ValueKey('$appId-$status'),
               initialValue: stages.contains(status) ? status : 'Postulado',
