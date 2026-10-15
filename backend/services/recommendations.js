@@ -53,6 +53,13 @@ function humanizeSkill(value) {
   return raw;
 }
 
+const GENERIC_SKILL_TERMS = new Set([
+  'excel', 'microsoft office', 'office', 'word', 'powerpoint',
+  'comunicacion', 'comunicacion efectiva', 'organizacion',
+  'trabajo en equipo', 'responsabilidad', 'puntualidad',
+  'atencion al cliente', 'servicio al cliente', 'ofimatica'
+].map(normalizeText));
+
 const CAREER_GROUP_LABELS = {
   tecnologia: 'Tecnología',
   administracion: 'Administración',
@@ -308,10 +315,24 @@ function recommendJobsForUser(user, jobs) {
       .slice(0, 5)
       .map(item => item.term);
     const careerCategoryMatch = jobGroups.some(group => candidateGroups.has(group));
-    const hasCareerGroupConflict =
+
+    // Si la carrera o las habilidades permiten identificar un área, no mostramos
+    // ofertas de otra área. Si el perfil aún no permite identificarla, tampoco
+    // recomendamos puestos especializados por compartir únicamente habilidades
+    // transversales como Excel, Office u organización.
+    const hasSpecificRequiredSkillMatch = matchedRequired.some(skill =>
+      !GENERIC_SKILL_TERMS.has(normalizeText(skill))
+    );
+    const hasProfessionMismatch =
       candidateGroups.size > 0 &&
       jobGroups.length > 0 &&
       !careerCategoryMatch;
+    const lacksCareerContextForSpecializedJob =
+      candidateGroups.size === 0 &&
+      jobGroups.length > 0 &&
+      !hasSpecificRequiredSkillMatch;
+    const hasCareerGroupConflict =
+      hasProfessionMismatch || lacksCareerContextForSpecializedJob;
 
     const similarity = tfidfCosineSimilarity(
       candidateKeywords,
@@ -353,9 +374,12 @@ function recommendJobsForUser(user, jobs) {
     }
     if (location && normalizeText(job.location).includes(location)) score += 3;
     if (modality && normalizeText(job.modality).includes(modality)) score += 3;
-    if (hasCareerGroupConflict) {
+    if (hasProfessionMismatch) {
       score = 0;
       reasons.push('Esta oferta pertenece a un área profesional distinta a la indicada en tu perfil.');
+    } else if (lacksCareerContextForSpecializedJob) {
+      score = 0;
+      reasons.push('Completa tu carrera o añade habilidades específicas para poder recomendarte ofertas de esta área.');
     }
     score = Math.max(0, Math.min(100, score));
 
@@ -373,7 +397,16 @@ function recommendJobsForUser(user, jobs) {
     record.preferredSkills = preferredSkills;
     return {
       ...record,
-      professionalArea: professionalArea || (record.category && !/^\d+$/.test(String(record.category).trim()) ? record.category : ''),
+      professionalArea: professionalArea || (() => {
+        const rawCategory = String(record.category ?? '').trim();
+        if (!rawCategory) return '';
+        if (!/^\d+$/.test(rawCategory)) return rawCategory;
+        const legacyCategories = ['Tecnología', 'Administración', 'Diseño', 'Atención al cliente', 'Educación', 'Salud', 'Finanzas', 'Logística', 'Marketing', 'Otro'];
+        const categoryIndex = Number(rawCategory);
+        return Number.isInteger(categoryIndex) && categoryIndex >= 0 && categoryIndex < legacyCategories.length
+          ? legacyCategories[categoryIndex]
+          : '';
+      })(),
       matchScore: score,
       matchReasons: reasons,
       matchedSkills,
