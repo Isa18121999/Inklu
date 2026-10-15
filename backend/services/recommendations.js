@@ -44,7 +44,7 @@ function humanizeSkill(value) {
 
   // Legacy records sometimes stored the skill catalog index instead of its name.
   // Map known IDs to a label and never expose an unknown numeric ID to candidates.
-  if (/^\\d+$/.test(raw)) {
+  if (/^\d+$/.test(raw)) {
     const index = Number(raw);
     return Number.isInteger(index) && index >= 0 && index < KNOWN_SKILL_LABELS.length
       ? KNOWN_SKILL_LABELS[index]
@@ -136,7 +136,7 @@ function recommendJobsForUser(user, jobs) {
   for (const item of [...cvKeywords, ...profileKeywords]) {
     if (!item?.term) continue;
     const rawTerm = String(item.term).trim();
-    const namedTerm = /^\\d+$/.test(rawTerm) ? humanizeSkill(rawTerm) : rawTerm;
+    const namedTerm = /^\d+$/.test(rawTerm) ? humanizeSkill(rawTerm) : rawTerm;
     if (!namedTerm) continue;
     const term = normalizeText(namedTerm);
     const count = Math.max(1, Number(item.count) || 1);
@@ -373,7 +373,7 @@ function recommendJobsForUser(user, jobs) {
     record.preferredSkills = preferredSkills;
     return {
       ...record,
-      professionalArea: professionalArea || (record.category && !/^\\d+$/.test(String(record.category).trim()) ? record.category : ''),
+      professionalArea: professionalArea || (record.category && !/^\d+$/.test(String(record.category).trim()) ? record.category : ''),
       matchScore: score,
       matchReasons: reasons,
       matchedSkills,
