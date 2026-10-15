@@ -127,6 +127,44 @@ void main() {
       const Welcome(),
       const Login(),
       const PrivacyPolicyPage(),
+      JobRecommendationCard(
+        job: {
+          '_id': 'accessibility-job',
+          'title': 'Especialista en accesibilidad digital',
+          'companyId': {'name': 'Empresa inclusiva'},
+          'matchScore': 84,
+          'matchReasons': [
+            'Área profesional relacionada con tu carrera o CV',
+            'Habilidades relacionadas: accesibilidad digital, Flutter, documentación',
+          ],
+          'matchedSkills': ['Accesibilidad digital', 'Flutter'],
+          'matchedPreferredSkills': ['Pruebas de usabilidad'],
+          'experienceRequired': 1,
+          'experienceFit': true,
+        },
+        onTap: () {},
+      ),
+      CompanyApplicationCard(
+        token: 'test-token',
+        onStatusChanged: (_) {},
+        application: {
+          '_id': 'accessibility-application',
+          'status': 'Postulado',
+          'candidateId': {
+            'name': 'Persona candidata de prueba',
+            'profile': {
+              'education': 'Ingeniería de Sistemas',
+              'professionalSummary': 'Perfil de prueba con resumen profesional largo para comprobar el flujo accesible.',
+              'experience': 2,
+              'skills': ['Flutter', 'SQL', 'Accesibilidad digital'],
+              'projects': ['Aplicación móvil inclusiva'],
+              'certifications': ['Curso de accesibilidad digital'],
+            },
+            'cvAnalysis': {'skills': ['Flutter']},
+          },
+          'jobId': {'title': 'Desarrolladora Flutter'},
+        },
+      ),
     ]) {
       await tester.pumpWidget(
         MaterialApp(
