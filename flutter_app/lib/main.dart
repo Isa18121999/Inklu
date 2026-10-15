@@ -1332,16 +1332,20 @@ class JobMetadataChips extends StatelessWidget {
       child: Wrap(
         spacing: 5,
         runSpacing: 3,
-        children: tags.map((tag) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1EEFF),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE5E0FA)),
-          ),
-          child: Text(
-            tag,
-            style: const TextStyle(fontSize: 10, color: Color(0xFF433D63), fontWeight: FontWeight.w600),
+        children: tags.map((tag) => Semantics(
+          label: tag,
+          excludeSemantics: true,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1EEFF),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE5E0FA)),
+            ),
+            child: Text(
+              tag,
+              style: const TextStyle(fontSize: 10, color: Color(0xFF433D63), fontWeight: FontWeight.w600),
+            ),
           ),
         )).toList(),
       ),
