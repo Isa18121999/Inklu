@@ -37,7 +37,7 @@ String _readableLabel(dynamic raw, List<String> legacyOptions, {String fallback 
   return legacyOptions[index];
 }
 
-dynamic _firstNonEmptyLabelValue(List<dynamic?> values) {
+dynamic _firstNonEmptyLabelValue(List<dynamic> values) {
   for (final value in values) {
     if (value != null && value.toString().trim().isNotEmpty) return value;
   }
