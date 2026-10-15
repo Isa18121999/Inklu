@@ -13,6 +13,7 @@ const Job = require('./models/Job');
 const Application = require('./models/Application');
 const ChatMessage = require('./models/ChatMessage');
 const Notification = require('./models/Notification');
+const Report = require('./models/Report');
 const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser, humanizeSkill } = require('./services/recommendations');
@@ -150,6 +151,7 @@ function publicUser(user, { includeSensitive = false } = {}) {
     country: user.country,
     ruc: user.ruc,
     companyProfile: user.companyProfile,
+    companyVerification: user.companyVerification || { status: 'unverified', verifiedAt: null, verificationNote: '' },
     profile: user.profile,
     hasProfilePhoto: Boolean(user.profilePhoto?.size || user.profilePhoto?.data?.length),
     profilePhotoUpdatedAt: user.profilePhoto?.updatedAt || null
@@ -987,7 +989,7 @@ app.get('/api/recommendations', auth, async (req, res) => {
   try {
     if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Las recomendaciones están disponibles para candidatos.' });
     const analysis = await analyzeCandidateCv(req.user);
-    const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile').sort({ createdAt: -1 });
+    const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile companyVerification').sort({ createdAt: -1 });
     const recommendations = recommendJobsForUser(req.user, jobs);
     res.json({
       engine: 'skill-match-mvp',
@@ -1008,7 +1010,7 @@ app.get('/api/jobs/saved', auth, async (req, res) => {
     const candidate = await User.findById(req.user._id).select('savedJobs');
     const ids = candidate?.savedJobs || [];
     const jobs = await Job.find({ _id: { $in: ids }, active: true })
-      .populate('companyId', 'name companyProfile')
+      .populate('companyId', 'name companyProfile companyVerification')
       .sort({ updatedAt: -1 });
     res.json(jobs);
   } catch (error) {
@@ -1134,7 +1136,21 @@ app.get('/api/jobs', auth, async (req, res) => {
     const filter = { active: true };
 
     if (withAccessibility) {
-      filter.accessibilityDetails = { $exists: true, $ne: '' };
+      filter.$or = [
+        { accessibilityDetails: { $exists: true, $ne: '' } },
+        { 'accessibility.remote': true },
+        { 'accessibility.hybrid': true },
+        { 'accessibility.physicalAccess': true },
+        { 'accessibility.flexibleSchedule': true },
+        { 'accessibility.workplaceAdaptation': true },
+        { 'accessibility.assistiveTechnology': true },
+        { 'accessibility.accessibleRestroom': true },
+        { 'accessibility.elevator': true },
+        { 'accessibility.accessibleParking': true },
+        { 'accessibility.transportationSupport': true },
+        { 'accessibility.interpreter': true },
+        { 'accessibility.notes': { $exists: true, $ne: '' } }
+      ];
     }
 
     if (q) {
@@ -1155,7 +1171,7 @@ app.get('/api/jobs', auth, async (req, res) => {
     if (contractType) filter.contractType = new RegExp('^' + escapeRegex(contractType) + '$', 'i');
     if (category) filter.category = new RegExp('^' + escapeRegex(category) + '$', 'i');
 
-    let jobs = await Job.find(filter).populate('companyId', 'name companyProfile').sort({ createdAt: -1 }).limit(100);
+    let jobs = await Job.find(filter).populate('companyId', 'name companyProfile companyVerification').sort({ createdAt: -1 }).limit(100);
     // Las ofertas de candidatos siempre pasan por el recomendador, incluso si no
     // se ha podido extraer texto del CV: se utiliza la carrera, habilidades,
     // resumen, proyectos, certificaciones y experiencia del perfil.
@@ -1170,12 +1186,12 @@ app.get('/api/jobs', auth, async (req, res) => {
     res.status(500).json({ message: 'No se pudieron buscar las ofertas.' });
   }
 });
-app.get('/api/company/jobs', auth, async (req, res) => { const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile').sort({ createdAt: -1 }); res.json(jobs); });
+app.get('/api/company/jobs', auth, async (req, res) => { const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile companyVerification').sort({ createdAt: -1 }); res.json(jobs); });
 app.get('/api/company/my-jobs', auth, async (req, res) => { if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden consultar sus ofertas.' }); const jobs = await Job.find({ companyId: req.user._id }).sort({ createdAt: -1 }); res.json(jobs); });
 app.post('/api/company/jobs', auth, async (req, res) => {
   try {
     if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden publicar ofertas.' });
-    const { title, description, category, modality, location, contractType, salary, requiredSkills, preferredSkills, experienceRequired, accessibilityDetails } = req.body || {};
+    const { title, description, category, modality, location, contractType, salary, requiredSkills, preferredSkills, experienceRequired, accessibilityDetails, accessibility } = req.body || {};
     if (!title || !description) return res.status(400).json({ message: 'El título y la descripción son obligatorios.' });
     const normalizeOptionLabel = (value, options) => {
       const raw = String(value ?? '').trim();
@@ -1206,6 +1222,14 @@ app.post('/api/company/jobs', auth, async (req, res) => {
       requiredSkills: skills,
       preferredSkills: desirableSkills,
       accessibilityDetails: String(accessibilityDetails || '').trim().slice(0, 1200),
+      accessibility: {
+        remote: accessibility?.remote === true, hybrid: accessibility?.hybrid === true, physicalAccess: accessibility?.physicalAccess === true,
+        flexibleSchedule: accessibility?.flexibleSchedule === true, workplaceAdaptation: accessibility?.workplaceAdaptation === true,
+        assistiveTechnology: accessibility?.assistiveTechnology === true, accessibleRestroom: accessibility?.accessibleRestroom === true,
+        elevator: accessibility?.elevator === true, accessibleParking: accessibility?.accessibleParking === true,
+        transportationSupport: accessibility?.transportationSupport === true, interpreter: accessibility?.interpreter === true,
+        notes: String(accessibility?.notes || '').trim().slice(0, 1200)
+      },
       experienceRequired: years
     });
     // Notifica solo a candidatos cuyas búsquedas guardadas coinciden con la oferta nueva.
@@ -1507,6 +1531,66 @@ app.post('/api/applications/:id/messages', auth, async (req, res) => {
     res.status(500).json({ message: 'No se pudo enviar el mensaje.' });
   }
 });
+
+
+// --- INKLU accessibility priorities ---
+app.get('/api/profile/accessibility', auth, async (req, res) => {
+  if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden consultar sus preferencias.' });
+  res.json({ accessibility: req.user.profile?.accessibility || { share: false, needType: '', preferences: [] } });
+});
+
+app.patch('/api/profile/accessibility', auth, async (req, res) => {
+  if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden guardar preferencias.' });
+  const input = req.body?.accessibility || req.body || {};
+  const allowed = new Set([
+    'Trabajo remoto','Trabajo híbrido','Horario flexible','Acceso sin escaleras','Ascensor',
+    'Baño accesible','Estacionamiento accesible','Adaptación del puesto','Tecnología asistiva',
+    'Intérprete','Apoyo para desplazamiento','Otro'
+  ]);
+  const preferences = Array.isArray(input.preferences)
+    ? input.preferences.map(v => String(v).trim()).filter(v => allowed.has(v)).slice(0, 20)
+    : [];
+  req.user.profile.accessibility = {
+    share: input.share === true,
+    needType: String(input.needType || '').trim().slice(0, 80),
+    preferences
+  };
+  await req.user.save();
+  res.json({ message: 'Preferencias de accesibilidad guardadas.', accessibility: req.user.profile.accessibility });
+});
+
+app.post('/api/company/verification', auth, async (req, res) => {
+  if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden solicitar verificación.' });
+  const ruc = String(req.user.ruc || '').trim();
+  if (!/^\d{11}$/.test(ruc)) return res.status(400).json({ message: 'La empresa necesita un RUC de 11 dígitos para solicitar verificación.' });
+  const autoVerify = String(process.env.AUTO_VERIFY_COMPANIES || '').toLowerCase() === 'true';
+  req.user.companyVerification = {
+    status: autoVerify ? 'verified' : 'pending',
+    verifiedAt: autoVerify ? new Date() : null,
+    verificationNote: autoVerify ? 'Verificación básica automática: RUC y datos de empresa presentes.' : 'Solicitud pendiente de validación administrativa.'
+  };
+  await req.user.save();
+  res.json({ message: autoVerify ? 'Empresa verificada.' : 'Solicitud de verificación enviada.', verification: req.user.companyVerification });
+});
+
+app.post('/api/jobs/:jobId/report', auth, async (req, res) => {
+  if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden reportar ofertas.' });
+  const job = await Job.findOne({ _id: req.params.jobId, active: true }).select('_id companyId');
+  if (!job) return res.status(404).json({ message: 'Oferta no encontrada.' });
+  const reason = String(req.body?.reason || '').trim();
+  const details = String(req.body?.details || '').trim();
+  const allowedReasons = ['Información falsa','Empresa sospechosa','Discriminación','Accesibilidad indicada no disponible','Requisitos discriminatorios','Salario engañoso','Otro'];
+  if (!allowedReasons.includes(reason)) return res.status(400).json({ message: 'Selecciona un motivo válido.' });
+  if (details.length > 1500) return res.status(400).json({ message: 'La descripción es demasiado larga.' });
+  try {
+    const report = await Report.create({ reporterId: req.user._id, jobId: job._id, reason, details });
+    res.status(201).json({ message: 'Reporte recibido. Gracias por ayudar a mantener INKLU segura e inclusiva.', id: report._id });
+  } catch (error) {
+    if (error?.code === 11000) return res.status(409).json({ message: 'Ya reportaste esta oferta. Nuestro equipo podrá revisar el reporte existente.' });
+    throw error;
+  }
+});
+
 app.use((err, req, res, next) => { console.error(err); res.status(500).json({ message: 'Error interno del servidor.' }); });
 
 mongoose.connect(process.env.MONGODB_URI).then(() => { console.log('MongoDB conectado'); app.listen(PORT, () => console.log(`INKLU API escuchando en ${PORT}`)); }).catch(err => { console.error('No se pudo conectar a MongoDB:', err.message); process.exit(1); });

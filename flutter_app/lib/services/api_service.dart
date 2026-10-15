@@ -13,193 +13,71 @@ class ApiService {
     if (cvPath != null && cvPath.isNotEmpty && data['token'] != null) await uploadCv(data['token'].toString(), cvPath);
     return data;
   }
-  Future<Map<String, dynamic>> registerCompany({
-    required String name,
-    required String email,
-    required String phone,
-    required String password,
-    required String ruc,
-    String sector = '',
-    String size = '',
-    String address = '',
-    String website = '',
-    String description = '',
-  }) => _post('/auth/register', {
-    'name': name,
-    'email': email,
-    'phone': phone,
-    'password': password,
-    'role': 'company',
-    'country': 'PE',
-    'ruc': ruc,
-    'companyProfile': {
-      'sector': sector,
-      'size': size,
-      'address': address,
-      'website': website,
-      'description': description,
-    },
-  });
+  Future<Map<String, dynamic>> registerCompany({required String name, required String email, required String phone, required String password, required String ruc, String sector = '', String size = '', String address = '', String website = '', String description = ''}) => _post('/auth/register', {'name': name, 'email': email, 'phone': phone, 'password': password, 'role': 'company', 'country': 'PE', 'ruc': ruc, 'companyProfile': {'sector': sector, 'size': size, 'address': address, 'website': website, 'description': description}});
   Future<Map<String, dynamic>> login(String email, String password) => _post('/auth/login', {'email': email, 'password': password});
   Future<Map<String, dynamic>> requestPasswordReset(String email) => _post('/auth/forgot-password', {'email': email.trim()});
-  Future<Map<String, dynamic>> requestEmailVerification(String token) =>
-      _postAuth('/auth/request-email-verification', token, {});
+  Future<Map<String, dynamic>> requestEmailVerification(String token) => _postAuth('/auth/request-email-verification', token, {});
   Future<Map<String, dynamic>> resetPassword({required String email, required String token, required String password}) => _post('/auth/reset-password', {'email': email.trim(), 'token': token, 'password': password});
 
   Future<Map<String, dynamic>> uploadCv(String token, String path) async {
-    final file = File(path);
-    final bytes = await file.readAsBytes();
+    final file = File(path); final bytes = await file.readAsBytes();
     if (bytes.length > 5 * 1024 * 1024) throw Exception('El CV supera el tamaño máximo de 5 MB.');
-    final fileName = path.split(RegExp(r'[/\\]')).last;
-    final ext = fileName.toLowerCase().split('.').last;
+    final fileName = path.split(RegExp(r'[/\\]')).last; final ext = fileName.toLowerCase().split('.').last;
     final mime = ext == 'pdf' ? 'application/pdf' : 'application/msword';
-    final body = {'fileName': fileName, 'mimeType': mime, 'data': base64Encode(bytes)};
-    final r = await http.post(Uri.parse('$baseUrl/profile/cv'), headers: _headers(token), body: jsonEncode(body)).timeout(const Duration(seconds: 45));
+    final r = await http.post(Uri.parse('$baseUrl/profile/cv'), headers: _headers(token), body: jsonEncode({'fileName': fileName, 'mimeType': mime, 'data': base64Encode(bytes)})).timeout(const Duration(seconds: 45));
     return _decodeMap(r);
   }
-
-  // En la app del candidato, "jobs" representa las ofertas recomendadas.
-  // Esto evita que una oferta genérica o de otra carrera termine apareciendo
-  // en la pantalla principal aunque exista en el catálogo general.
-  Future<List<dynamic>> jobs(String token) async {
-    final result = await _getMap('/recommendations', token);
-    final items = result['recommendations'];
-    return items is List ? items : const [];
-  }
-
+  Future<List<dynamic>> jobs(String token) async { final result = await _getMap('/recommendations', token); final items = result['recommendations']; return items is List ? items : const []; }
   Future<List<dynamic>> savedJobs(String token) async => _getList('/jobs/saved', token);
   Future<List<dynamic>> savedJobSearches(String token) async => _getList('/jobs/saved-searches', token);
-  Future<Map<String, dynamic>> saveJobSearch(String token, Map<String, dynamic> data) async =>
-      _postAuth('/jobs/saved-searches', token, data);
-  Future<Map<String, dynamic>> deleteJobSearch(String token, String searchId) async =>
-      _deleteMap('/jobs/saved-searches/$searchId', token);
-  Future<Map<String, dynamic>> saveJob(String token, String jobId) async =>
-      _postAuth('/jobs/$jobId/save', token, {});
-  Future<Map<String, dynamic>> unsaveJob(String token, String jobId) async =>
-      _deleteMap('/jobs/$jobId/save', token);
-  Future<List<dynamic>> notifications(String token) async =>
-      _getList('/notifications', token);
-  Future<Map<String, dynamic>> markNotificationRead(String token, String id) async =>
-      _patch('/notifications/$id/read', token, {'read': true});
-  Future<Map<String, dynamic>> deleteAccount(String token, String password) async =>
-      _deleteAuth('/profile/me', token, {'password': password});
+  Future<Map<String, dynamic>> saveJobSearch(String token, Map<String, dynamic> data) async => _postAuth('/jobs/saved-searches', token, data);
+  Future<Map<String, dynamic>> deleteJobSearch(String token, String searchId) async => _deleteMap('/jobs/saved-searches/$searchId', token);
+  Future<Map<String, dynamic>> saveJob(String token, String jobId) async => _postAuth('/jobs/$jobId/save', token, {});
+  Future<Map<String, dynamic>> unsaveJob(String token, String jobId) async => _deleteMap('/jobs/$jobId/save', token);
+  Future<List<dynamic>> notifications(String token) async => _getList('/notifications', token);
+  Future<Map<String, dynamic>> markNotificationRead(String token, String id) async => _patch('/notifications/$id/read', token, {'read': true});
+  Future<Map<String, dynamic>> deleteAccount(String token, String password) async => _deleteAuth('/profile/me', token, {'password': password});
 
-  Future<List<dynamic>> searchJobs(
-    String token, {
-    String? query,
-    String? location,
-    String? modality,
-    String? contractType,
-    String? category,
-    bool withAccessibility = false,
-  }) async {
-    final filters = <String, String>{
-      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-      if (location != null && location.trim().isNotEmpty) 'location': location.trim(),
-      if (modality != null && modality.trim().isNotEmpty) 'modality': modality.trim(),
-      if (contractType != null && contractType.trim().isNotEmpty) 'contractType': contractType.trim(),
-      if (category != null && category.trim().isNotEmpty) 'category': category.trim(),
-      if (withAccessibility) 'withAccessibility': 'true',
-    };
+  Future<Map<String, dynamic>> accessibilityProfile(String token) async => _getMap('/profile/accessibility', token);
+  Future<Map<String, dynamic>> updateAccessibilityProfile(String token, Map<String, dynamic> data) async => _patch('/profile/accessibility', token, data);
+  Future<Map<String, dynamic>> reportJob(String token, String jobId, {required String reason, String details = ''}) async => _postAuth('/jobs/$jobId/report', token, {'reason': reason, 'details': details});
+  Future<Map<String, dynamic>> verifyCompany(String token, {String? evidence}) async => _postAuth('/company/verification', token, {'evidence': evidence ?? ''});
+
+  Future<List<dynamic>> searchJobs(String token, {String? query, String? location, String? modality, String? contractType, String? category, bool withAccessibility = false}) async {
+    final filters = <String, String>{if (query != null && query.trim().isNotEmpty) 'q': query.trim(), if (location != null && location.trim().isNotEmpty) 'location': location.trim(), if (modality != null && modality.trim().isNotEmpty) 'modality': modality.trim(), if (contractType != null && contractType.trim().isNotEmpty) 'contractType': contractType.trim(), if (category != null && category.trim().isNotEmpty) 'category': category.trim(), if (withAccessibility) 'withAccessibility': 'true'};
     final uri = Uri.parse('$baseUrl/jobs').replace(queryParameters: filters.isEmpty ? null : filters);
-    final response = await http.get(uri, headers: _headers(token)).timeout(const Duration(seconds: 25));
-    return _decodeList(response);
+    final response = await http.get(uri, headers: _headers(token)).timeout(const Duration(seconds: 25)); return _decodeList(response);
   }
   Future<List<dynamic>> myJobs(String token) async => _getList('/company/my-jobs', token);
   Future<List<dynamic>> applications(String token) async => _getList('/applications', token);
-
   Future<Uint8List> candidateCv(String token, String applicationId) async {
-    final response = await http
-        .get(Uri.parse('$baseUrl/applications/$applicationId/cv'), headers: _headers(token))
-        .timeout(const Duration(seconds: 45));
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      String message = 'No se pudo descargar el CV.';
-      try {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is Map && decoded['message'] != null) {
-          message = decoded['message'].toString();
-        }
-      } catch (_) {}
-      throw Exception(message);
-    }
+    final response = await http.get(Uri.parse('$baseUrl/applications/$applicationId/cv'), headers: _headers(token)).timeout(const Duration(seconds: 45));
+    if (response.statusCode < 200 || response.statusCode >= 300) { String message = 'No se pudo descargar el CV.'; try { final decoded = jsonDecode(utf8.decode(response.bodyBytes)); if (decoded is Map && decoded['message'] != null) message = decoded['message'].toString(); } catch (_) {} throw Exception(message); }
     return response.bodyBytes;
   }
   Future<Map<String, dynamic>> uploadProfilePhoto(String token, String path) async {
-    final file = File(path);
-    final bytes = await file.readAsBytes();
-    if (bytes.isEmpty) throw Exception('El archivo de imagen está vacío.');
-    if (bytes.length > 2 * 1024 * 1024) {
-      throw Exception('La foto no puede superar los 2 MB.');
-    }
-
-    final fileName = path.split(RegExp(r'[/\\\\]')).last;
-    final extension = fileName.toLowerCase().split('.').last;
-    final mimeType = switch (extension) {
-      'jpg' || 'jpeg' => 'image/jpeg',
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      _ => throw Exception('Selecciona una imagen JPG, PNG o WEBP.'),
-    };
-
-    return _postAuth('/profile/photo', token, {
-      'fileName': fileName,
-      'mimeType': mimeType,
-      'data': base64Encode(bytes),
-    });
+    final file = File(path); final bytes = await file.readAsBytes(); if (bytes.isEmpty) throw Exception('El archivo de imagen está vacío.'); if (bytes.length > 2 * 1024 * 1024) throw Exception('La foto no puede superar los 2 MB.');
+    final fileName = path.split(RegExp(r'[/\\\\]')).last; final extension = fileName.toLowerCase().split('.').last;
+    final mimeType = switch (extension) {'jpg' || 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', _ => throw Exception('Selecciona una imagen JPG, PNG o WEBP.')};
+    return _postAuth('/profile/photo', token, {'fileName': fileName, 'mimeType': mimeType, 'data': base64Encode(bytes)});
   }
-
   Future<Uint8List?> profilePhoto(String token) async {
-    final response = await http
-        .get(Uri.parse('$baseUrl/profile/photo'), headers: _headers(token))
-        .timeout(const Duration(seconds: 25));
-    if (response.statusCode == 404) return null;
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      String message = 'No se pudo cargar la foto de perfil.';
-      try {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['message'] != null) {
-          message = decoded['message'].toString();
-        }
-      } catch (_) {}
-      throw Exception(message);
-    }
-    final contentType = response.headers['content-type'] ?? '';
-    if (!contentType.startsWith('image/')) {
-      throw Exception('El servidor devolvió un archivo que no es una imagen.');
-    }
-    return response.bodyBytes;
+    final response = await http.get(Uri.parse('$baseUrl/profile/photo'), headers: _headers(token)).timeout(const Duration(seconds: 25));
+    if (response.statusCode == 404) return null; if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('No se pudo cargar la foto de perfil.');
+    final contentType = response.headers['content-type'] ?? ''; if (!contentType.startsWith('image/')) throw Exception('El servidor devolvió un archivo que no es una imagen.'); return response.bodyBytes;
   }
-
   Future<Map<String, dynamic>> profile(String token) async => _getMap('/profile/me', token);
   Future<Map<String, dynamic>> updateProfile(String token, Map<String, dynamic> data) async => _patch('/profile/me', token, data);
   Future<Map<String, dynamic>> createJob(String token, Map<String, dynamic> data) async => _postAuth('/company/jobs', token, data);
   Future<Map<String, dynamic>> apply(String token, String jobId) async => _postAuth('/applications', token, {'jobId': jobId});
   Future<Map<String, dynamic>> updateApplicationStatus(String token, String id, String status) async => _patch('/applications/$id/status', token, {'status': status});
-  Future<Map<String, dynamic>> withdrawApplication(String token, String id) async =>
-      _postAuth('/applications/$id/withdraw', token, {});
-  Future<Map<String, dynamic>> analyzeCv(String token) async =>
-      _postAuth('/profile/cv/analyze', token, {});
-  Future<List<dynamic>> recommendations(String token) async {
-    final result = await _getMap('/recommendations', token);
-    final items = result['recommendations'];
-    return items is List ? items : const [];
-  }
-  Future<List<dynamic>> chatMessages(String token, String applicationId) async =>
-      _getList('/applications/$applicationId/messages', token);
-  Future<Map<String, dynamic>> sendChatMessage(
-    String token,
-    String applicationId,
-    String content,
-  ) async =>
-      _postAuth('/applications/$applicationId/messages', token, {'content': content});
+  Future<Map<String, dynamic>> withdrawApplication(String token, String id) async => _postAuth('/applications/$id/withdraw', token, {});
+  Future<Map<String, dynamic>> analyzeCv(String token) async => _postAuth('/profile/cv/analyze', token, {});
+  Future<List<dynamic>> recommendations(String token) async { final result = await _getMap('/recommendations', token); final items = result['recommendations']; return items is List ? items : const []; }
+  Future<List<dynamic>> chatMessages(String token, String applicationId) async => _getList('/applications/$applicationId/messages', token);
+  Future<Map<String, dynamic>> sendChatMessage(String token, String applicationId, String content) async => _postAuth('/applications/$applicationId/messages', token, {'content': content});
 
-
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
-    try { final r=await http.post(Uri.parse('$baseUrl$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body)).timeout(const Duration(seconds:25)); return _decodeMap(r); }
-    on SocketException { throw Exception('No se pudo conectar con INKLU. Verifica tu conexión a Internet e inténtalo de nuevo.'); }
-    on TimeoutException { throw Exception('El servidor de INKLU está tardando en responder. Inténtalo nuevamente.'); }
-    on FormatException { throw Exception('El servidor de INKLU devolvió una respuesta inválida.'); }
-  }
+  Future<Map<String,dynamic>> _post(String path,Map<String,dynamic> body)async{try{final r=await http.post(Uri.parse('$baseUrl$path'),headers:{'Content-Type':'application/json'},body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}on SocketException{throw Exception('No se pudo conectar con INKLU. Verifica tu conexión a Internet e inténtalo de nuevo.');}on TimeoutException{throw Exception('El servidor de INKLU está tardando en responder. Inténtalo nuevamente.');}on FormatException{throw Exception('El servidor de INKLU devolvió una respuesta inválida.');}}
   Future<Map<String,dynamic>> _postAuth(String path,String token,Map<String,dynamic> body)async{final r=await http.post(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _deleteAuth(String path,String token,Map<String,dynamic> body)async{final r=await http.delete(Uri.parse('$baseUrl$path'),headers:_headers(token),body:jsonEncode(body)).timeout(const Duration(seconds:25));return _decodeMap(r);}
   Future<Map<String,dynamic>> _deleteMap(String path,String token)async{final r=await http.delete(Uri.parse('$baseUrl$path'),headers:_headers(token)).timeout(const Duration(seconds:25));return _decodeMap(r);}
