@@ -41,12 +41,30 @@ const KNOWN_SKILL_LABELS = [
 function humanizeSkill(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
-  const index = Number(raw);
-  if (Number.isInteger(index) && index >= 0 && index < KNOWN_SKILL_LABELS.length) {
-    return KNOWN_SKILL_LABELS[index];
+
+  // Legacy records sometimes stored the skill catalog index instead of its name.
+  // Map known IDs to a label and never expose an unknown numeric ID to candidates.
+  if (/^\\d+$/.test(raw)) {
+    const index = Number(raw);
+    return Number.isInteger(index) && index >= 0 && index < KNOWN_SKILL_LABELS.length
+      ? KNOWN_SKILL_LABELS[index]
+      : '';
   }
   return raw;
 }
+
+const CAREER_GROUP_LABELS = {
+  tecnologia: 'Tecnología',
+  administracion: 'Administración',
+  diseno: 'Diseño',
+  datos: 'Análisis de datos',
+  salud: 'Salud',
+  educacion: 'Educación',
+  logistica: 'Logística',
+  marketing: 'Marketing',
+  atencion: 'Atención al cliente',
+  proyectos: 'Gestión de proyectos'
+};
 
 const CV_STOP_WORDS = new Set((
   'para como con por una uno unas unos las los del que de en al el y o a se su sus es son fue ser esta estar ' +
@@ -117,7 +135,10 @@ function recommendJobsForUser(user, jobs) {
   const mergedCandidateKeywords = new Map();
   for (const item of [...cvKeywords, ...profileKeywords]) {
     if (!item?.term) continue;
-    const term = normalizeText(item.term);
+    const rawTerm = String(item.term).trim();
+    const namedTerm = /^\\d+$/.test(rawTerm) ? humanizeSkill(rawTerm) : rawTerm;
+    if (!namedTerm) continue;
+    const term = normalizeText(namedTerm);
     const count = Math.max(1, Number(item.count) || 1);
     mergedCandidateKeywords.set(term, Math.max(mergedCandidateKeywords.get(term) || 0, count));
   }
@@ -200,21 +221,40 @@ function recommendJobsForUser(user, jobs) {
         .filter(group => group.signals.some(signal => candidateCareerText.includes(normalizeText(signal))))
         .map(group => group.key));
 
+  const groupsForText = value => {
+    const normalized = normalizeText(value);
+    return careerGroups
+      .filter(group => group.signals.some(signal => normalized.includes(normalizeText(signal))))
+      .map(group => group.key);
+  };
+
   const jobDocuments = jobs.map(job => {
     const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills.map(humanizeSkill).filter(Boolean) : [];
     const preferredSkills = Array.isArray(job.preferredSkills) ? job.preferredSkills.map(humanizeSkill).filter(Boolean) : [];
+    const titleGroups = groupsForText(job.title);
+    const categoryGroups = groupsForText(job.category);
+    const skillGroups = groupsForText([...requiredSkills, ...preferredSkills].join(' '));
     const content = [job.title, job.description, job.category, ...requiredSkills, ...preferredSkills].join(' ');
-    const categoryTitleSkills = normalizeText([job.category, job.title, ...requiredSkills, ...preferredSkills].join(' '));
-    const jobGroups = careerGroups
-      .filter(group => group.signals.some(signal => categoryTitleSkills.includes(normalizeText(signal))))
-      .map(group => group.key);
+
+    // A clear job title has priority over a possibly incorrect legacy category.
+    // For example, "Tecnólogo médico" must be classified as Salud even if an old
+    // record was incorrectly saved under the "Tecnología" category.
+    const jobGroups = titleGroups.length
+      ? titleGroups
+      : [...new Set([...categoryGroups, ...skillGroups])];
+    const matchingCategoryGroup = categoryGroups.find(group => titleGroups.includes(group));
+    const primaryAreaGroup = titleGroups.length
+      ? (matchingCategoryGroup || titleGroups[0])
+      : (categoryGroups[0] || skillGroups[0] || null);
     return {
       job,
       requiredSkills,
       preferredSkills,
       content,
-      categoryTitleSkills,
+      titleGroups,
+      categoryGroups,
       jobGroups,
+      professionalArea: primaryAreaGroup ? CAREER_GROUP_LABELS[primaryAreaGroup] : '',
       keywords: keywordCounts(content, 200)
     };
   });
@@ -228,7 +268,7 @@ function recommendJobsForUser(user, jobs) {
   }
 
   return jobDocuments.map(document => {
-    const { job, requiredSkills, preferredSkills, categoryTitleSkills, jobGroups, keywords } = document;
+    const { job, requiredSkills, preferredSkills, jobGroups, professionalArea, keywords } = document;
     const jobText = normalizeText([
       job.title,
       job.description,
@@ -333,6 +373,7 @@ function recommendJobsForUser(user, jobs) {
     record.preferredSkills = preferredSkills;
     return {
       ...record,
+      professionalArea: professionalArea || (record.category && !/^\\d+$/.test(String(record.category).trim()) ? record.category : ''),
       matchScore: score,
       matchReasons: reasons,
       matchedSkills,
@@ -349,4 +390,4 @@ function recommendJobsForUser(user, jobs) {
     .slice(0, 10);
 }
 
-module.exports = { normalizeText, keywordCounts, tfidfCosineSimilarity, recommendJobsForUser };
+module.exports = { normalizeText, keywordCounts, tfidfCosineSimilarity, recommendJobsForUser, humanizeSkill };
