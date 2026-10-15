@@ -18,6 +18,7 @@ const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser } = require('./services/recommendations');
 const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
 const { auditSecurityConfig } = require('./services/security-config');
+const { canCompanyUpdateApplicationStatus } = require('./services/application-workflow');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -1394,13 +1395,19 @@ app.patch('/api/applications/:id/status', auth, async (req, res) => {
     if (!application || !application.jobId || String(application.jobId.companyId) !== String(req.user._id)) {
       return res.status(404).json({ message: 'Postulación no encontrada.' });
     }
-    if (normalizeApplicationStatus(application.status) === 'Retirada por candidato') {
-      return res.status(409).json({ message: 'Esta postulación fue retirada por la persona candidata y ya no se puede modificar.' });
-    }
     const allowed = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
     if (!allowed.includes(req.body?.status)) return res.status(400).json({ message: 'Etapa de postulación inválida.' });
+    const currentStatus = normalizeApplicationStatus(application.status);
     const nextStatus = req.body.status;
-    if (normalizeApplicationStatus(application.status) !== nextStatus) {
+    if (!canCompanyUpdateApplicationStatus(currentStatus, nextStatus)) {
+      const message = currentStatus === 'Retirada por candidato'
+        ? 'Esta postulación fue retirada por la persona candidata y ya no se puede modificar.'
+        : ['Aceptado', 'Proceso terminado'].includes(currentStatus)
+          ? 'Esta postulación ya llegó a una etapa final y no se puede modificar.'
+          : 'No puedes retroceder a una etapa anterior del proceso de selección.';
+      return res.status(409).json({ message });
+    }
+    if (currentStatus !== nextStatus) {
       application.status = nextStatus;
       application.statusHistory.push({
         status: nextStatus,
