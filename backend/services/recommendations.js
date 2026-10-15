@@ -57,9 +57,32 @@ function recommendJobsForUser(user, jobs) {
   const modality = normalizeText(user.profile?.modality);
   const cvKeywords = user.cvAnalysis?.keywords || [];
   const education = String(user.profile?.education || '');
+  const professionalSummary = String(user.profile?.professionalSummary || '');
+  const projects = Array.isArray(user.profile?.projects) ? user.profile.projects : [];
+  const certifications = Array.isArray(user.profile?.certifications) ? user.profile.certifications : [];
   const cvCareerTerms = cvKeywords.slice(0, 25).map(item => item.term || '');
-  const careerSource = [education, ...skills, ...(user.profile?.skills || []), ...cvCareerTerms].join(' ');
-  const careerTerms = new Set(keywordCounts(careerSource, 100).map(item => item.term));
+
+  // El perfil complementa el CV, especialmente cuando el analizador no reconoce
+  // todo el texto o la persona tiene proyectos/certificaciones que no figuran en el CV.
+  const profileText = [
+    education,
+    professionalSummary,
+    ...projects,
+    ...certifications,
+    ...skills,
+    ...cvCareerTerms
+  ].filter(Boolean).join(' ');
+  const profileKeywords = keywordCounts(profileText, 100);
+  const mergedCandidateKeywords = new Map();
+  for (const item of [...cvKeywords, ...profileKeywords]) {
+    if (!item?.term) continue;
+    const term = normalizeText(item.term);
+    const count = Math.max(1, Number(item.count) || 1);
+    mergedCandidateKeywords.set(term, Math.max(mergedCandidateKeywords.get(term) || 0, count));
+  }
+  const candidateKeywords = [...mergedCandidateKeywords.entries()]
+    .map(([term, count]) => ({ term, count }));
+  const careerTerms = new Set(profileKeywords.map(item => item.term));
   const candidateExperience = Math.max(0, Number(user.profile?.experience || 0));
 
   // Agrupación aproximada de carreras/áreas, además de la similitud textual del CV.
@@ -75,7 +98,7 @@ function recommendJobsForUser(user, jobs) {
     { key: 'atencion', signals: ['atencion al cliente', 'servicio al cliente', 'ventas', 'soporte', 'mesa de ayuda', 'help desk'] },
     { key: 'proyectos', signals: ['gestion de proyectos', 'project management', 'scrum', 'agile'] }
   ];
-  const candidateCareerText = normalizeText([education, ...skills, ...(user.profile?.skills || []), ...cvCareerTerms].join(' '));
+  const candidateCareerText = normalizeText(profileText);
   const candidateGroups = new Set(careerGroups
     .filter(group => group.signals.some(signal => candidateCareerText.includes(normalizeText(signal))))
     .map(group => group.key));
@@ -133,7 +156,7 @@ function recommendJobsForUser(user, jobs) {
         skill.includes(normalized) || normalized.includes(skill)
       );
     });
-    const candidateTerms = new Set(cvKeywords.map(item => item.term));
+    const candidateTerms = new Set(candidateKeywords.map(item => item.term));
     const sharedKeywords = keywords
       .filter(item => candidateTerms.has(item.term))
       .sort((a, b) => b.count - a.count)
@@ -147,7 +170,7 @@ function recommendJobsForUser(user, jobs) {
     const careerCategoryMatch = jobGroups.some(group => candidateGroups.has(group));
 
     const similarity = tfidfCosineSimilarity(
-      cvKeywords,
+      candidateKeywords,
       keywords,
       documentFrequency,
       Math.max(jobDocuments.length, 1)
