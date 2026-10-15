@@ -76,6 +76,41 @@ test('prioriza ofertas relacionadas y explica coincidencias de habilidades', () 
   assert.ok(results[0].matchedSkills.includes('JavaScript'));
 });
 
+test('usa resumen, proyectos y certificaciones cuando el CV no aporta palabras clave', () => {
+  const profileOnlyCandidate = {
+    profile: {
+      education: '',
+      professionalSummary: 'Analítica de datos y reportes financieros con Power BI',
+      experience: 0,
+      skills: [],
+      projects: ['Dashboard financiero con reportes automatizados'],
+      certifications: ['Fundamentos de análisis de datos'],
+      location: '',
+      modality: ''
+    },
+    cvAnalysis: { skills: [], keywords: [] }
+  };
+  const relevant = job({
+    _id: 'job-finance-data',
+    title: 'Asistente de reportes financieros',
+    description: 'Preparar dashboard y reportes de finanzas usando Power BI.',
+    category: 'Finanzas',
+    modality: 'Remoto',
+    location: 'Lima',
+    requiredSkills: ['Power BI'],
+    preferredSkills: ['Excel'],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(profileOnlyCandidate, [relevant]);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0]._id, 'job-finance-data');
+  assert.ok(results[0].matchScore > 0);
+  assert.ok(results[0].careerMatch);
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('Coincidencias con tu CV')));
+});
+
 test('marca cuando la experiencia indicada no alcanza el requisito', () => {
   const demandingJob = job({
     _id: 'job-senior',
