@@ -37,6 +37,13 @@ String _readableLabel(dynamic raw, List<String> legacyOptions, {String fallback 
   return legacyOptions[index];
 }
 
+dynamic _firstNonEmptyLabelValue(List<dynamic?> values) {
+  for (final value in values) {
+    if (value != null && value.toString().trim().isNotEmpty) return value;
+  }
+  return null;
+}
+
 String _skillLabel(dynamic raw) => _readableLabel(raw, _legacySkillLabels);
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
 void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
@@ -1302,7 +1309,7 @@ class JobMetadataChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final category = _named(
-      job['professionalArea'] ?? job['category'],
+      _firstNonEmptyLabelValue([job['professionalArea'], job['category']]),
       'Área no especificada',
       legacyOptions: _legacyJobCategories,
     );
@@ -3553,7 +3560,7 @@ void showOffer(
       ? (d['preferredSkills'] as List).map(_skillLabel).where((item) => item.isNotEmpty).toList()
       : <String>[];
   final category = _readableLabel(
-    d['professionalArea'] ?? d['category'],
+    _firstNonEmptyLabelValue([d['professionalArea'], d['category']]),
     _legacyJobCategories,
     fallback: '',
   );
