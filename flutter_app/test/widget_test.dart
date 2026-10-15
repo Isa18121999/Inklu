@@ -186,7 +186,7 @@ void main() {
     expect(find.text('¿Por qué te recomendamos esta oferta?'), findsOneWidget);
     expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
     expect(find.text('Habilidades de tu perfil que coinciden'), findsOneWidget);
-    expect(find.textContaining('No garantiza una entrevista ni una contratación'), findsOneWidget);
+    expect(find.textContaining('no garantiza una entrevista ni una contratación'), findsOneWidget);
 
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
