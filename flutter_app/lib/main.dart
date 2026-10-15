@@ -1303,12 +1303,12 @@ class _CandidateHomeState extends State<CandidateHome> {
 
   @override
   Widget build(BuildContext c) {
-    final visibleApplications = apps.where((item) {
-      if (selectedApplicationFilter == 'Todas') return true;
-      final status = normalizeApplicationStatus(item['status']?.toString()).toLowerCase();
-      if (selectedApplicationFilter == 'Retirada') return status == 'retirada por candidato';
-      return status == selectedApplicationFilter.toLowerCase();
-    }).toList();
+    final visibleApplications = apps.where((item) =>
+      applicationStatusMatchesFilter(
+        item['status']?.toString(),
+        selectedApplicationFilter,
+      ),
+    ).toList();
 
     return Dash(
       title: tab == 2 ? 'Mis postulaciones' : 'Hola, ${sessionUser?['name'] ?? 'candidato'}',
@@ -1541,6 +1541,13 @@ String normalizeApplicationStatus(String? raw) {
     default:
       return raw == null || raw.isEmpty ? 'Postulado' : raw;
   }
+}
+
+bool applicationStatusMatchesFilter(String? rawStatus, String selectedFilter) {
+  if (selectedFilter == 'Todas') return true;
+  final status = normalizeApplicationStatus(rawStatus).toLowerCase();
+  if (selectedFilter == 'Retirada') return status == 'retirada por candidato';
+  return status == selectedFilter.toLowerCase();
 }
 
 bool chatAvailableForStatus(String status) =>
