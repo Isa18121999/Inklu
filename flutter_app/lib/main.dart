@@ -8,7 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 
-const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
+const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF475569), line=Color(0xFFE2E8F0);
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
