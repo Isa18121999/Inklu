@@ -1085,7 +1085,7 @@ app.get('/api/applications', auth, async (req, res) => {
   }
 
   const applications = await Application.find(filter)
-    .populate('candidateId', 'name email phone profile cvAnalysis')
+    .populate('candidateId', 'name email phone profile cvAnalysis cv.fileName cv.size')
     .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name' } })
     .sort({ createdAt: -1 });
 
@@ -1118,6 +1118,48 @@ app.get('/api/applications', auth, async (req, res) => {
     return record;
   }));
 });
+app.get('/api/applications/:id/cv', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'company') {
+      return res.status(403).json({ message: 'Solo la empresa responsable de la oferta puede descargar el CV de esta postulación.' });
+    }
+
+    const application = await Application.findById(req.params.id)
+      .populate('jobId', 'companyId title');
+    if (!application || !application.jobId) {
+      return res.status(404).json({ message: 'Postulación no encontrada.' });
+    }
+
+    if (String(application.jobId.companyId) !== String(req.user._id)) {
+      // Do not disclose whether another company's application exists.
+      return res.status(404).json({ message: 'Postulación no encontrada.' });
+    }
+
+    const candidate = await User.findById(application.candidateId).select('+cv.data');
+    if (!candidate?.cv?.data?.length) {
+      return res.status(404).json({ message: 'El candidato todavía no ha subido un CV.' });
+    }
+
+    const originalName = String(candidate.cv.fileName || 'CV').replace(/[\r\n"]/g, '');
+    const safeFileName = originalName.replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 120) || 'CV';
+    const extension = safeFileName.toLowerCase().split('.').pop();
+    const mimeTypes = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    };
+
+    res.set('Content-Type', mimeTypes[extension] || 'application/octet-stream');
+    res.set('Content-Disposition', `attachment; filename="${safeFileName}"`);
+    res.set('Cache-Control', 'private, no-store');
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.send(candidate.cv.data);
+  } catch (error) {
+    console.error('Error descargando CV de una postulación:', error);
+    res.status(500).json({ message: 'No se pudo descargar el CV.' });
+  }
+});
+
 app.post('/api/applications', auth, async (req, res) => {
   try {
     if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden postularse.' });
