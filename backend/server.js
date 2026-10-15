@@ -780,9 +780,36 @@ app.patch('/api/profile/me', auth, async (req, res) => {
     const updates = {};
 
     if (req.user.role === 'candidate') {
-      const allowed = ['birth', 'address', 'education', 'experience', 'skills', 'modality', 'location'];
-      for (const key of allowed) {
-        if (Object.prototype.hasOwnProperty.call(body, key)) updates[`profile.${key}`] = body[key];
+      const stringFields = {
+        birth: 40,
+        address: 250,
+        education: 160,
+        professionalSummary: 1200,
+        modality: 40,
+        location: 100
+      };
+      for (const [key, maxLength] of Object.entries(stringFields)) {
+        if (Object.prototype.hasOwnProperty.call(body, key)) {
+          updates[`profile.${key}`] = String(body[key] ?? '').trim().slice(0, maxLength);
+        }
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, 'experience')) {
+        const years = Number(body.experience);
+        if (!Number.isFinite(years) || years < 0 || years > 60) {
+          return res.status(400).json({ message: 'Los años de experiencia deben estar entre 0 y 60.' });
+        }
+        updates['profile.experience'] = years;
+      }
+
+      for (const key of ['skills', 'projects', 'certifications']) {
+        if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+        const raw = Array.isArray(body[key]) ? body[key] : String(body[key] || '').split(/[,\\n]/);
+        const limit = key === 'skills' ? 40 : 20;
+        updates[`profile.${key}`] = raw
+          .map(item => String(item ?? '').trim().slice(0, 180))
+          .filter(Boolean)
+          .slice(0, limit);
       }
     } else if (req.user.role === 'company') {
       if (Object.prototype.hasOwnProperty.call(body, 'name')) {
