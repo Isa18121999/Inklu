@@ -804,7 +804,7 @@ app.patch('/api/profile/me', auth, async (req, res) => {
 
       for (const key of ['skills', 'projects', 'certifications']) {
         if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
-        const raw = Array.isArray(body[key]) ? body[key] : String(body[key] || '').split(/[,\\n]/);
+        const raw = Array.isArray(body[key]) ? body[key] : String(body[key] || '').split(/[,\n]/);
         const limit = key === 'skills' ? 40 : 20;
         updates[`profile.${key}`] = raw
           .map(item => String(item ?? '').trim().slice(0, 180))
