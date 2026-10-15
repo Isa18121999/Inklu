@@ -18,7 +18,7 @@ function keywordCounts(text, limit = 60) {
   const tokens = normalizeText(text).match(/[a-z0-9+#.]{3,}/g) || [];
   const counts = new Map();
   for (const token of tokens) {
-    if (CV_STOP_WORDS.has(token) || /^\\d+$/.test(token)) continue;
+    if (CV_STOP_WORDS.has(token) || /^\d+$/.test(token)) continue;
     counts.set(token, (counts.get(token) || 0) + 1);
   }
   return [...counts.entries()]
