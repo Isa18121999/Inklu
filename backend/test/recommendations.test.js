@@ -139,3 +139,52 @@ test('trata las habilidades deseables como coincidencias secundarias', () => {
   assert.deepEqual(results[0].matchedPreferredSkills, ['Python']);
   assert.ok(results[0].matchReasons.some(reason => reason.includes('Habilidades deseables coincidentes')));
 });
+
+test('excludes medical technologist role for a systems candidate', () => {
+  const medical = makeJob({
+    _id: 'medical-tech',
+    title: 'Tecnólogo médico',
+    description: 'Registro de muestras, reportes y sistemas de citas; Excel es deseable.',
+    category: 'Salud',
+    requiredSkills: ['Excel'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(candidate(), [medical]), []);
+});
+
+test('uses profile skills without a pre-analyzed CV and does not return unrelated areas', () => {
+  const profileOnly = {
+    role: 'candidate',
+    profile: {
+      education: 'Ingeniería de Sistemas',
+      experience: 0,
+      skills: ['Python', 'SQL'],
+      location: 'Lima',
+      modality: 'Remoto'
+    },
+    cvAnalysis: { skills: [], keywords: [] }
+  };
+  const relevant = makeJob({
+    _id: 'systems-role',
+    title: 'Asistente de sistemas',
+    description: 'Soporte de software y consultas SQL con Python.',
+    category: 'Tecnología',
+    requiredSkills: ['Python'],
+    preferredSkills: ['SQL'],
+    experienceRequired: 0
+  });
+  const unrelated = makeJob({
+    _id: 'health-role',
+    title: 'Tecnólogo médico',
+    description: 'Atención clínica y procesamiento de muestras de laboratorio.',
+    category: 'Salud',
+    requiredSkills: ['Laboratorio clínico'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(profileOnly, [unrelated, relevant]);
+  assert.deepEqual(results.map(item => item._id), ['systems-role']);
+});
