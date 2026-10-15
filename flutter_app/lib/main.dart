@@ -1675,30 +1675,6 @@ class ApplicationProgressCard extends StatelessWidget {
     return null;
   }
 
-  Future<void> downloadCandidateCv(
-    BuildContext context,
-    String applicationId,
-    String fileName,
-  ) async {
-    try {
-      final bytes = await api.candidateCv(token, applicationId);
-      if (!context.mounted) return;
-      final savedPath = await FilePicker.platform.saveFile(
-        dialogTitle: 'Guardar CV del postulante',
-        fileName: fileName.isEmpty ? 'CV' : fileName,
-        type: FileType.custom,
-        allowedExtensions: const ['pdf', 'doc', 'docx'],
-        bytes: bytes,
-      );
-      if (!context.mounted || savedPath == null) return;
-      toast('CV guardado correctamente.');
-    } catch (error) {
-      if (context.mounted) {
-        toast(error.toString().replaceFirst('Exception: ', ''));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final status = normalizeApplicationStatus(application['status']?.toString());
@@ -3356,6 +3332,30 @@ class CompanyApplicationCard extends StatelessWidget {
     required this.onStatusChanged,
     required this.token,
   });
+
+  Future<void> downloadCandidateCv(
+    BuildContext context,
+    String applicationId,
+    String fileName,
+  ) async {
+    try {
+      final bytes = await api.candidateCv(token, applicationId);
+      if (!context.mounted) return;
+      final savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Guardar CV del postulante',
+        fileName: fileName.isEmpty ? 'CV' : fileName,
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'doc', 'docx'],
+        bytes: bytes,
+      );
+      if (!context.mounted || savedPath == null) return;
+      toast('CV guardado correctamente.');
+    } catch (error) {
+      if (context.mounted) {
+        toast(error.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
