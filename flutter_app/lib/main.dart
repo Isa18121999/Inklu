@@ -857,7 +857,7 @@ class _CandidateHomeState extends State<CandidateHome> {
   bool onlyWithAccessibility = false;
   bool searchingJobs = false;
   bool filtersExpanded = false;
-  static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+  static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Aceptado', 'Proceso terminado', 'Retirada'];
 
   @override
   void initState() { super.initState(); load(); }
@@ -1084,6 +1084,36 @@ class _CandidateHomeState extends State<CandidateHome> {
     }
   }
 
+  Future<void> withdrawApplication(String id) async {
+    final shouldWithdraw = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Retirar postulación'),
+        content: const Text(
+          'La empresa recibirá una notificación y esta postulación quedará marcada como retirada. No podrás reabrirla desde la app.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Volver'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Retirar'),
+          ),
+        ],
+      ),
+    );
+    if (shouldWithdraw != true || !mounted) return;
+    try {
+      await api.withdrawApplication(sessionToken!, id);
+      toast('Tu postulación fue retirada.');
+      await load();
+    } catch (error) {
+      toast(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   Widget buildJobFilters() {
     const locations = ['Lima', 'Callao', 'Arequipa', 'Trujillo', 'Chiclayo', 'Piura', 'Cusco', 'Huancayo', 'Iquitos'];
     const modalities = ['Remoto', 'Híbrido', 'Presencial'];
@@ -1278,7 +1308,9 @@ class _CandidateHomeState extends State<CandidateHome> {
   Widget build(BuildContext c) {
     final visibleApplications = apps.where((item) {
       if (selectedApplicationFilter == 'Todas') return true;
-      return normalizeApplicationStatus(item['status']?.toString()).toLowerCase() == selectedApplicationFilter.toLowerCase();
+      final status = normalizeApplicationStatus(item['status']?.toString()).toLowerCase();
+      if (selectedApplicationFilter == 'Retirada') return status == 'retirada por candidato';
+      return status == selectedApplicationFilter.toLowerCase();
     }).toList();
 
     return Dash(
@@ -1486,6 +1518,9 @@ class _CandidateHomeState extends State<CandidateHome> {
                         ...visibleApplications.map((item) => ApplicationProgressCard(
                           application: Map<String, dynamic>.from(item),
                           token: sessionToken!,
+                          onWithdraw: () => withdrawApplication(
+                            (item['_id'] ?? item['id'] ?? '').toString(),
+                          ),
                         )),
                     ]
                   : [CandidateProfilePanel(token: sessionToken!)],
@@ -1780,7 +1815,13 @@ class JobRecommendationCard extends StatelessWidget {
 class ApplicationProgressCard extends StatelessWidget {
   final Map<String, dynamic> application;
   final String token;
-  const ApplicationProgressCard({super.key, required this.application, required this.token});
+  final VoidCallback? onWithdraw;
+  const ApplicationProgressCard({
+    super.key,
+    required this.application,
+    required this.token,
+    this.onWithdraw,
+  });
 
   static const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
   static const descriptions = [
@@ -1836,6 +1877,42 @@ class ApplicationProgressCard extends StatelessWidget {
     final rawHistory = application['statusHistory'];
     final lastHistory = rawHistory is List && rawHistory.isNotEmpty ? Map<String, dynamic>.from(rawHistory.last) : <String, dynamic>{};
     final changedAt = dateFrom(lastHistory['changedAt'] ?? application['createdAt']);
+    if (status == 'Retirada por candidato') {
+      return Card(
+        color: Colors.white,
+        margin: const EdgeInsets.only(bottom: 14),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Color(0xFFEAE6FA)),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+              const SizedBox(height: 4),
+              Text(company, style: const TextStyle(color: muted)),
+              const SizedBox(height: 10),
+              const Row(
+                children: [
+                  Icon(Icons.assignment_return_outlined, color: muted),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Retiraste esta postulación. La empresa fue notificada y el proceso ya no está activo.',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('Retirada · ${timeAgo(changedAt)}', style: const TextStyle(color: muted, fontSize: 12)),
+            ],
+          ),
+        ),
+      );
+    }
     final isWeb = title.toLowerCase().contains('web') || title.toLowerCase().contains('desarroll') || title.toLowerCase().contains('frontend');
     final isHealth = title.toLowerCase().contains('salud') || title.toLowerCase().contains('enfer') || title.toLowerCase().contains('clínic');
     final IconData jobIcon = isWeb ? Icons.code_rounded : isHealth ? Icons.favorite_rounded : Icons.apartment_rounded;
@@ -1944,6 +2021,17 @@ class ApplicationProgressCard extends StatelessWidget {
             ))
           else
             const Text('El chat se habilita cuando la empresa actualice la etapa a “En proceso”.', style: TextStyle(color: Color(0xFF77728D), fontSize: 11)),
+          if (onWithdraw != null && const ['Postulado', 'CV visto', 'En proceso'].contains(status)) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onWithdraw,
+                icon: const Icon(Icons.assignment_return_outlined),
+                label: const Text('Retirar postulación'),
+              ),
+            ),
+          ],
         ]),
       ),
     );
@@ -3529,6 +3617,9 @@ class CompanyApplicationCard extends StatelessWidget {
     final appId = (application['_id'] ?? application['id'] ?? '').toString();
     final jobTitle = job['title']?.toString() ?? 'Oferta';
     const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+    final availableStages = status == 'Retirada por candidato'
+        ? [...stages, 'Retirada por candidato']
+        : stages;
 
     String fieldText(dynamic value) => value == null ? '' : value.toString().trim();
 
@@ -3670,22 +3761,31 @@ class CompanyApplicationCard extends StatelessWidget {
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               key: ValueKey('$appId-$status'),
-              initialValue: stages.contains(status) ? status : 'Postulado',
+              initialValue: availableStages.contains(status) ? status : 'Postulado',
               decoration: const InputDecoration(labelText: 'Etapa del proceso'),
-              items: stages
+              items: availableStages
                   .map((value) => DropdownMenuItem(
                         value: value,
                         child: Text(value),
                       ))
                   .toList(),
-              onChanged: (nextStatus) {
-                if (nextStatus != null && nextStatus != status) {
-                  onStatusChanged(nextStatus);
-                }
-              },
+              onChanged: status == 'Retirada por candidato'
+                  ? null
+                  : (nextStatus) {
+                      if (nextStatus != null && nextStatus != status) {
+                        onStatusChanged(nextStatus);
+                      }
+                    },
             ),
+            if (status == 'Retirada por candidato') ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Esta postulación fue retirada por la persona candidata; el estado está cerrado.',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 10),
-            if (chatAvailableForStatus(status))
+            if (status != 'Retirada por candidato' && chatAvailableForStatus(status))
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -4397,14 +4497,25 @@ class NotificationsAction extends StatefulWidget {
 class _NotificationsActionState extends State<NotificationsAction> {
   int unreadCount = 0;
   bool loading = false;
+  Timer? refreshTimer;
 
   @override
   void initState() {
     super.initState();
     refreshUnreadCount();
+    refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && !loading) refreshUnreadCount();
+    });
+  }
+
+  @override
+  void dispose() {
+    refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> refreshUnreadCount() async {
+    if (loading) return;
     final token = sessionToken;
     if (token == null || token.isEmpty) {
       if (mounted) setState(() => unreadCount = 0);

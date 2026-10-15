@@ -166,6 +166,8 @@ class ApiService {
   Future<Map<String, dynamic>> createJob(String token, Map<String, dynamic> data) async => _postAuth('/company/jobs', token, data);
   Future<Map<String, dynamic>> apply(String token, String jobId) async => _postAuth('/applications', token, {'jobId': jobId});
   Future<Map<String, dynamic>> updateApplicationStatus(String token, String id, String status) async => _patch('/applications/$id/status', token, {'status': status});
+  Future<Map<String, dynamic>> withdrawApplication(String token, String id) async =>
+      _postAuth('/applications/$id/withdraw', token, {});
   Future<Map<String, dynamic>> analyzeCv(String token) async =>
       _postAuth('/profile/cv/analyze', token, {});
   Future<List<dynamic>> recommendations(String token) async {

@@ -6,6 +6,7 @@ const APPLICATION_STATUSES = [
   'En proceso',
   'Aceptado',
   'Proceso terminado',
+  'Retirada por candidato',
   // Compatibilidad con postulaciones creadas antes del nuevo flujo.
   'Postulada',
   'En revisión',

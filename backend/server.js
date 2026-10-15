@@ -1260,12 +1260,76 @@ app.post('/api/applications', auth, async (req, res) => {
     res.status(201).json(application);
   } catch (e) { if (e?.code === 11000) return res.status(409).json({ message: 'Ya te postulaste a esta oferta.' }); console.error(e); res.status(500).json({ message: 'No se pudo registrar la postulación.' }); }
 });
+app.post('/api/applications/:id/withdraw', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') {
+      return res.status(403).json({ message: 'Solo los candidatos pueden retirar sus postulaciones.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Postulación no válida.' });
+    }
+
+    const application = await Application.findOne({
+      _id: req.params.id,
+      candidateId: req.user._id
+    }).populate('jobId', 'title companyId');
+    if (!application || !application.jobId) {
+      return res.status(404).json({ message: 'No se encontró tu postulación.' });
+    }
+
+    const currentStatus = normalizeApplicationStatus(application.status);
+    const withdrawable = ['Postulado', 'CV visto', 'En proceso'];
+    if (!withdrawable.includes(currentStatus)) {
+      return res.status(409).json({
+        message: 'Esta postulación ya llegó a una etapa final y no se puede retirar desde la app.'
+      });
+    }
+
+    application.status = 'Retirada por candidato';
+    application.statusHistory.push({
+      status: 'Retirada por candidato',
+      changedAt: new Date(),
+      changedBy: req.user._id
+    });
+    await application.save();
+
+    try {
+      await Notification.create({
+        userId: application.jobId.companyId,
+        title: 'Postulación retirada',
+        message: `La persona candidata retiró su postulación a “${application.jobId.title}”.`,
+        type: 'application_withdrawn',
+        relatedId: application._id
+      });
+    } catch (notificationError) {
+      console.error('No se pudo notificar el retiro de postulación:', notificationError.message);
+    }
+
+    res.json({
+      success: true,
+      id: String(application._id),
+      status: normalizeApplicationStatus(application.status),
+      statusHistory: (application.statusHistory || []).map(item => ({
+        status: normalizeApplicationStatus(item.status),
+        changedAt: item.changedAt,
+        changedBy: item.changedBy
+      }))
+    });
+  } catch (error) {
+    console.error('Error retirando postulación:', error);
+    res.status(500).json({ message: 'No se pudo retirar la postulación.' });
+  }
+});
+
 app.patch('/api/applications/:id/status', auth, async (req, res) => {
   try {
     if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden actualizar el proceso.' });
     const application = await Application.findById(req.params.id).populate('jobId');
     if (!application || !application.jobId || String(application.jobId.companyId) !== String(req.user._id)) {
       return res.status(404).json({ message: 'Postulación no encontrada.' });
+    }
+    if (normalizeApplicationStatus(application.status) === 'Retirada por candidato') {
+      return res.status(409).json({ message: 'Esta postulación fue retirada por la persona candidata y ya no se puede modificar.' });
     }
     const allowed = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
     if (!allowed.includes(req.body?.status)) return res.status(400).json({ message: 'Etapa de postulación inválida.' });
