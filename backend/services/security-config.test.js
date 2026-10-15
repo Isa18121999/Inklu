@@ -8,6 +8,12 @@ test('marca una JWT ausente o de demostración como pendiente de corregir', () =
   assert.equal(auditSecurityConfig({ JWT_SECRET: 'short-key' }).jwtSecretNeedsAttention, true);
 });
 
+test('usa el mismo origen web permitido por defecto que el servidor', () => {
+  const audit = auditSecurityConfig({ JWT_SECRET: 'c'.repeat(64) });
+  assert.equal(audit.jwtSecretNeedsAttention, false);
+  assert.equal(audit.corsAllowsAnyOrigin, false);
+});
+
 test('acepta una JWT larga configurada y detecta CORS abierto', () => {
   const audit = auditSecurityConfig({
     JWT_SECRET: 'a'.repeat(64),
