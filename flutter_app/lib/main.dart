@@ -2815,6 +2815,11 @@ class _CompanyHomeState extends State<CompanyHome> {
           'requiredSkills': requiredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
           'preferredSkills': preferredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
           'accessibilityDetails': accessibilityDetails.text.trim(),
+          'accessibility': {
+            'remote': modality.toLowerCase().contains('remoto'),
+            'hybrid': modality.toLowerCase().contains('híbrido') || modality.toLowerCase().contains('hibrido'),
+            'notes': accessibilityDetails.text.trim(),
+          },
           'salary': salary.text.trim(),
         });
         toast('Oferta publicada correctamente.');
