@@ -242,7 +242,7 @@ Crear un archivo `.env`:
 ```env
 MONGODB_URI=tu_conexion_mongodb
 JWT_SECRET=tu_clave_secreta
-FRONTEND_ORIGIN=*
+FRONTEND_ORIGIN=https://isa18121999.github.io
 ```
 
 Iniciar el servidor:
