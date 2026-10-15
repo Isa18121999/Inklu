@@ -55,7 +55,10 @@ test('el flujo de postulaciones admite el retiro y conserva el historial de esta
 
 test('las notificaciones admiten alertas de nuevas ofertas coincidentes', () => {
   const Notification = require('../models/Notification');
-  assert.ok(Notification.schema.path('type').enumValues.includes('job_match'));
+  const types = Notification.schema.path('type').enumValues;
+  assert.ok(types.includes('job_match'));
+  assert.ok(types.includes('application_withdrawn'));
+  assert.ok(types.includes('application_status'));
   assert.ok(Notification.schema.path('userId'), 'la notificación debe pertenecer a un usuario');
   assert.ok(Notification.schema.path('readAt'), 'la notificación debe poder marcarse como leída');
 });
