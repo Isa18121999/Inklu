@@ -44,6 +44,7 @@ jobs:
       - name: Analyze
         working-directory: flutter_app
         run: |
+          set -o pipefail
           flutter analyze --no-pub 2>&1 | tee analyze.txt
       - name: Run widget tests
         working-directory: flutter_app
@@ -94,6 +95,7 @@ jobs:
       - name: Analyze
         working-directory: flutter_app
         run: |
+          set -o pipefail
           flutter analyze --no-pub 2>&1 | tee analyze.txt
       - name: Run widget tests
         working-directory: flutter_app
