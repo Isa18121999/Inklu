@@ -76,7 +76,7 @@ void main() {
 
     expect(find.text('¿Por qué te recomendamos esta oferta?'), findsOneWidget);
     expect(find.text('Habilidades de tu perfil que coinciden'), findsOneWidget);
-    expect(find.textContaining('no garantiza una entrevista'), findsOneWidget);
+    expect(find.textContaining('No garantiza una entrevista'), findsOneWidget);
   });
 
   testWidgets('La empresa puede expandir la información profesional de un postulante', (WidgetTester tester) async {
