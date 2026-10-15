@@ -17,10 +17,18 @@ const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser } = require('./services/recommendations');
 const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
+const { auditSecurityConfig, DEFAULT_JWT_PLACEHOLDER } = require('./services/security-config');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-render';
+const JWT_SECRET = String(process.env.JWT_SECRET || DEFAULT_JWT_PLACEHOLDER).trim();
+const securityAudit = auditSecurityConfig(process.env);
+if (securityAudit.jwtSecretNeedsAttention) {
+  console.error('SECURITY WARNING: Configura en Render una JWT_SECRET privada y larga (al menos 32 caracteres) antes del piloto.');
+}
+if (securityAudit.corsAllowsAnyOrigin) {
+  console.warn('SECURITY WARNING: FRONTEND_ORIGIN permite cualquier origen; configura los orígenes web explícitos antes del piloto.');
+}
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
