@@ -23,7 +23,7 @@ Desarrollar una plataforma tecnológica que contribuya a la inclusión laboral m
 - 🔎 Recomendación de oportunidades según el perfil.
 - 📊 Paneles diferenciados para candidatos y empresas.
 - 🌐 Comunicación entre aplicación móvil y API.
-- 🔐 Gestión segura de contraseñas, recuperación y verificación de correo.
+- 🔐 Gestión de contraseñas; recuperación y verificación por correo pendientes de activar para el piloto.
 - ♿ Información sobre accesibilidad de las ofertas.
 - 🔔 Notificaciones y seguimiento de postulaciones.
 - ⭐ Guardado de ofertas y recomendaciones según el CV.
