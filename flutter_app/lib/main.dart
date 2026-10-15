@@ -4050,6 +4050,64 @@ class _EmailVerificationBannerState extends State<EmailVerificationBanner> {
   }
 }
 
+class NotificationsAction extends StatefulWidget {
+  const NotificationsAction({super.key});
+
+  @override
+  State<NotificationsAction> createState() => _NotificationsActionState();
+}
+
+class _NotificationsActionState extends State<NotificationsAction> {
+  int unreadCount = 0;
+  bool loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    refreshUnreadCount();
+  }
+
+  Future<void> refreshUnreadCount() async {
+    final token = sessionToken;
+    if (token == null || token.isEmpty) {
+      if (mounted) setState(() => unreadCount = 0);
+      return;
+    }
+
+    if (mounted) setState(() => loading = true);
+    try {
+      final items = await api.notifications(token);
+      final count = items.where((item) => item is Map && item['read'] != true).length;
+      if (mounted) setState(() => unreadCount = count);
+    } catch (_) {
+      // A temporary notification failure should not block the rest of the dashboard.
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> openNotifications() async {
+    await showNotifications(context);
+    await refreshUnreadCount();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = unreadCount == 0
+        ? 'Notificaciones'
+        : 'Notificaciones, $unreadCount sin leer';
+    return IconButton(
+      tooltip: label,
+      onPressed: openNotifications,
+      icon: Badge(
+        isLabelVisible: unreadCount > 0,
+        label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+        child: const Icon(Icons.notifications_active_outlined, color: primary),
+      ),
+    );
+  }
+}
+
 class Dash extends StatelessWidget {
   final String title;
   final int tab;
@@ -4076,11 +4134,7 @@ class Dash extends StatelessWidget {
           onPressed: () => showAccessibilitySettings(c),
           icon: const Icon(Icons.accessibility_new_rounded, color: primary),
         ),
-        IconButton(
-          tooltip: 'Notificaciones',
-          onPressed: () => showNotifications(c),
-          icon: const Icon(Icons.notifications_active_outlined, color: primary),
-        ),
+        const NotificationsAction(),
         IconButton(
           tooltip: 'Cerrar sesión',
           onPressed: () => confirmLogout(c),
