@@ -1259,10 +1259,10 @@ class JobRecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final score = (job['matchScore'] as num?)?.round() ?? 0;
+    final score = (job['matchScore'] as num?)?.round().clamp(0, 100) ?? 0;
     final rawReasons = job['matchReasons'];
     final reasons = rawReasons is List
-        ? rawReasons.map((item) => item.toString()).toList()
+        ? rawReasons.map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
         : <String>[];
     final company = job['companyId'] is Map
         ? job['companyId']['name']?.toString() ?? 'Empresa'
@@ -1294,7 +1294,7 @@ class JobRecommendationCard extends StatelessWidget {
               Text(company),
               const SizedBox(height: 4),
               Text(
-                '$score% de coincidencia',
+                '$score% de coincidencia orientativa',
                 style: const TextStyle(
                   color: primary,
                   fontWeight: FontWeight.w800,
@@ -1303,8 +1303,187 @@ class JobRecommendationCard extends StatelessWidget {
               if (reasons.isNotEmpty)
                 Text(
                   reasons.take(2).join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: muted, fontSize: 11),
                 ),
+              TextButton.icon(
+                onPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (sheetContext) {
+                    final requiredYears = int.tryParse(
+                          (job['experienceRequired'] ?? 0).toString(),
+                        ) ??
+                        0;
+                    final experienceFit = job['experienceFit'] == true;
+                    final matchedSkillsRaw = job['matchedSkills'];
+                    final matchedSkills = matchedSkillsRaw is List
+                        ? matchedSkillsRaw.map((item) => item.toString()).toList()
+                        : <String>[];
+                    final preferredSkillsRaw = job['matchedPreferredSkills'];
+                    final preferredSkills = preferredSkillsRaw is List
+                        ? preferredSkillsRaw.map((item) => item.toString()).toList()
+                        : <String>[];
+
+                    Widget sectionTitle(String title) => Padding(
+                          padding: const EdgeInsets.only(top: 14, bottom: 6),
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              color: ink,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        );
+
+                    Widget skillChips(List<String> skills) => Wrap(
+                          spacing: 6,
+                          runSpacing: 0,
+                          children: skills
+                              .map((skill) => Chip(
+                                    label: Text(skill),
+                                    visualDensity: VisualDensity.compact,
+                                    backgroundColor: const Color(0xFFF1EEFF),
+                                    side: BorderSide.none,
+                                  ))
+                              .toList(),
+                        );
+
+                    return SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '¿Por qué te recomendamos esta oferta?',
+                                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                                      color: ink,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                job['title']?.toString() ?? 'Oferta laboral',
+                                style: const TextStyle(color: muted),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '$score% de coincidencia orientativa',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: primary,
+                                      ),
+                                    ),
+                                  ),
+                                  Text('$score/100', style: const TextStyle(color: muted)),
+                                ],
+                              ),
+                              const SizedBox(height: 7),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: LinearProgressIndicator(
+                                  value: score / 100,
+                                  minHeight: 7,
+                                  backgroundColor: const Color(0xFFEAE6FA),
+                                  color: primary,
+                                ),
+                              ),
+                              sectionTitle('Criterios que contribuyeron'),
+                              if (reasons.isEmpty)
+                                const Text(
+                                  'Aún no hay suficiente detalle para explicar todas las coincidencias. Revisa que tu CV y tu perfil estén actualizados.',
+                                  style: TextStyle(color: muted),
+                                )
+                              else
+                                ...reasons.map(
+                                  (reason) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(Icons.check_circle_outline, size: 18, color: primary),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: Text(reason)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (matchedSkills.isNotEmpty) ...[
+                                sectionTitle('Habilidades de tu perfil que coinciden'),
+                                skillChips(matchedSkills),
+                              ],
+                              if (preferredSkills.isNotEmpty) ...[
+                                sectionTitle('Habilidades deseables coincidentes'),
+                                skillChips(preferredSkills),
+                              ],
+                              sectionTitle('Experiencia requerida'),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    requiredYears == 0
+                                        ? Icons.info_outline
+                                        : experienceFit
+                                            ? Icons.check_circle_outline
+                                            : Icons.warning_amber_rounded,
+                                    color: requiredYears == 0 || experienceFit
+                                        ? primary
+                                        : Colors.deepOrange,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      requiredYears == 0
+                                          ? 'La empresa no indicó un mínimo de años de experiencia.'
+                                          : experienceFit
+                                              ? 'Tu perfil indica experiencia compatible con el requisito de $requiredYears año(s).'
+                                              : 'La oferta solicita $requiredYears año(s). Revisa los requisitos antes de postular.',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              const Text(
+                                'Este porcentaje es una estimación basada en la información disponible en tu CV, tu perfil y la oferta. No garantiza una entrevista ni una contratación.',
+                                style: TextStyle(color: muted, fontSize: 12),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: () {
+                                    Navigator.of(sheetContext).pop();
+                                    onTap();
+                                  },
+                                  style: FilledButton.styleFrom(backgroundColor: primary),
+                                  child: const Text('Ver oferta completa'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                icon: const Icon(Icons.info_outline, size: 16),
+                label: const Text('Ver por qué se recomienda'),
+                style: TextButton.styleFrom(
+                  foregroundColor: primary,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  alignment: Alignment.centerLeft,
+                ),
+              ),
             ],
           ),
         ),
