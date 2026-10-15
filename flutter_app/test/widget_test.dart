@@ -3,6 +3,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inklu/main.dart';
 
 void main() {
+  test('el filtro Retirada reconoce el estado completo de la postulación', () {
+    expect(
+      applicationStatusMatchesFilter('Retirada por candidato', 'Retirada'),
+      isTrue,
+    );
+    expect(
+      applicationStatusMatchesFilter('Postulado', 'Retirada'),
+      isFalse,
+    );
+    expect(
+      applicationStatusMatchesFilter('Postulada', 'Postulado'),
+      isTrue,
+    );
+  });
+
+
   testWidgets('La pantalla de bienvenida presenta las opciones principales', (WidgetTester tester) async {
     await tester.pumpWidget(const MaterialApp(home: Welcome()));
 
