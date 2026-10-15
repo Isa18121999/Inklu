@@ -2973,6 +2973,16 @@ class _CompanyHomeState extends State<CompanyHome> {
     final requiredSkills = TextEditingController();
     final preferredSkills = TextEditingController();
     final accessibilityDetails = TextEditingController();
+    final selectedAccessibilityOptions = <String>{};
+    const accessibilityOptions = [
+      'Acceso sin escalones o ascensor',
+      'Baño accesible',
+      'Puesto de trabajo adaptable',
+      'Tecnología de asistencia compatible',
+      'Entrevista remota disponible',
+      'Horario flexible',
+      'Modalidad remota',
+    ];
     final salary = TextEditingController();
     final location = TextEditingController(text: 'Lima, Perú');
     const modalities = ['Remoto', 'Híbrido', 'Presencial'];
@@ -2995,7 +3005,36 @@ class _CompanyHomeState extends State<CompanyHome> {
                 F(requiredSkills, 'Habilidades obligatorias (separadas por comas)', max: 3),
                 F(preferredSkills, 'Habilidades deseables (separadas por comas)', max: 3),
                 F(experience, 'Experiencia requerida en años (0 = sin requisito)', type: TextInputType.number, format: digits(2)),
-                F(accessibilityDetails, 'Accesibilidad y ajustes disponibles', max: 4),
+                F(accessibilityDetails, 'Otros detalles de accesibilidad (opcional)', max: 4),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 2, bottom: 6),
+                    child: Text(
+                      'Marca únicamente las condiciones que realmente ofrece el puesto.',
+                      style: TextStyle(color: muted, fontSize: 12),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(
+                    spacing: 7,
+                    runSpacing: 0,
+                    children: accessibilityOptions.map((option) => FilterChip(
+                      label: Text(option),
+                      selected: selectedAccessibilityOptions.contains(option),
+                      onSelected: (selected) => setDialogState(() {
+                        if (selected) {
+                          selectedAccessibilityOptions.add(option);
+                        } else {
+                          selectedAccessibilityOptions.remove(option);
+                        }
+                      }),
+                    )).toList(),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 F(salary, 'Salario o rango salarial (opcional)'),
                 F(location, 'Ubicación'),
                 DropdownButtonFormField<String>(
@@ -3059,7 +3098,10 @@ class _CompanyHomeState extends State<CompanyHome> {
           'experienceRequired': int.tryParse(experience.text.trim()) ?? 0,
           'requiredSkills': requiredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
           'preferredSkills': preferredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
-          'accessibilityDetails': accessibilityDetails.text.trim(),
+          'accessibilityDetails': [
+            accessibilityDetails.text.trim(),
+            ...selectedAccessibilityOptions,
+          ].where((item) => item.trim().isNotEmpty).join('\n'),
           'salary': salary.text.trim(),
         });
         toast('Oferta publicada correctamente.');
