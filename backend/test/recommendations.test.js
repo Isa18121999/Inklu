@@ -140,6 +140,38 @@ test('trata las habilidades deseables como coincidencias secundarias', () => {
   assert.ok(results[0].matchReasons.some(reason => reason.includes('Habilidades deseables coincidentes')));
 });
 
+test('does not recommend specialized health roles from generic skills when career is missing', () => {
+  const incompleteCandidate = {
+    role: 'candidate',
+    profile: {
+      education: '',
+      experience: 0,
+      skills: ['Excel', 'Organización'],
+      location: 'Lima',
+      modality: 'Remoto'
+    },
+    cvAnalysis: {
+      skills: ['Excel'],
+      keywords: [
+        { term: 'excel', count: 3 },
+        { term: 'organizacion', count: 2 },
+        { term: 'reportes', count: 2 }
+      ]
+    }
+  };
+  const medical = makeJob({
+    _id: 'medical-generic-skills',
+    title: 'Tecnólogo médico',
+    description: 'Registro de muestras, reportes y sistemas de citas; Excel es deseable.',
+    category: 'Salud',
+    requiredSkills: ['Excel', 'Organización'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(incompleteCandidate, [medical]), []);
+});
+
 test('excludes medical technologist role for a systems candidate', () => {
   const medical = makeJob({
     _id: 'medical-tech',
