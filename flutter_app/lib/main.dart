@@ -1259,7 +1259,7 @@ class JobMetadataChips extends StatelessWidget {
 
   String _named(dynamic raw, String fallback) {
     final value = raw?.toString().trim() ?? '';
-    if (value.isEmpty || RegExp(r'^\\d+(?:\\.\\d+)?$').hasMatch(value)) {
+    if (value.isEmpty || RegExp(r'^\d+(?:\.\d+)?$').hasMatch(value)) {
       return fallback;
     }
     return value;
@@ -1267,9 +1267,9 @@ class JobMetadataChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final category = _named(job['category'], 'Área por confirmar');
-    final modality = _named(job['modality'], 'Modalidad por confirmar');
-    final contract = _named(job['contractType'], 'Tipo de contrato por confirmar');
+    final category = _named(job['category'], 'No especificada');
+    final modality = _named(job['modality'], 'No especificada');
+    final contract = _named(job['contractType'], 'No especificado');
     final years = num.tryParse((job['experienceRequired'] ?? '').toString());
     final experience = years == null
         ? 'Experiencia no especificada'
@@ -1277,16 +1277,16 @@ class JobMetadataChips extends StatelessWidget {
             ? 'No requiere experiencia previa'
             : 'Experiencia: ${years.toString()} ${years == 1 ? 'año' : 'años'}';
     final tags = <String>[
-      'Área: $category',
+      'Área profesional: $category',
       'Modalidad: $modality',
-      contract,
+      'Tipo de contrato: $contract',
       experience,
     ];
     final rawSkills = job['requiredSkills'];
     if (rawSkills is List) {
       final skills = rawSkills
           .map((item) => item?.toString().trim() ?? '')
-          .where((item) => item.isNotEmpty && !RegExp(r'^\\d+$').hasMatch(item))
+          .where((item) => item.isNotEmpty && !RegExp(r'^\d+$').hasMatch(item))
           .take(2);
       tags.addAll(skills.map((skill) => 'Habilidad requerida: $skill'));
     }
