@@ -10,7 +10,17 @@ import 'services/api_service.dart';
 
 const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
-void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  final prefs = await SharedPreferences.getInstance();
+  accessibilityTextScale.value =
+      (prefs.getDouble(_accessibilityTextScaleKey) ?? 1.0).clamp(1.0, 1.4).toDouble();
+  runApp(const InkluApp());
+}
 void toast(String s) {
   SemanticsService.announce(s, TextDirection.ltr);
   final context = _nav.currentContext;
@@ -21,7 +31,102 @@ void toast(String s) {
   }
 }
 final GlobalKey<NavigatorState> _nav=GlobalKey<NavigatorState>();
-class InkluApp extends StatelessWidget{const InkluApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,navigatorKey:_nav,title:'INKLU',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:Colors.white,colorScheme:ColorScheme.fromSeed(seedColor:primary)),home:const AppStart());}
+final ValueNotifier<double> accessibilityTextScale = ValueNotifier<double>(1.0);
+const String _accessibilityTextScaleKey = 'inklu_accessibility_text_scale';
+
+Future<void> showAccessibilitySettings(BuildContext context) async {
+  var selectedScale = accessibilityTextScale.value;
+  final newScale = await showDialog<double>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) => AlertDialog(
+        title: const Text('Accesibilidad'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Ajusta el tamaño del texto para leer mejor la aplicación.'),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Tamaño del texto'),
+                Text('${(selectedScale * 100).round()}%', style: const TextStyle(fontWeight: FontWeight.w800, color: primary)),
+              ],
+            ),
+            Slider(
+              value: selectedScale,
+              min: 1.0,
+              max: 1.4,
+              divisions: 4,
+              label: '${(selectedScale * 100).round()}%',
+              onChanged: (value) => setDialogState(() => selectedScale = value),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Vista previa del texto de INKLU',
+              style: TextStyle(fontSize: 16 * selectedScale, height: 1.3, color: ink),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'El ajuste se guardará en este dispositivo.',
+              style: TextStyle(fontSize: 12, color: muted),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 1.0),
+            child: const Text('Restablecer'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, selectedScale),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (newScale == null) return;
+  accessibilityTextScale.value = newScale;
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setDouble(_accessibilityTextScaleKey, newScale);
+  toast(newScale == 1.0
+      ? 'Tamaño de texto estándar aplicado.'
+      : 'Tamaño de texto aumentado al ${(newScale * 100).round()}%.');
+}
+class InkluApp extends StatelessWidget {
+  const InkluApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        navigatorKey: _nav,
+        title: 'INKLU',
+        theme: ThemeData(
+          useMaterial3: true,
+          scaffoldBackgroundColor: Colors.white,
+          colorScheme: ColorScheme.fromSeed(seedColor: primary),
+        ),
+        builder: (context, child) => ValueListenableBuilder<double>(
+          valueListenable: accessibilityTextScale,
+          child: child,
+          builder: (context, scale, child) {
+            final media = MediaQuery.of(context);
+            return MediaQuery(
+              data: media.copyWith(textScaler: TextScaler.linear(scale)),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+        ),
+        home: const AppStart(),
+      );
+}
 const String _rememberKey='inklu_remember_session';
 const String _tokenKey='inklu_saved_token';
 const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
@@ -1600,9 +1705,12 @@ class ApplicationProgressCard extends StatelessWidget {
             final active = index == activeIndex;
             final color = completed || active ? primary : const Color(0xFFE6E4F0);
             return Expanded(child: Row(children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(22),
-                onTap: () => showDialog<void>(context: context, builder: (dialogContext) {
+              Semantics(
+                button: true,
+                label: 'Etapa ${index + 1} de ${stages.length}: ${stages[index]}. ${index < activeIndex ? 'Completada' : index == activeIndex ? 'Etapa actual' : 'Pendiente'}. Toca para consultar detalles.',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => showDialog<void>(context: context, builder: (dialogContext) {
                   final stageHistory = historyFor(stages[index]);
                   final stageDate = dateFrom(stageHistory?['changedAt']);
                   final reached = index <= activeIndex;
@@ -1617,10 +1725,30 @@ class ApplicationProgressCard extends StatelessWidget {
                     actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cerrar'))],
                   );
                 }),
-                child: Container(width: 31, height: 31,
-                  decoration: BoxDecoration(color: completed ? primary : Colors.white, shape: BoxShape.circle, border: Border.all(color: active ? primary : color, width: active ? 2.3 : 1.5)),
-                  alignment: Alignment.center,
-                  child: Text('${index + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: completed ? Colors.white : active ? primary : const Color(0xFF77728D))),
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Center(
+                      child: Container(
+                        width: 31,
+                        height: 31,
+                        decoration: BoxDecoration(
+                          color: completed ? primary : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: active ? primary : color, width: active ? 2.3 : 1.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: completed ? Colors.white : active ? primary : const Color(0xFF77728D),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               if (index < stages.length - 1)
@@ -3941,6 +4069,11 @@ class Dash extends StatelessWidget {
         const Text('INKLU', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF19162D))),
       ]),
       actions: [
+        IconButton(
+          tooltip: 'Accesibilidad y tamaño del texto',
+          onPressed: () => showAccessibilitySettings(c),
+          icon: const Icon(Icons.accessibility_new_rounded, color: primary),
+        ),
         IconButton(
           tooltip: 'Notificaciones',
           onPressed: () => showNotifications(c),
