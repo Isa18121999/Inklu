@@ -167,3 +167,55 @@ test('marca cuando la experiencia indicada no alcanza el requisito', () => {
   assert.equal(result.experienceFit, false);
   assert.ok(result.matchReasons.some(reason => reason.includes('solicita 5 año(s)')));
 });
+
+test('excluye ofertas de salud para candidatos de sistemas aunque compartan palabras genéricas', () => {
+  const medicalTechnologist = job({
+    _id: 'job-medical-technologist',
+    title: 'Tecnólogo médico',
+    description: 'Gestionar registros, reportes y sistemas de citas; se valoran Excel y organización.',
+    category: 'Salud',
+    modality: 'Presencial',
+    location: 'Lima',
+    requiredSkills: ['Excel', 'Organización'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(candidate, [medicalTechnologist]);
+  assert.deepEqual(results, []);
+});
+
+test('usa carrera y habilidades del perfil aunque el CV aún no haya sido analizado', () => {
+  const profileOnlyCandidate = {
+    role: 'candidate',
+    profile: {
+      education: 'Ingeniería de Sistemas',
+      experience: 0,
+      skills: ['Python', 'SQL'],
+      location: 'Lima',
+      modality: 'Remoto'
+    },
+    cvAnalysis: { skills: [], keywords: [] }
+  };
+  const tech = job({
+    _id: 'job-systems',
+    title: 'Asistente de sistemas',
+    description: 'Soporte de software, consultas SQL y automatización con Python.',
+    category: 'Tecnología',
+    requiredSkills: ['Python'],
+    preferredSkills: ['SQL'],
+    experienceRequired: 0
+  });
+  const medical = job({
+    _id: 'job-medical',
+    title: 'Tecnólogo médico',
+    description: 'Atención clínica y procesamiento de muestras de laboratorio.',
+    category: 'Salud',
+    requiredSkills: ['Laboratorio clínico'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(profileOnlyCandidate, [medical, tech]);
+  assert.deepEqual(results.map(item => item._id), ['job-systems']);
+});
