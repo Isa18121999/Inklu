@@ -4,8 +4,11 @@ const CandidateProfileSchema = new mongoose.Schema({
   birth: { type: String, trim: true },
   address: { type: String, trim: true },
   education: { type: String, trim: true },
-  experience: { type: Number, min: 0, default: 0 },
+  professionalSummary: { type: String, trim: true, maxlength: 1200, default: '' },
+  experience: { type: Number, min: 0, max: 60, default: 0 },
   skills: { type: [String], default: [] },
+  projects: { type: [String], default: [] },
+  certifications: { type: [String], default: [] },
   modality: { type: String, trim: true },
   location: { type: String, trim: true }
 }, { _id: false });
