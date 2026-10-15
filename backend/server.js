@@ -1135,7 +1135,21 @@ app.get('/api/jobs', auth, async (req, res) => {
     const filter = { active: true };
 
     if (withAccessibility) {
-      filter.accessibilityDetails = { $exists: true, $ne: '' };
+      filter.$or = [
+        { accessibilityDetails: { $exists: true, $ne: '' } },
+        { 'accessibility.remote': true },
+        { 'accessibility.hybrid': true },
+        { 'accessibility.physicalAccess': true },
+        { 'accessibility.flexibleSchedule': true },
+        { 'accessibility.workplaceAdaptation': true },
+        { 'accessibility.assistiveTechnology': true },
+        { 'accessibility.accessibleRestroom': true },
+        { 'accessibility.elevator': true },
+        { 'accessibility.accessibleParking': true },
+        { 'accessibility.transportationSupport': true },
+        { 'accessibility.interpreter': true },
+        { 'accessibility.notes': { $exists: true, $ne: '' } }
+      ];
     }
 
     if (q) {
