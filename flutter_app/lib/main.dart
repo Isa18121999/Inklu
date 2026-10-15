@@ -119,7 +119,9 @@ class InkluApp extends StatelessWidget {
           builder: (context, scale, child) {
             final media = MediaQuery.of(context);
             return MediaQuery(
-              data: media.copyWith(textScaler: TextScaler.linear(scale)),
+              data: media.copyWith(
+                textScaler: TextScaler.linear(media.textScaler.scale(14.0) / 14.0 * scale),
+              ),
               child: child ?? const SizedBox.shrink(),
             );
           },
