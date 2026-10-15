@@ -1179,7 +1179,7 @@ app.post('/api/company/jobs', auth, async (req, res) => {
     if (!title || !description) return res.status(400).json({ message: 'El título y la descripción son obligatorios.' });
     const normalizeOptionLabel = (value, options) => {
       const raw = String(value ?? '').trim();
-      if (!/^\\d+$/.test(raw)) return raw;
+      if (!/^\d+$/.test(raw)) return raw;
       const index = Number(raw);
       return Number.isInteger(index) && index >= 0 && index < options.length ? options[index] : '';
     };
