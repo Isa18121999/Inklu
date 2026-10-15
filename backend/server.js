@@ -31,10 +31,6 @@ if (securityAudit.jwtSecretNeedsAttention) {
 if (securityAudit.corsAllowsAnyOrigin) {
   console.warn('SECURITY WARNING: FRONTEND_ORIGIN no está limitado; configura los orígenes web explícitos antes del piloto.');
 }
-const allowedFrontendOrigins = String(process.env.FRONTEND_ORIGIN || '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
 
