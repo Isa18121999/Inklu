@@ -44,4 +44,82 @@ void main() {
     expect(find.text('Verificar / reenviar correo'), findsOneWidget);
   });
 
+
+  testWidgets('Las recomendaciones explican los criterios de coincidencia', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: JobRecommendationCard(
+              job: {
+                '_id': 'job-tech',
+                'title': 'Desarrolladora Flutter',
+                'companyId': {'name': 'Empresa inclusiva'},
+                'matchScore': 82,
+                'matchReasons': ['Área profesional relacionada con tu carrera o CV', 'Habilidades relacionadas: Flutter, Dart'],
+                'matchedSkills': ['Flutter', 'Dart'],
+                'matchedPreferredSkills': ['Git'],
+                'experienceRequired': 1,
+                'experienceFit': true,
+              },
+              onTap: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
+    await tester.ensureVisible(find.text('Ver por qué se recomienda'));
+    await tester.tap(find.text('Ver por qué se recomienda'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Por qué te recomendamos esta oferta?'), findsOneWidget);
+    expect(find.text('Habilidades de tu perfil que coinciden'), findsOneWidget);
+    expect(find.textContaining('no garantiza una entrevista'), findsOneWidget);
+  });
+
+  testWidgets('La empresa puede expandir la información profesional de un postulante', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CompanyApplicationCard(
+              token: 'test-token',
+              onStatusChanged: (_) {},
+              application: {
+                '_id': 'application-1',
+                'status': 'Postulado',
+                'candidateId': {
+                  'name': 'Candidata Demo',
+                  'profile': {
+                    'education': 'Ingeniería de Sistemas',
+                    'professionalSummary': 'Desarrolladora con experiencia en aplicaciones móviles.',
+                    'experience': 2,
+                    'skills': ['Flutter', 'Dart'],
+                    'projects': ['Aplicación móvil inclusiva'],
+                    'certifications': ['Curso de accesibilidad digital'],
+                  },
+                  'cvAnalysis': {'skills': ['Flutter']},
+                  'cv': {'fileName': 'cv-demo.pdf', 'size': 1024},
+                },
+                'jobId': {'title': 'Desarrolladora Flutter'},
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Candidata Demo'), findsOneWidget);
+    await tester.ensureVisible(find.text('Ver perfil profesional'));
+    await tester.tap(find.text('Ver perfil profesional'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingeniería de Sistemas'), findsOneWidget);
+    expect(find.text('Desarrolladora con experiencia en aplicaciones móviles.'), findsOneWidget);
+    expect(find.text('Aplicación móvil inclusiva'), findsOneWidget);
+    expect(find.text('Curso de accesibilidad digital'), findsOneWidget);
+  });
+
 }
