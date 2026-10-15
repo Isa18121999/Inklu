@@ -111,6 +111,40 @@ test('usa resumen, proyectos y certificaciones cuando el CV no aporta palabras c
   assert.ok(results[0].matchReasons.some(reason => reason.includes('Coincidencias con tu CV')));
 });
 
+test('muestra requisitos obligatorios no encontrados en el perfil sin afirmar que la persona no los tiene', () => {
+  const partialCandidate = {
+    profile: {
+      education: 'Ingeniería de software',
+      experience: 1,
+      skills: ['Python'],
+      projects: [],
+      certifications: [],
+      location: '',
+      modality: ''
+    },
+    cvAnalysis: {
+      skills: ['Python'],
+      keywords: [{ term: 'python', count: 3 }, { term: 'software', count: 2 }]
+    }
+  };
+  const opening = job({
+    _id: 'python-docker',
+    title: 'Desarrollador Python',
+    description: 'Desarrollo de software y servicios API.',
+    category: 'Tecnología',
+    requiredSkills: ['Python', 'Docker'],
+    preferredSkills: [],
+    experienceRequired: 1
+  });
+
+  const [result] = recommendJobsForUser(partialCandidate, [opening]);
+
+  assert.ok(result);
+  assert.deepEqual(result.matchedRequiredSkills, ['Python']);
+  assert.deepEqual(result.missingRequiredSkills, ['Docker']);
+  assert.ok(result.matchReasons.some(reason => reason.includes('No encontramos en tu perfil estos requisitos')));
+});
+
 test('marca cuando la experiencia indicada no alcanza el requisito', () => {
   const demandingJob = job({
     _id: 'job-senior',
