@@ -1156,9 +1156,12 @@ app.get('/api/jobs', auth, async (req, res) => {
     if (category) filter.category = new RegExp('^' + escapeRegex(category) + '$', 'i');
 
     let jobs = await Job.find(filter).populate('companyId', 'name companyProfile').sort({ createdAt: -1 }).limit(100);
-    // Una vez que el CV ya fue analizado, las búsquedas de candidatos priorizan
-    // únicamente las ofertas con evidencia de relación profesional y compatibilidad.
-    if (req.user.role === 'candidate' && req.user.cvAnalysis?.keywords?.length) {
+    // Las ofertas de candidatos siempre pasan por el recomendador, incluso si no
+    // se ha podido extraer texto del CV: se utiliza la carrera, habilidades,
+    // resumen, proyectos, certificaciones y experiencia del perfil.
+    // Si no hay señales profesionales suficientes, se prefiere no mostrar
+    // trabajos ajenos antes que presentar resultados engañosos.
+    if (req.user.role === 'candidate') {
       jobs = recommendJobsForUser(req.user, jobs);
     }
     res.json(jobs);
