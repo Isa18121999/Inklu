@@ -2549,6 +2549,11 @@ class _CompanyHomeState extends State<CompanyHome> {
   bool loading = true;
   String? loadError;
 
+  String selectedApplicantJobId = 'Todas';
+  String selectedApplicantStatus = 'Todas';
+  String selectedApplicantCriterion = 'Todas';
+  String selectedApplicantSort = 'Más recientes';
+
   @override
   void initState() {
     super.initState();
@@ -2582,6 +2587,253 @@ class _CompanyHomeState extends State<CompanyHome> {
     } finally {
       if (mounted) setState(() => loading = false);
     }
+  }
+
+  Map<String, dynamic> _applicationCandidate(dynamic application) {
+    final value = application is Map ? application['candidateId'] : null;
+    return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+  }
+
+  Map<String, dynamic> _applicationJob(dynamic application) {
+    final value = application is Map ? application['jobId'] : null;
+    return value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+  }
+
+  String _applicationJobId(dynamic application) {
+    final job = _applicationJob(application);
+    return (job['_id'] ?? job['id'] ?? '').toString();
+  }
+
+  String _candidateName(dynamic application) =>
+      _applicationCandidate(application)['name']?.toString().trim().toLowerCase() ?? '';
+
+  String _jobTitle(dynamic application) =>
+      _applicationJob(application)['title']?.toString().trim().toLowerCase() ?? '';
+
+  String _normalizeApplicantTerm(String value) => value
+      .toLowerCase()
+      .trim()
+      .replaceAll(RegExp(r'[áàäâã]'), 'a')
+      .replaceAll(RegExp(r'[éèëê]'), 'e')
+      .replaceAll(RegExp(r'[íìïî]'), 'i')
+      .replaceAll(RegExp(r'[óòöôõ]'), 'o')
+      .replaceAll(RegExp(r'[úùüû]'), 'u')
+      .replaceAll('ñ', 'n');
+
+  List<String> _candidateSkillTerms(dynamic application) {
+    final candidate = _applicationCandidate(application);
+    final profile = candidate['profile'] is Map
+        ? Map<String, dynamic>.from(candidate['profile'])
+        : <String, dynamic>{};
+    final analysis = candidate['cvAnalysis'] is Map
+        ? Map<String, dynamic>.from(candidate['cvAnalysis'])
+        : <String, dynamic>{};
+    final profileSkills = profile['skills'] is List
+        ? (profile['skills'] as List).map((item) => item.toString())
+        : const <String>[];
+    final cvSkills = analysis['skills'] is List
+        ? (analysis['skills'] as List).map((item) => item.toString())
+        : const <String>[];
+    return <String>{...profileSkills, ...cvSkills}
+        .map(_normalizeApplicantTerm)
+        .where((value) => value.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _jobRequiredSkills(dynamic application) {
+    final job = _applicationJob(application);
+    final raw = job['requiredSkills'];
+    if (raw is! List) return <String>[];
+    return raw.map((item) => _normalizeApplicantTerm(item.toString())).where((value) => value.isNotEmpty).toList();
+  }
+
+  bool _hasRequiredSkillMatch(dynamic application) {
+    final required = _jobRequiredSkills(application);
+    final candidateSkills = _candidateSkillTerms(application);
+    if (required.isEmpty || candidateSkills.isEmpty) return false;
+    return required.any((requirement) => candidateSkills.any((skill) =>
+        skill == requirement || skill.contains(requirement) || requirement.contains(skill)));
+  }
+
+  bool _experienceIsCompatible(dynamic application) {
+    final candidate = _applicationCandidate(application);
+    final profile = candidate['profile'] is Map
+        ? Map<String, dynamic>.from(candidate['profile'])
+        : <String, dynamic>{};
+    final job = _applicationJob(application);
+    final requiredYears = num.tryParse((job['experienceRequired'] ?? '').toString());
+    final candidateYears = num.tryParse((profile['experience'] ?? '').toString());
+    return requiredYears != null &&
+        requiredYears > 0 &&
+        candidateYears != null &&
+        candidateYears >= requiredYears;
+  }
+
+  bool _profileNeedsReview(dynamic application) {
+    final candidate = _applicationCandidate(application);
+    final profile = candidate['profile'] is Map
+        ? Map<String, dynamic>.from(candidate['profile'])
+        : <String, dynamic>{};
+    final hasEducation = (profile['education']?.toString().trim().isNotEmpty ?? false);
+    final hasSummary = (profile['professionalSummary']?.toString().trim().isNotEmpty ?? false);
+    final hasSkills = _candidateSkillTerms(application).isNotEmpty;
+    return !hasEducation || !hasSummary || !hasSkills;
+  }
+
+  List<Map<String, dynamic>> get filteredCompanyApplications {
+    final result = apps
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .where((application) {
+      if (selectedApplicantJobId != 'Todas' &&
+          _applicationJobId(application) != selectedApplicantJobId) {
+        return false;
+      }
+      if (selectedApplicantStatus != 'Todas' &&
+          normalizeApplicationStatus(application['status']?.toString()).toLowerCase() !=
+              selectedApplicantStatus.toLowerCase()) {
+        return false;
+      }
+      switch (selectedApplicantCriterion) {
+        case 'Habilidades coincidentes':
+          if (!_hasRequiredSkillMatch(application)) return false;
+          break;
+        case 'Experiencia compatible':
+          if (!_experienceIsCompatible(application)) return false;
+          break;
+        case 'Datos por revisar':
+          if (!_profileNeedsReview(application)) return false;
+          break;
+      }
+      return true;
+    }).toList();
+
+    switch (selectedApplicantSort) {
+      case 'Nombre del postulante':
+        result.sort((a, b) => _candidateName(a).compareTo(_candidateName(b)));
+        break;
+      case 'Nombre de la oferta':
+        result.sort((a, b) => _jobTitle(a).compareTo(_jobTitle(b)));
+        break;
+      default:
+        result.sort((a, b) {
+          final dateA = DateTime.tryParse((a['createdAt'] ?? '').toString());
+          final dateB = DateTime.tryParse((b['createdAt'] ?? '').toString());
+          return (dateB ?? DateTime.fromMillisecondsSinceEpoch(0))
+              .compareTo(dateA ?? DateTime.fromMillisecondsSinceEpoch(0));
+        });
+    }
+    return result;
+  }
+
+  Widget _applicantDropdown({
+    required String label,
+    required String value,
+    required List<DropdownMenuItem<String>> items,
+    required ValueChanged<String?> onChanged,
+    String? hint,
+  }) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: hint,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+      items: items,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget applicantFiltersPanel() {
+    const statuses = ['Todas', 'Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+    const criteria = ['Todas', 'Habilidades coincidentes', 'Experiencia compatible', 'Datos por revisar'];
+    const sortOptions = ['Más recientes', 'Nombre del postulante', 'Nombre de la oferta'];
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F7FF),
+        border: Border.all(color: const Color(0xFFE5E0FA)),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Filtrar y organizar', style: TextStyle(fontWeight: FontWeight.w900, color: ink, fontSize: 16)),
+          const SizedBox(height: 4),
+          const Text(
+            'Los criterios solo ayudan a localizar postulaciones. “Datos por revisar” significa información incompleta, no falta de capacidad. Revisa los requisitos y ajustes de forma individual; no uses un filtro como decisión de contratación.',
+            style: TextStyle(color: muted, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          _applicantDropdown(
+            label: 'Oferta laboral',
+            value: selectedApplicantJobId,
+            hint: 'Muestra postulaciones para una oferta concreta.',
+            items: [
+              const DropdownMenuItem(value: 'Todas', child: Text('Todas las ofertas')),
+              ...mine.map((job) {
+                final map = Map<String, dynamic>.from(job as Map);
+                final id = (map['_id'] ?? map['id'] ?? '').toString();
+                final title = map['title']?.toString() ?? 'Oferta';
+                return DropdownMenuItem<String>(
+                  value: id.isEmpty ? 'Todas' : id,
+                  child: Text(title, overflow: TextOverflow.ellipsis),
+                );
+              }).toList(),
+            ],
+            onChanged: (value) => setState(() => selectedApplicantJobId = value ?? 'Todas'),
+          ),
+          const SizedBox(height: 10),
+          _applicantDropdown(
+            label: 'Etapa de selección',
+            value: selectedApplicantStatus,
+            items: statuses.map((value) => DropdownMenuItem(value: value, child: Text(value == 'Todas' ? 'Todas las etapas' : value))).toList(),
+            onChanged: (value) => setState(() => selectedApplicantStatus = value ?? 'Todas'),
+          ),
+          const SizedBox(height: 10),
+          _applicantDropdown(
+            label: 'Criterio de organización',
+            value: selectedApplicantCriterion,
+            hint: 'Sin puntuación total ni ranking automático de personas.',
+            items: criteria.map((value) => DropdownMenuItem(value: value, child: Text(value == 'Todas' ? 'Sin criterio adicional' : value))).toList(),
+            onChanged: (value) => setState(() => selectedApplicantCriterion = value ?? 'Todas'),
+          ),
+          const SizedBox(height: 10),
+          _applicantDropdown(
+            label: 'Ordenar por',
+            value: selectedApplicantSort,
+            items: sortOptions.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
+            onChanged: (value) => setState(() => selectedApplicantSort = value ?? 'Más recientes'),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => setState(() {
+                selectedApplicantJobId = 'Todas';
+                selectedApplicantStatus = 'Todas';
+                selectedApplicantCriterion = 'Todas';
+                selectedApplicantSort = 'Más recientes';
+              }),
+              icon: const Icon(Icons.filter_alt_off_outlined),
+              label: const Text('Limpiar filtros'),
+            ),
+          ),
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              'Mostrando ${filteredCompanyApplications.length} de ${apps.length} postulaciones.',
+              style: const TextStyle(fontSize: 12, color: muted, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> create() async {
@@ -2846,10 +3098,11 @@ class _CompanyHomeState extends State<CompanyHome> {
                     ? [
                         const Section('Postulaciones recibidas'),
                         const Text(
-                          'Actualiza cada etapa para que la persona candidata pueda seguir el proceso. El chat se habilita en “En proceso”.',
-                          style: TextStyle(color: muted, fontSize: 12),
+                          'Organiza las candidaturas por oferta, etapa y requisitos declarados. Los filtros no asignan puntuaciones ni sustituyen la revisión individual. Considera los ajustes de accesibilidad y las competencias relevantes para el puesto.',
+                          style: TextStyle(color: muted, fontSize: 12, height: 1.4),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
+                        if (mine.isNotEmpty) applicantFiltersPanel(),
                         if (loading && apps.isEmpty)
                           const Padding(
                             padding: EdgeInsets.all(24),
@@ -2862,8 +3115,10 @@ class _CompanyHomeState extends State<CompanyHome> {
                         ]
                         else if (apps.isEmpty)
                           const Info('Aún no hay postulaciones', 'Cuando una persona postule a tus ofertas, aparecerá aquí para que puedas actualizar su etapa y conversar cuando corresponda.')
+                        else if (filteredCompanyApplications.isEmpty)
+                          const Info('No hay postulaciones con estos filtros', 'Prueba otra oferta, etapa o criterio. Un dato ausente no significa que la persona no cumpla con el puesto.')
                         else
-                          ...apps.map((a) => CompanyApplicationCard(
+                          ...filteredCompanyApplications.map((a) => CompanyApplicationCard(
                                 application: Map<String, dynamic>.from(a),
                                 onStatusChanged: (nextStatus) => changeApplicationStatus(
                                   (a['_id'] ?? a['id']).toString(),
@@ -2871,7 +3126,7 @@ class _CompanyHomeState extends State<CompanyHome> {
                                 ),
                                 token: sessionToken!,
                               )),
-                      ]
+]
                     : [CompanyProfilePanel(token: sessionToken!)],
       );
 }
