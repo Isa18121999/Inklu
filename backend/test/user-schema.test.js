@@ -29,3 +29,12 @@ test('las cuentas candidatas pueden guardar ofertas sin duplicados', () => {
   assert.equal(path.instance, 'Array');
   assert.equal(path.caster.options.ref, 'Job');
 });
+
+test('el perfil profesional guarda resumen, proyectos, certificaciones y experiencia validada', () => {
+  const profileSchema = User.schema.path('profile').schema;
+
+  assert.equal(profileSchema.path('professionalSummary').options.maxlength, 1200);
+  assert.equal(profileSchema.path('experience').options.max, 60);
+  assert.ok(profileSchema.path('projects'), 'projects debe existir en el perfil');
+  assert.ok(profileSchema.path('certifications'), 'certifications debe existir en el perfil');
+});
