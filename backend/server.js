@@ -77,8 +77,8 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
   origin: (origin, callback) => {
     // Native mobile clients usually omit Origin; browser clients must be allowlisted.
-    if (!origin || allowedFrontendOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Origen no permitido por CORS.'));
+    if (!origin) return callback(null, true);
+    return callback(null, allowedFrontendOrigins.includes(origin));
   },
   methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization']
