@@ -1160,7 +1160,12 @@ app.get('/api/applications', auth, async (req, res) => {
   }
 
   const applications = await Application.find(filter)
-    .populate('candidateId', 'name email phone profile cvAnalysis cv.fileName cv.size')
+    .populate(
+      'candidateId',
+      req.user.role === 'company'
+        ? 'name profile.education profile.professionalSummary profile.experience profile.skills profile.projects profile.certifications cvAnalysis.skills cv.fileName cv.size'
+        : 'name'
+    )
     .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name companyProfile' } })
     .sort({ createdAt: -1 });
 
