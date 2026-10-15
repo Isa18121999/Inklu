@@ -147,8 +147,8 @@ void main() {
 
 
   testWidgets('La tarjeta de recomendación explica las coincidencias y sus límites', (WidgetTester tester) async {
-    await tester.view.setPhysicalSize(const Size(1080, 1920));
-    await tester.view.setDevicePixelRatio(1);
+    tester.view.physicalSize = const Size(1080, 1920);
+    tester.view.devicePixelRatio = 1;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -186,10 +186,10 @@ void main() {
     expect(find.text('¿Por qué te recomendamos esta oferta?'), findsOneWidget);
     expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
     expect(find.text('Habilidades de tu perfil que coinciden'), findsOneWidget);
-    expect(find.textContaining('no garantiza una entrevista ni una contratación'), findsOneWidget);
+    expect(find.textContaining('No garantiza una entrevista ni una contratación'), findsOneWidget);
 
-    await tester.view.resetPhysicalSize();
-    await tester.view.resetDevicePixelRatio();
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
   });
 
 }
