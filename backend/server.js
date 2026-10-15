@@ -16,12 +16,46 @@ const Notification = require('./models/Notification');
 const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser } = require('./services/recommendations');
+const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-render';
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_PROFILE_PHOTO_BYTES = 2 * 1024 * 1024;
+
+async function notifyCandidatesAboutMatchingJob(job, companyName) {
+  try {
+    const candidates = await User.find({
+      role: 'candidate',
+      'savedJobSearches.0': { $exists: true }
+    }).select('_id savedJobSearches').lean();
+
+    const notifications = [];
+    for (const candidate of candidates) {
+      const matchedSearch = (candidate.savedJobSearches || []).find(search =>
+        matchesSavedJobSearch(search, job, companyName)
+      );
+      if (!matchedSearch) continue;
+
+      notifications.push({
+        userId: candidate._id,
+        title: 'Nueva oferta según tu búsqueda guardada',
+        message: `“${String(job.title || 'Nueva oferta').slice(0, 160)}” coincide con tu búsqueda “${String(matchedSearch.label || 'Guardada').slice(0, 60)}”. Entra en Ofertas para revisar los requisitos y la información de accesibilidad.`,
+        type: 'job_match',
+        relatedId: job._id
+      });
+    }
+
+    if (notifications.length) {
+      await Notification.insertMany(notifications, { ordered: false });
+    }
+  } catch (error) {
+    // La publicación de una oferta no debe fallar si las alertas tienen un problema.
+    console.error('No se pudieron generar alertas de búsquedas guardadas:', error.message);
+  }
+}
+
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -1136,6 +1170,8 @@ app.post('/api/company/jobs', auth, async (req, res) => {
       accessibilityDetails: String(accessibilityDetails || '').trim().slice(0, 1200),
       experienceRequired: years
     });
+    // Notifica solo a candidatos cuyas búsquedas guardadas coinciden con la oferta nueva.
+    await notifyCandidatesAboutMatchingJob(job, req.user.name);
     res.status(201).json(job);
   } catch (e) { console.error(e); res.status(500).json({ message: 'No se pudo publicar la oferta.' }); }
 });
