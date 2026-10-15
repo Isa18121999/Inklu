@@ -150,6 +150,9 @@ function recommendJobsForUser(user, jobs) {
         skill.includes(normalized) || normalized.includes(skill)
       );
     });
+    const missingRequiredSkills = requiredSkills.filter(required =>
+      !matchedRequired.includes(required)
+    );
     const matchedPreferred = preferredSkills.filter(preferred => {
       const normalized = normalizeText(preferred);
       return normalized.length > 1 && normalizedSkills.some(skill =>
@@ -193,6 +196,14 @@ function recommendJobsForUser(user, jobs) {
     score += Math.min(20, matchedCareerTerms.length * 4);
     if (careerCategoryMatch) score += 15;
     if (matchedRequired.length) score += Math.min(10, matchedRequired.length * 3);
+    if (missingRequiredSkills.length) {
+      score -= Math.min(25, missingRequiredSkills.length * 5);
+      reasons.push(
+        'No encontramos en tu perfil estos requisitos: ' +
+        missingRequiredSkills.slice(0, 4).join(', ') +
+        '. Revisa si conviene completar tus habilidades antes de postular.'
+      );
+    }
     // Las habilidades deseables suman menos puntos que los requisitos obligatorios.
     if (matchedPreferred.length) score += Math.min(6, matchedPreferred.length * 2);
     if (experienceGap === 0) {
@@ -212,6 +223,8 @@ function recommendJobsForUser(user, jobs) {
       matchScore: score,
       matchReasons: reasons,
       matchedSkills,
+      matchedRequiredSkills: matchedRequired,
+      missingRequiredSkills,
       matchedPreferredSkills: matchedPreferred,
       textSimilarity: Number(similarity.toFixed(4)),
       careerMatch: evidenceCount > 0,
