@@ -995,7 +995,12 @@ app.get('/api/jobs', auth, async (req, res) => {
     const modality = clean(req.query.modality);
     const contractType = clean(req.query.contractType);
     const category = clean(req.query.category);
+    const withAccessibility = String(req.query.withAccessibility || '').toLowerCase() === 'true';
     const filter = { active: true };
+
+    if (withAccessibility) {
+      filter.accessibilityDetails = { $exists: true, $ne: '' };
+    }
 
     if (q) {
       const regex = new RegExp(escapeRegex(q), 'i');
