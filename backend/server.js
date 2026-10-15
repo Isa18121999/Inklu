@@ -65,9 +65,24 @@ async function notifyCandidatesAboutMatchingJob(job, companyName) {
 }
 
 
+const allowedFrontendOrigins = String(
+  process.env.FRONTEND_ORIGIN || 'https://isa18121999.github.io'
+)
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(origin => origin && origin !== '*');
+
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN || '*', methods: ['GET','POST','PATCH','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(cors({
+  origin: (origin, callback) => {
+    // Native mobile clients usually omit Origin; browser clients must be allowlisted.
+    if (!origin || allowedFrontendOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Origen no permitido por CORS.'));
+  },
+  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
+}));
 app.use(express.json({ limit: '8mb' }));
 
 const authRateLimit = rateLimit({
