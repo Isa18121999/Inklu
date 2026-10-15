@@ -145,4 +145,51 @@ void main() {
     }
   });
 
+
+  testWidgets('La tarjeta de recomendación explica las coincidencias y sus límites', (WidgetTester tester) async {
+    await tester.view.setPhysicalSize(const Size(1080, 1920));
+    await tester.view.setDevicePixelRatio(1);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: JobRecommendationCard(
+                job: {
+                  '_id': 'job-test',
+                  'title': 'Analista de datos',
+                  'companyId': {'name': 'Empresa de prueba'},
+                  'matchScore': 82,
+                  'matchReasons': ['Área profesional relacionada con tu carrera o CV', 'Habilidades relacionadas: SQL, Python'],
+                  'matchedSkills': ['SQL', 'Python'],
+                  'matchedPreferredSkills': ['Power BI'],
+                  'experienceRequired': 1,
+                  'experienceFit': true,
+                },
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final explanationButton = find.text('Ver por qué se recomienda');
+    expect(explanationButton, findsOneWidget);
+    await tester.ensureVisible(explanationButton);
+    await tester.tap(explanationButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Por qué te recomendamos esta oferta?'), findsOneWidget);
+    expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
+    expect(find.text('Habilidades de tu perfil que coinciden'), findsOneWidget);
+    expect(find.textContaining('no garantiza una entrevista ni una contratación'), findsOneWidget);
+
+    await tester.view.resetPhysicalSize();
+    await tester.view.resetDevicePixelRatio();
+  });
+
 }
