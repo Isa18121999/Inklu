@@ -12,10 +12,7 @@ const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B),
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations(const [
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+  // Respect the device's orientation preference for accessibility.
   final prefs = await SharedPreferences.getInstance();
   accessibilityTextScale.value =
       (prefs.getDouble(_accessibilityTextScaleKey) ?? 1.0).clamp(1.0, 2.0).toDouble();
