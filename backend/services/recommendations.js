@@ -87,16 +87,63 @@ function recommendJobsForUser(user, jobs) {
 
   // Agrupación aproximada de carreras/áreas, además de la similitud textual del CV.
   const careerGroups = [
-    { key: 'tecnologia', signals: ['tecnologia', 'informatica', 'computacion', 'sistemas', 'software', 'programacion', 'desarrollo web', 'flutter', 'javascript', 'sql', 'ciberseguridad', 'redes'] },
-    { key: 'administracion', signals: ['administracion', 'administrativo', 'gestion empresarial', 'negocios', 'contabilidad', 'finanzas', 'economia', 'recursos humanos', 'reclutamiento'] },
-    { key: 'diseno', signals: ['diseno', 'ux', 'ui', 'figma', 'photoshop', 'illustrator', 'diseno grafico'] },
-    { key: 'datos', signals: ['analisis de datos', 'estadistica', 'power bi', 'tableau', 'data analysis', 'bases de datos'] },
-    { key: 'salud', signals: ['salud', 'enfermeria', 'clinica', 'medicina', 'atencion sanitaria', 'terapia'] },
-    { key: 'educacion', signals: ['educacion', 'docencia', 'ensenanza', 'pedagogia', 'docente', 'profesor'] },
-    { key: 'logistica', signals: ['logistica', 'inventario', 'almacen', 'cadena de suministro', 'transporte'] },
-    { key: 'marketing', signals: ['marketing', 'publicidad', 'comunicacion', 'redes sociales', 'contenido'] },
-    { key: 'atencion', signals: ['atencion al cliente', 'servicio al cliente', 'ventas', 'soporte', 'mesa de ayuda', 'help desk'] },
-    { key: 'proyectos', signals: ['gestion de proyectos', 'project management', 'scrum', 'agile'] }
+    {
+      key: 'tecnologia',
+      signals: [
+        'tecnologia', 'informatica', 'computacion', 'sistemas', 'software',
+        'programacion', 'desarrollo web', 'desarrollo de software', 'flutter',
+        'javascript', 'typescript', 'python', 'java', 'sql', 'ciberseguridad',
+        'redes informaticas', 'ingenieria de sistemas', 'ingenieria informatica',
+        'computacion e informatica', 'ciencia de la computacion', 'analista programador',
+        'tecnologias de la informacion', 'soporte tecnico', 'infraestructura'
+      ]
+    },
+    {
+      key: 'administracion',
+      signals: [
+        'administracion', 'administrativo', 'gestion empresarial', 'negocios',
+        'contabilidad', 'finanzas', 'economia', 'recursos humanos', 'reclutamiento',
+        'asistente contable', 'auxiliar contable', 'tesoreria', 'planillas'
+      ]
+    },
+    {
+      key: 'diseno',
+      signals: ['diseno', 'ux', 'ui', 'figma', 'photoshop', 'illustrator', 'diseno grafico', 'diseno digital']
+    },
+    {
+      key: 'datos',
+      signals: ['analisis de datos', 'analitica de datos', 'estadistica', 'power bi', 'tableau', 'data analysis', 'bases de datos', 'business intelligence', 'inteligencia de negocios']
+    },
+    {
+      key: 'salud',
+      signals: [
+        'salud', 'enfermeria', 'clinica', 'medicina', 'medico', 'medica',
+        'tecnologo medico', 'tecnologa medica', 'laboratorio clinico',
+        'radiologia', 'fisioterapia', 'rehabilitacion', 'odontologia',
+        'obstetricia', 'nutricion', 'farmacia', 'terapia ocupacional',
+        'atencion sanitaria', 'cuidados de pacientes', 'psicologia clinica'
+      ]
+    },
+    {
+      key: 'educacion',
+      signals: ['educacion', 'docencia', 'ensenanza', 'pedagogia', 'docente', 'profesor', 'instructor', 'capacitacion']
+    },
+    {
+      key: 'logistica',
+      signals: ['logistica', 'inventario', 'almacen', 'cadena de suministro', 'transporte', 'distribucion', 'compras']
+    },
+    {
+      key: 'marketing',
+      signals: ['marketing', 'publicidad', 'comunicacion', 'redes sociales', 'contenido', 'seo', 'community manager']
+    },
+    {
+      key: 'atencion',
+      signals: ['atencion al cliente', 'servicio al cliente', 'ventas', 'soporte al cliente', 'mesa de ayuda', 'help desk', 'call center']
+    },
+    {
+      key: 'proyectos',
+      signals: ['gestion de proyectos', 'project management', 'scrum', 'agile', 'coordinador de proyectos']
+    }
   ];
   const candidateCareerText = normalizeText(profileText);
   const candidateGroups = new Set(careerGroups
@@ -171,6 +218,12 @@ function recommendJobsForUser(user, jobs) {
       .slice(0, 5)
       .map(item => item.term);
     const careerCategoryMatch = jobGroups.some(group => candidateGroups.has(group));
+    // Evita cruces profesionales evidentes, por ejemplo recomendar un puesto clínico
+    // a alguien de sistemas solo porque la descripción comparte términos genéricos.
+    const hasCareerGroupConflict =
+      candidateGroups.size > 0 &&
+      jobGroups.length > 0 &&
+      !careerCategoryMatch;
 
     const similarity = tfidfCosineSimilarity(
       candidateKeywords,
@@ -215,7 +268,22 @@ function recommendJobsForUser(user, jobs) {
     }
     if (location && normalizeText(job.location).includes(location)) score += 3;
     if (modality && normalizeText(job.modality).includes(modality)) score += 3;
+    if (hasCareerGroupConflict) {
+      score = 0;
+      reasons.push('Esta oferta pertenece a un área profesional distinta a la indicada en tu perfil.');
+    }
     score = Math.max(0, Math.min(100, score));
+
+    // Exigimos señales profesionales reales; ubicación o modalidad por sí solas
+    // nunca hacen que una oferta se considere compatible.
+    const hasProfessionalEvidence =
+      careerCategoryMatch ||
+      matchedSkills.length > 0 ||
+      matchedRequired.length > 0 ||
+      matchedPreferred.length > 0 ||
+      sharedKeywords.length >= 2 ||
+      matchedCareerTerms.length >= 2;
+    const careerMatch = !hasCareerGroupConflict && hasProfessionalEvidence;
 
     const record = job.toObject();
     return {
@@ -227,7 +295,7 @@ function recommendJobsForUser(user, jobs) {
       missingRequiredSkills,
       matchedPreferredSkills: matchedPreferred,
       textSimilarity: Number(similarity.toFixed(4)),
-      careerMatch: evidenceCount > 0,
+      careerMatch,
       experienceFit: experienceGap === 0
     };
   })
