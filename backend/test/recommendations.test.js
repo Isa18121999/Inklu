@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { recommendJobsForUser, normalizeText } = require('../services/recommendations');
+const { recommendJobsForUser, normalizeText, humanizeSkill } = require('../services/recommendations');
 
 function makeJob(values) {
   return {
@@ -187,4 +187,27 @@ test('uses profile skills without a pre-analyzed CV and does not return unrelate
 
   const results = recommendJobsForUser(profileOnly, [unrelated, relevant]);
   assert.deepEqual(results.map(item => item._id), ['systems-role']);
+});
+
+test('title of a clinical role overrides an incorrect Technology category', () => {
+  const misclassifiedMedicalJob = makeJob({
+    _id: 'misclassified-medical-tech',
+    title: 'Tecnólogo médico',
+    description: 'Gestiona muestras clínicas, resultados de laboratorio y reportes.',
+    // Legacy offer data can have a category that conflicts with the job title.
+    category: 'Tecnología',
+    requiredSkills: ['Excel'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(candidate(), [misclassifiedMedicalJob]), []);
+});
+
+test('maps numeric legacy skill IDs to readable names and hides unknown IDs', () => {
+  assert.equal(humanizeSkill('0'), 'Excel');
+  assert.equal(humanizeSkill('10'), 'Python');
+  assert.equal(humanizeSkill('24'), 'Salud');
+  assert.equal(humanizeSkill('99'), '');
+  assert.equal(humanizeSkill('Python'), 'Python');
 });
