@@ -93,6 +93,23 @@ class ApiService {
   }
   Future<List<dynamic>> myJobs(String token) async => _getList('/company/my-jobs', token);
   Future<List<dynamic>> applications(String token) async => _getList('/applications', token);
+
+  Future<Uint8List> candidateCv(String token, String applicationId) async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/applications/$applicationId/cv'), headers: _headers(token))
+        .timeout(const Duration(seconds: 45));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message = 'No se pudo descargar el CV.';
+      try {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map && decoded['message'] != null) {
+          message = decoded['message'].toString();
+        }
+      } catch (_) {}
+      throw Exception(message);
+    }
+    return response.bodyBytes;
+  }
   Future<Map<String, dynamic>> uploadProfilePhoto(String token, String path) async {
     final file = File(path);
     final bytes = await file.readAsBytes();
