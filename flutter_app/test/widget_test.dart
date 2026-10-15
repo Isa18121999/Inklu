@@ -85,7 +85,7 @@ void main() {
       ),
     );
 
-    expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
+    expect(find.text('Coincidencia estimada: 82%'), findsOneWidget);
     await tester.ensureVisible(find.text('Ver por qué se recomienda'));
     await tester.tap(find.text('Ver por qué se recomienda'));
     await tester.pumpAndSettle();
@@ -238,7 +238,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('¿Por qué te recomendamos esta oferta?'), findsOneWidget);
-    expect(find.text('82% de coincidencia orientativa'), findsNWidgets(2));
+    expect(find.text('82% de coincidencia orientativa'), findsOneWidget);
     expect(find.text('Habilidades de tu perfil que coinciden'), findsOneWidget);
     expect(find.textContaining('No garantiza una entrevista ni una contratación'), findsOneWidget);
 
