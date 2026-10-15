@@ -48,6 +48,16 @@ const CompanyProfileSchema = new mongoose.Schema({
   description: { type: String, trim: true, default: '' }
 }, { _id: false });
 
+const SavedJobSearchSchema = new mongoose.Schema({
+  label: { type: String, required: true, trim: true, maxlength: 60 },
+  query: { type: String, trim: true, maxlength: 100, default: '' },
+  location: { type: String, trim: true, maxlength: 100, default: '' },
+  modality: { type: String, trim: true, maxlength: 40, default: '' },
+  contractType: { type: String, trim: true, maxlength: 80, default: '' },
+  category: { type: String, trim: true, maxlength: 100, default: '' },
+  withAccessibility: { type: Boolean, default: false }
+}, { timestamps: true });
+
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -70,7 +80,8 @@ const UserSchema = new mongoose.Schema({
   cv: { type: CvSchema, default: undefined },
   cvAnalysis: { type: CvAnalysisSchema, default: undefined },
   profilePhoto: { type: ProfilePhotoSchema, default: undefined },
-  savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }]
+  savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
+  savedJobSearches: { type: [SavedJobSearchSchema], default: [] }
 }, { timestamps: true });
 
 UserSchema.index(

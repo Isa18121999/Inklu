@@ -841,6 +841,8 @@ class _CandidateHomeState extends State<CandidateHome> {
   List<dynamic> apps = [];
   List<dynamic> recommendations = [];
   List<dynamic> savedJobs = [];
+  List<dynamic> savedJobSearches = [];
+  bool savingSearch = false;
   Set<String> savedJobIds = <String>{};
   bool showSavedOnly = false;
   List<dynamic> cvSkills = [];
@@ -864,12 +866,15 @@ class _CandidateHomeState extends State<CandidateHome> {
     try {
       final results = await Future.wait([api.jobs(sessionToken!), api.applications(sessionToken!)]);
       List<dynamic> currentSaved = [];
+      List<dynamic> currentSearches = [];
       try { currentSaved = await api.savedJobs(sessionToken!); } catch (_) {}
+      try { currentSearches = await api.savedJobSearches(sessionToken!); } catch (_) {}
       if (!mounted) return;
       setState(() {
         jobs = results[0];
         apps = results[1];
         savedJobs = currentSaved;
+        savedJobSearches = currentSearches;
         savedJobIds = currentSaved.map((item) => (item['_id'] ?? item['id'] ?? '').toString()).where((id) => id.isNotEmpty).toSet();
       });
 
@@ -926,6 +931,112 @@ class _CandidateHomeState extends State<CandidateHome> {
   }
 
   bool isJobSaved(dynamic job) => savedJobIds.contains(_jobId(job));
+
+  Future<void> saveCurrentSearch() async {
+    final query = jobSearchController.text.trim();
+    final location = selectedLocationFilter ?? '';
+    final modality = selectedModalityFilter ?? '';
+    final contract = selectedContractFilter ?? '';
+    final category = selectedCategoryFilter ?? '';
+    if ([query, location, modality, contract, category].every((value) => value.isEmpty) &&
+        !onlyWithAccessibility) {
+      toast('Elige al menos un filtro antes de guardar la búsqueda.');
+      return;
+    }
+
+    final nameController = TextEditingController();
+    final label = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Guardar búsqueda'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          maxLength: 60,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Nombre para esta búsqueda',
+            hintText: 'Ej. Remoto en tecnología',
+          ),
+          onSubmitted: (value) => Navigator.pop(dialogContext, value.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, nameController.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    nameController.dispose();
+    if (label == null || !mounted) return;
+    if (label.trim().isEmpty) {
+      toast('Escribe un nombre para la búsqueda.');
+      return;
+    }
+
+    setState(() => savingSearch = true);
+    try {
+      await api.saveJobSearch(sessionToken!, {
+        'label': label.trim(),
+        'query': query,
+        'location': location,
+        'modality': modality,
+        'contractType': contract,
+        'category': category,
+        'withAccessibility': onlyWithAccessibility,
+      });
+      final latest = await api.savedJobSearches(sessionToken!);
+      if (!mounted) return;
+      setState(() => savedJobSearches = latest);
+      toast('Búsqueda guardada.');
+    } catch (error) {
+      toast(error.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => savingSearch = false);
+    }
+  }
+
+  Future<void> applySavedSearch(dynamic rawSearch) async {
+    if (rawSearch is! Map) return;
+    final search = Map<String, dynamic>.from(rawSearch);
+    String? valueOrNull(dynamic raw) {
+      final value = raw?.toString().trim() ?? '';
+      return value.isEmpty ? null : value;
+    }
+
+    setState(() {
+      jobSearchController.text = search['query']?.toString() ?? '';
+      selectedLocationFilter = valueOrNull(search['location']);
+      selectedModalityFilter = valueOrNull(search['modality']);
+      selectedContractFilter = valueOrNull(search['contractType']);
+      selectedCategoryFilter = valueOrNull(search['category']);
+      onlyWithAccessibility = search['withAccessibility'] == true;
+      filtersExpanded = true;
+      showSavedOnly = false;
+    });
+    await searchJobs();
+  }
+
+  Future<void> deleteSavedSearch(dynamic rawSearch) async {
+    if (rawSearch is! Map) return;
+    final search = Map<String, dynamic>.from(rawSearch);
+    final id = (search['_id'] ?? search['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    try {
+      await api.deleteJobSearch(sessionToken!, id);
+      final latest = await api.savedJobSearches(sessionToken!);
+      if (!mounted) return;
+      setState(() => savedJobSearches = latest);
+      toast('Búsqueda eliminada.');
+    } catch (error) {
+      toast(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
 
   @override
   void dispose() {
@@ -1025,6 +1136,31 @@ class _CandidateHomeState extends State<CandidateHome> {
               ),
             ],
           ),
+          if (savedJobSearches.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Búsquedas guardadas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: muted)),
+            ),
+            const SizedBox(height: 5),
+            Wrap(
+              spacing: 6,
+              runSpacing: 2,
+              children: savedJobSearches.map((raw) {
+                final search = Map<String, dynamic>.from(raw as Map);
+                final label = search['label']?.toString() ?? 'Búsqueda';
+                return InputChip(
+                  label: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 180),
+                    child: Text(label, overflow: TextOverflow.ellipsis),
+                  ),
+                  tooltip: 'Aplicar búsqueda: $label',
+                  onPressed: () => applySavedSearch(search),
+                  onDeleted: () => deleteSavedSearch(search),
+                );
+              }).toList(),
+            ),
+          ],
           const SizedBox(height: 6),
           dropdown(
             label: 'Área profesional',
@@ -1076,7 +1212,18 @@ class _CandidateHomeState extends State<CandidateHome> {
             ),
             onChanged: (value) => setState(() => onlyWithAccessibility = value),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 2),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: savingSearch ? null : saveCurrentSearch,
+              icon: savingSearch
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.bookmark_add_outlined),
+              label: Text(savingSearch ? 'Guardando búsqueda...' : 'Guardar estos filtros'),
+            ),
+          ),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(

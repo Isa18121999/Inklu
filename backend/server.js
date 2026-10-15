@@ -983,6 +983,81 @@ app.delete('/api/jobs/:id/save', auth, async (req, res) => {
   }
 });
 
+app.get('/api/jobs/saved-searches', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') {
+      return res.status(403).json({ message: 'Las búsquedas guardadas están disponibles para candidatos.' });
+    }
+    const candidate = await User.findById(req.user._id).select('savedJobSearches');
+    res.json((candidate?.savedJobSearches || []).slice().reverse());
+  } catch (error) {
+    console.error('Error cargando búsquedas guardadas:', error);
+    res.status(500).json({ message: 'No se pudieron cargar las búsquedas guardadas.' });
+  }
+});
+
+app.post('/api/jobs/saved-searches', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') {
+      return res.status(403).json({ message: 'Solo los candidatos pueden guardar búsquedas.' });
+    }
+
+    const label = String(req.body?.label || '').trim().slice(0, 60);
+    if (!label) return res.status(400).json({ message: 'Ponle un nombre a la búsqueda.' });
+
+    const candidate = await User.findById(req.user._id).select('savedJobSearches');
+    if (!candidate) return res.status(404).json({ message: 'No se encontró la cuenta.' });
+    if (candidate.savedJobSearches.length >= 20) {
+      return res.status(400).json({ message: 'Puedes guardar hasta 20 búsquedas. Elimina una antes de añadir otra.' });
+    }
+    if (candidate.savedJobSearches.some(item => item.label.toLowerCase() === label.toLowerCase())) {
+      return res.status(409).json({ message: 'Ya existe una búsqueda con ese nombre.' });
+    }
+
+    const clean = (value, max = 100) => String(value ?? '').trim().slice(0, max);
+    const saved = {
+      label,
+      query: clean(req.body?.query),
+      location: clean(req.body?.location),
+      modality: clean(req.body?.modality, 40),
+      contractType: clean(req.body?.contractType, 80),
+      category: clean(req.body?.category),
+      withAccessibility: req.body?.withAccessibility === true
+    };
+    if (![saved.query, saved.location, saved.modality, saved.contractType, saved.category].some(Boolean) && !saved.withAccessibility) {
+      return res.status(400).json({ message: 'Añade al menos un filtro antes de guardar la búsqueda.' });
+    }
+
+    candidate.savedJobSearches.push(saved);
+    await candidate.save();
+    res.status(201).json(candidate.savedJobSearches[candidate.savedJobSearches.length - 1]);
+  } catch (error) {
+    console.error('Error guardando búsqueda:', error);
+    res.status(500).json({ message: 'No se pudo guardar la búsqueda.' });
+  }
+});
+
+app.delete('/api/jobs/saved-searches/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') {
+      return res.status(403).json({ message: 'Solo los candidatos pueden administrar búsquedas guardadas.' });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Búsqueda no válida.' });
+    }
+    const candidate = await User.findById(req.user._id).select('savedJobSearches');
+    if (!candidate) return res.status(404).json({ message: 'No se encontró la cuenta.' });
+    const savedSearch = candidate.savedJobSearches.id(req.params.id);
+    if (!savedSearch) return res.status(404).json({ message: 'No se encontró la búsqueda guardada.' });
+    savedSearch.deleteOne();
+    await candidate.save();
+    res.json({ deleted: true, id: req.params.id });
+  } catch (error) {
+    console.error('Error eliminando búsqueda guardada:', error);
+    res.status(500).json({ message: 'No se pudo eliminar la búsqueda.' });
+  }
+});
+
 app.get('/api/jobs', auth, async (req, res) => {
   try {
     const clean = value => String(value || '').trim().slice(0, 100);

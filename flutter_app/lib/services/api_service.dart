@@ -59,6 +59,11 @@ class ApiService {
   }
   Future<List<dynamic>> jobs(String token) async => _getList('/jobs', token);
   Future<List<dynamic>> savedJobs(String token) async => _getList('/jobs/saved', token);
+  Future<List<dynamic>> savedJobSearches(String token) async => _getList('/jobs/saved-searches', token);
+  Future<Map<String, dynamic>> saveJobSearch(String token, Map<String, dynamic> data) async =>
+      _postAuth('/jobs/saved-searches', token, data);
+  Future<Map<String, dynamic>> deleteJobSearch(String token, String searchId) async =>
+      _deleteMap('/jobs/saved-searches/$searchId', token);
   Future<Map<String, dynamic>> saveJob(String token, String jobId) async =>
       _postAuth('/jobs/$jobId/save', token, {});
   Future<Map<String, dynamic>> unsaveJob(String token, String jobId) async =>
