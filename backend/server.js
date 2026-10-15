@@ -151,6 +151,7 @@ function publicUser(user, { includeSensitive = false } = {}) {
     country: user.country,
     ruc: user.ruc,
     companyProfile: user.companyProfile,
+    companyVerification: user.companyVerification || { status: 'unverified', verifiedAt: null, verificationNote: '' },
     profile: user.profile,
     hasProfilePhoto: Boolean(user.profilePhoto?.size || user.profilePhoto?.data?.length),
     profilePhotoUpdatedAt: user.profilePhoto?.updatedAt || null
@@ -1190,7 +1191,7 @@ app.get('/api/company/my-jobs', auth, async (req, res) => { if (req.user.role !=
 app.post('/api/company/jobs', auth, async (req, res) => {
   try {
     if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden publicar ofertas.' });
-    const { title, description, category, modality, location, contractType, salary, requiredSkills, preferredSkills, experienceRequired, accessibilityDetails } = req.body || {};
+    const { title, description, category, modality, location, contractType, salary, requiredSkills, preferredSkills, experienceRequired, accessibilityDetails, accessibility } = req.body || {};
     if (!title || !description) return res.status(400).json({ message: 'El título y la descripción son obligatorios.' });
     const normalizeOptionLabel = (value, options) => {
       const raw = String(value ?? '').trim();
@@ -1221,6 +1222,14 @@ app.post('/api/company/jobs', auth, async (req, res) => {
       requiredSkills: skills,
       preferredSkills: desirableSkills,
       accessibilityDetails: String(accessibilityDetails || '').trim().slice(0, 1200),
+      accessibility: {
+        remote: accessibility?.remote === true, hybrid: accessibility?.hybrid === true, physicalAccess: accessibility?.physicalAccess === true,
+        flexibleSchedule: accessibility?.flexibleSchedule === true, workplaceAdaptation: accessibility?.workplaceAdaptation === true,
+        assistiveTechnology: accessibility?.assistiveTechnology === true, accessibleRestroom: accessibility?.accessibleRestroom === true,
+        elevator: accessibility?.elevator === true, accessibleParking: accessibility?.accessibleParking === true,
+        transportationSupport: accessibility?.transportationSupport === true, interpreter: accessibility?.interpreter === true,
+        notes: String(accessibility?.notes || '').trim().slice(0, 1200)
+      },
       experienceRequired: years
     });
     // Notifica solo a candidatos cuyas búsquedas guardadas coinciden con la oferta nueva.
