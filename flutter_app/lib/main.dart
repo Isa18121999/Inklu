@@ -1675,6 +1675,30 @@ class ApplicationProgressCard extends StatelessWidget {
     return null;
   }
 
+  Future<void> downloadCandidateCv(
+    BuildContext context,
+    String applicationId,
+    String fileName,
+  ) async {
+    try {
+      final bytes = await api.candidateCv(token, applicationId);
+      if (!context.mounted) return;
+      final savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Guardar CV del postulante',
+        fileName: fileName.isEmpty ? 'CV' : fileName,
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'doc', 'docx'],
+        bytes: bytes,
+      );
+      if (!context.mounted || savedPath == null) return;
+      toast('CV guardado correctamente.');
+    } catch (error) {
+      if (context.mounted) {
+        toast(error.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = normalizeApplicationStatus(application['status']?.toString());
@@ -3340,6 +3364,12 @@ class CompanyApplicationCard extends StatelessWidget {
         ? Map<String, dynamic>.from(application['candidateId'])
         : <String, dynamic>{};
     final candidate = candidateData['name']?.toString() ?? 'Candidato';
+    final candidateCv = candidateData['cv'] is Map
+        ? Map<String, dynamic>.from(candidateData['cv'])
+        : <String, dynamic>{};
+    final candidateCvFileName = candidateCv['fileName']?.toString() ?? '';
+    final hasCandidateCv = (candidateCv['size'] as num?)?.toInt() != null &&
+        ((candidateCv['size'] as num?)?.toInt() ?? 0) > 0;
     final candidateProfile = candidateData['profile'] is Map
         ? Map<String, dynamic>.from(candidateData['profile'])
         : <String, dynamic>{};
@@ -3402,6 +3432,26 @@ class CompanyApplicationCard extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
             const SizedBox(height: 3),
             Text(jobTitle, style: const TextStyle(color: muted)),
+            const SizedBox(height: 8),
+            if (hasCandidateCv)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: appId.isEmpty
+                      ? null
+                      : () => downloadCandidateCv(context, appId, candidateCvFileName),
+                  icon: const Icon(Icons.download_for_offline_outlined),
+                  label: Text(
+                    candidateCvFileName.isEmpty ? 'Descargar CV' : 'Descargar CV · $candidateCvFileName',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+            else
+              const Text(
+                'Este postulante todavía no ha añadido un archivo de CV.',
+                style: TextStyle(color: muted, fontSize: 12),
+              ),
             const SizedBox(height: 8),
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
