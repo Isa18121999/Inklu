@@ -18,7 +18,7 @@ void main() async {
   ]);
   final prefs = await SharedPreferences.getInstance();
   accessibilityTextScale.value =
-      (prefs.getDouble(_accessibilityTextScaleKey) ?? 1.0).clamp(1.0, 1.4).toDouble();
+      (prefs.getDouble(_accessibilityTextScaleKey) ?? 1.0).clamp(1.0, 2.0).toDouble();
   runApp(const InkluApp());
 }
 void toast(String s) {
@@ -57,7 +57,7 @@ Future<void> showAccessibilitySettings(BuildContext context) async {
             Slider(
               value: selectedScale,
               min: 1.0,
-              max: 1.4,
+              max: 2.0,
               divisions: 4,
               label: '${(selectedScale * 100).round()}%',
               onChanged: (value) => setDialogState(() => selectedScale = value),
