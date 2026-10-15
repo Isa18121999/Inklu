@@ -852,6 +852,7 @@ class _CandidateHomeState extends State<CandidateHome> {
   String? selectedModalityFilter;
   String? selectedContractFilter;
   String? selectedCategoryFilter;
+  bool onlyWithAccessibility = false;
   bool searchingJobs = false;
   bool filtersExpanded = false;
   static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
@@ -939,6 +940,7 @@ class _CandidateHomeState extends State<CandidateHome> {
       selectedModalityFilter = null;
       selectedContractFilter = null;
       selectedCategoryFilter = null;
+      onlyWithAccessibility = false;
     }
     setState(() => searchingJobs = true);
     try {
@@ -949,6 +951,7 @@ class _CandidateHomeState extends State<CandidateHome> {
         modality: selectedModalityFilter,
         contractType: selectedContractFilter,
         category: selectedCategoryFilter,
+        withAccessibility: onlyWithAccessibility,
       );
       if (!mounted) return;
       setState(() => jobs = result);
@@ -1057,6 +1060,21 @@ class _CandidateHomeState extends State<CandidateHome> {
             allLabel: 'Todos los contratos',
             icon: Icons.description_outlined,
             onChanged: (value) => setState(() => selectedContractFilter = value),
+          ),
+          const SizedBox(height: 6),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            value: onlyWithAccessibility,
+            activeColor: primary,
+            title: const Text(
+              'Solo ofertas con información de accesibilidad',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+            subtitle: const Text(
+              'La empresa ha declarado detalles; confirma los ajustes específicos antes de postular.',
+              style: TextStyle(color: muted, fontSize: 12),
+            ),
+            onChanged: (value) => setState(() => onlyWithAccessibility = value),
           ),
           const SizedBox(height: 12),
           SizedBox(
