@@ -1,0 +1,28 @@
+name: INKLU accessibility check
+on:
+  push:
+    branches: [feature/inklu-accessibility-priorities]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inklu-accessibility-priorities
+      - name: Check backend syntax
+        run: |
+          node --check backend/server.js
+          node --check backend/models/User.js
+          node --check backend/models/Job.js
+          node --check backend/models/Report.js
+      - name: Check Flutter syntax
+        working-directory: flutter_app
+        run: |
+          if command -v flutter >/dev/null 2>&1; then
+            flutter analyze --no-pub lib/main.dart lib/services/api_service.dart lib/services/accessibility_page.dart
+          else
+            echo 'Flutter SDK not available; backend syntax check completed.'
+          fi
