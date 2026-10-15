@@ -38,3 +38,24 @@ test('el perfil profesional guarda resumen, proyectos, certificaciones y experie
   assert.ok(profileSchema.path('projects'), 'projects debe existir en el perfil');
   assert.ok(profileSchema.path('certifications'), 'certifications debe existir en el perfil');
 });
+
+test('el flujo de postulaciones admite el retiro y conserva el historial de estados', () => {
+  const Application = require('../models/Application');
+  const statuses = Application.schema.path('status').enumValues;
+  const historyStatuses = Application.schema.path('statusHistory').schema.path('status').enumValues;
+
+  assert.ok(statuses.includes('Postulado'));
+  assert.ok(statuses.includes('En proceso'));
+  assert.ok(statuses.includes('Retirada por candidato'));
+  assert.ok(historyStatuses.includes('Retirada por candidato'));
+  assert.ok(Application.schema.indexes().some(([keys, options]) =>
+    keys.jobId === 1 && keys.candidateId === 1 && options.unique === true
+  ));
+});
+
+test('las notificaciones admiten alertas de nuevas ofertas coincidentes', () => {
+  const Notification = require('../models/Notification');
+  assert.ok(Notification.schema.path('type').enumValues.includes('job_match'));
+  assert.ok(Notification.schema.path('userId'), 'la notificación debe pertenecer a un usuario');
+  assert.ok(Notification.schema.path('readAt'), 'la notificación debe poder marcarse como leída');
+});
