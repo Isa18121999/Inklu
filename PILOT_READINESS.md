@@ -18,11 +18,11 @@
 
 ## Bloqueadores previos a un piloto externo
 
-- **Secreto JWT:** el backend ahora se detiene si `JWT_SECRET` falta, es el valor de ejemplo o tiene menos de 32 caracteres. Falta confirmar en Render que la variable es aleatoria, privada, única y no coincide con ninguna clave de desarrollo. Rotarla invalida las sesiones actuales, por lo que debe coordinarse.
+- **Secreto JWT:** el backend ahora se detiene si `JWT_SECRET` falta, es el valor de ejemplo o tiene menos de 32 caracteres. El último despliegue arrancó correctamente, pero una persona responsable aún debe confirmar en Render que la clave es aleatoria, privada y única, sin copiarla a capturas, issues ni chats. Rotarla invalida las sesiones actuales, por lo que debe coordinarse.
 - **Recuperación y verificación por correo:** pendientes. El relay de Google Apps Script no se ha validado y ya devolvió el error `Script function not found: doGet`. No comunicar que estas funciones están operativas hasta probar el envío y el enlace completo.
 - **Accesibilidad práctica:** realizar una sesión con TalkBack y con tamaño de texto ampliado en un Android real; corregir los problemas encontrados.
 - **Privacidad:** utilizar perfiles/CV ficticios en pruebas. Antes de recibir datos reales de discapacidad o currículums, revisar el aviso de privacidad, los consentimientos, el acceso por roles, la retención y el procedimiento de eliminación con asesoría apropiada.
-- **CORS y operación:** el backend aplica una lista permitida de orígenes web y mantiene por defecto el origen de GitHub Pages del proyecto; confirmar que `FRONTEND_ORIGIN` en Render contiene solo los orígenes realmente usados, nunca `*`, y revisar los registros de fallos.
+- **CORS y operación:** `FRONTEND_ORIGIN` en Render se ajustó al origen oficial `https://isa18121999.github.io`; después del despliegue no se observaron advertencias de CORS en los registros consultados. Falta probar que el frontend oficial funciona y que un origen web no autorizado no recibe cabeceras CORS, además de mantener el seguimiento de fallos del backend.
 
 ## Guion de prueba con datos ficticios
 
