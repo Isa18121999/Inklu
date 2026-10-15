@@ -241,7 +241,7 @@ Crear un archivo `.env`:
 
 ```env
 MONGODB_URI=tu_conexion_mongodb
-JWT_SECRET=REEMPLAZAR_CON_UN_SECRETO_ALEATORIO_PRIVADO
+JWT_SECRET=
 FRONTEND_ORIGIN=https://isa18121999.github.io
 ```
 
