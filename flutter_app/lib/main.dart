@@ -4075,9 +4075,25 @@ void showOffer(
       ? (d['preferredSkills'] as List).map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
       : <String>[];
   final accessibility = d['accessibilityDetails']?.toString().trim() ?? '';
-  final company = d['companyId'] is Map
-      ? (d['companyId']['name']?.toString() ?? 'Empresa')
-      : 'Empresa';
+  final companyData = d['companyId'] is Map
+      ? Map<String, dynamic>.from(d['companyId'])
+      : <String, dynamic>{};
+  final company = companyData['name']?.toString() ?? 'Empresa';
+  final companyProfile = companyData['companyProfile'] is Map
+      ? Map<String, dynamic>.from(companyData['companyProfile'])
+      : <String, dynamic>{};
+  final companySector = companyProfile['sector']?.toString().trim() ?? '';
+  final companySize = companyProfile['size']?.toString().trim() ?? '';
+  final companyDescription = companyProfile['description']?.toString().trim() ?? '';
+  final companyWebsite = companyProfile['website']?.toString().trim() ?? '';
+  final companyAddress = companyProfile['address']?.toString().trim() ?? '';
+  final hasCompanyInfo = [
+    companySector,
+    companySize,
+    companyDescription,
+    companyWebsite,
+    companyAddress,
+  ].any((value) => value.isNotEmpty);
   final years = (d['experienceRequired'] as num?)?.toInt() ?? 0;
   showModalBottomSheet(
     context: c,
@@ -4104,6 +4120,70 @@ void showOffer(
             ),
             const SizedBox(height: 6),
             Text(company, style: const TextStyle(color: muted, fontWeight: FontWeight.w700)),
+            if (hasCompanyInfo) ...[
+              const SizedBox(height: 14),
+              const Section('Sobre la empresa'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F7FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: line),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (companySector.isNotEmpty || companySize.isNotEmpty)
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: [
+                          if (companySector.isNotEmpty)
+                            Chip(
+                              avatar: const Icon(Icons.category_outlined, size: 16),
+                              label: Text(companySector),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          if (companySize.isNotEmpty)
+                            Chip(
+                              avatar: const Icon(Icons.groups_outlined, size: 16),
+                              label: Text(companySize),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                        ],
+                      ),
+                    if (companyDescription.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(companyDescription, style: const TextStyle(height: 1.4)),
+                      ),
+                    if (companyAddress.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 18, color: primary),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(companyAddress)),
+                        ],
+                      ),
+                    ],
+                    if (companyWebsite.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.language_outlined, size: 18, color: primary),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text(companyWebsite)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,

@@ -927,7 +927,7 @@ app.get('/api/recommendations', auth, async (req, res) => {
   try {
     if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Las recomendaciones están disponibles para candidatos.' });
     const analysis = await analyzeCandidateCv(req.user);
-    const jobs = await Job.find({ active: true }).populate('companyId', 'name').sort({ createdAt: -1 });
+    const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile').sort({ createdAt: -1 });
     const recommendations = recommendJobsForUser(req.user, jobs);
     res.json({
       engine: 'skill-match-mvp',
@@ -948,7 +948,7 @@ app.get('/api/jobs/saved', auth, async (req, res) => {
     const candidate = await User.findById(req.user._id).select('savedJobs');
     const ids = candidate?.savedJobs || [];
     const jobs = await Job.find({ _id: { $in: ids }, active: true })
-      .populate('companyId', 'name')
+      .populate('companyId', 'name companyProfile')
       .sort({ updatedAt: -1 });
     res.json(jobs);
   } catch (error) {
@@ -1095,7 +1095,7 @@ app.get('/api/jobs', auth, async (req, res) => {
     if (contractType) filter.contractType = new RegExp('^' + escapeRegex(contractType) + '$', 'i');
     if (category) filter.category = new RegExp('^' + escapeRegex(category) + '$', 'i');
 
-    let jobs = await Job.find(filter).populate('companyId', 'name').sort({ createdAt: -1 }).limit(100);
+    let jobs = await Job.find(filter).populate('companyId', 'name companyProfile').sort({ createdAt: -1 }).limit(100);
     // Una vez que el CV ya fue analizado, las búsquedas de candidatos priorizan
     // únicamente las ofertas con evidencia de relación profesional y compatibilidad.
     if (req.user.role === 'candidate' && req.user.cvAnalysis?.keywords?.length) {
@@ -1107,7 +1107,7 @@ app.get('/api/jobs', auth, async (req, res) => {
     res.status(500).json({ message: 'No se pudieron buscar las ofertas.' });
   }
 });
-app.get('/api/company/jobs', auth, async (req, res) => { const jobs = await Job.find({ active: true }).populate('companyId', 'name').sort({ createdAt: -1 }); res.json(jobs); });
+app.get('/api/company/jobs', auth, async (req, res) => { const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile').sort({ createdAt: -1 }); res.json(jobs); });
 app.get('/api/company/my-jobs', auth, async (req, res) => { if (req.user.role !== 'company') return res.status(403).json({ message: 'Solo las empresas pueden consultar sus ofertas.' }); const jobs = await Job.find({ companyId: req.user._id }).sort({ createdAt: -1 }); res.json(jobs); });
 app.post('/api/company/jobs', auth, async (req, res) => {
   try {
@@ -1161,7 +1161,7 @@ app.get('/api/applications', auth, async (req, res) => {
 
   const applications = await Application.find(filter)
     .populate('candidateId', 'name email phone profile cvAnalysis cv.fileName cv.size')
-    .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name' } })
+    .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name companyProfile' } })
     .sort({ createdAt: -1 });
 
   const jobIds = [...new Set(applications.map(a => String(a.jobId?._id || a.jobId)).filter(Boolean))];
