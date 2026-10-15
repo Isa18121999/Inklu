@@ -57,7 +57,16 @@ class ApiService {
     final r = await http.post(Uri.parse('$baseUrl/profile/cv'), headers: _headers(token), body: jsonEncode(body)).timeout(const Duration(seconds: 45));
     return _decodeMap(r);
   }
-  Future<List<dynamic>> jobs(String token) async => _getList('/jobs', token);
+
+  // En la app del candidato, "jobs" representa las ofertas recomendadas.
+  // Esto evita que una oferta genérica o de otra carrera termine apareciendo
+  // en la pantalla principal aunque exista en el catálogo general.
+  Future<List<dynamic>> jobs(String token) async {
+    final result = await _getMap('/recommendations', token);
+    final items = result['recommendations'];
+    return items is List ? items : const [];
+  }
+
   Future<List<dynamic>> savedJobs(String token) async => _getList('/jobs/saved', token);
   Future<List<dynamic>> savedJobSearches(String token) async => _getList('/jobs/saved-searches', token);
   Future<Map<String, dynamic>> saveJobSearch(String token, Map<String, dynamic> data) async =>
