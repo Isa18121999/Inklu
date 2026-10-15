@@ -7,6 +7,47 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+// Etiquetas oficiales para evitar que identificadores numéricos heredados del
+// análisis de CV terminen mostrándose como "0", "1", "2", etc.
+const KNOWN_SKILL_LABELS = [
+  'Excel',
+  'Microsoft Office',
+  'Atención al cliente',
+  'Ventas',
+  'Marketing digital',
+  'Comunicación',
+  'Administración',
+  'Contabilidad',
+  'Finanzas',
+  'Programación',
+  'Python',
+  'JavaScript',
+  'SQL y bases de datos',
+  'Desarrollo web',
+  'Flutter',
+  'Diseño UX/UI',
+  'Diseño gráfico',
+  'Análisis de datos',
+  'Soporte técnico',
+  'Redes y sistemas',
+  'Recursos humanos',
+  'Gestión de proyectos',
+  'Logística',
+  'Educación',
+  'Salud',
+  'Inglés'
+];
+
+function humanizeSkill(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const index = Number(raw);
+  if (Number.isInteger(index) && index >= 0 && index < KNOWN_SKILL_LABELS.length) {
+    return KNOWN_SKILL_LABELS[index];
+  }
+  return raw;
+}
+
 const CV_STOP_WORDS = new Set((
   'para como con por una uno unas unos las los del que de en al el y o a se su sus es son fue ser esta estar ' +
   'the and for with from this that are was were you your our their have has had not but can will about after before ' +
@@ -51,7 +92,7 @@ function recommendJobsForUser(user, jobs) {
   const skills = [...new Set([
     ...(user.cvAnalysis?.skills || []),
     ...(user.profile?.skills || [])
-  ])];
+  ].map(humanizeSkill).filter(Boolean))];
   const normalizedSkills = skills.map(normalizeText);
   const location = normalizeText(user.profile?.location);
   const modality = normalizeText(user.profile?.modality);
@@ -145,14 +186,23 @@ function recommendJobsForUser(user, jobs) {
       signals: ['gestion de proyectos', 'project management', 'scrum', 'agile', 'coordinador de proyectos']
     }
   ];
-  const candidateCareerText = normalizeText(profileText);
-  const candidateGroups = new Set(careerGroups
-    .filter(group => group.signals.some(signal => candidateCareerText.includes(normalizeText(signal))))
+
+  // La carrera/formación es la señal principal. Solo usamos el resto del perfil
+  // para inferir el área cuando la carrera no permite identificar una.
+  const educationText = normalizeText(education);
+  const educationGroups = new Set(careerGroups
+    .filter(group => group.signals.some(signal => educationText.includes(normalizeText(signal))))
     .map(group => group.key));
+  const candidateCareerText = normalizeText(profileText);
+  const candidateGroups = educationGroups.size > 0
+    ? educationGroups
+    : new Set(careerGroups
+        .filter(group => group.signals.some(signal => candidateCareerText.includes(normalizeText(signal))))
+        .map(group => group.key));
 
   const jobDocuments = jobs.map(job => {
-    const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
-    const preferredSkills = Array.isArray(job.preferredSkills) ? job.preferredSkills : [];
+    const requiredSkills = Array.isArray(job.requiredSkills) ? job.requiredSkills.map(humanizeSkill).filter(Boolean) : [];
+    const preferredSkills = Array.isArray(job.preferredSkills) ? job.preferredSkills.map(humanizeSkill).filter(Boolean) : [];
     const content = [job.title, job.description, job.category, ...requiredSkills, ...preferredSkills].join(' ');
     const categoryTitleSkills = normalizeText([job.category, job.title, ...requiredSkills, ...preferredSkills].join(' '));
     const jobGroups = careerGroups
@@ -218,8 +268,6 @@ function recommendJobsForUser(user, jobs) {
       .slice(0, 5)
       .map(item => item.term);
     const careerCategoryMatch = jobGroups.some(group => candidateGroups.has(group));
-    // Evita cruces profesionales evidentes, por ejemplo recomendar un puesto clínico
-    // a alguien de sistemas solo porque la descripción comparte términos genéricos.
     const hasCareerGroupConflict =
       candidateGroups.size > 0 &&
       jobGroups.length > 0 &&
@@ -241,8 +289,6 @@ function recommendJobsForUser(user, jobs) {
 
     const experienceRequired = Math.max(0, Number(job.experienceRequired || 0));
     const experienceGap = Math.max(0, experienceRequired - candidateExperience);
-    const evidenceCount = matchedSkills.length + matchedRequired.length + matchedPreferred.length + sharedKeywords.length +
-      matchedCareerTerms.length + (careerCategoryMatch ? 2 : 0);
 
     let score = Math.round(similarity * 60);
     if (matchedSkills.length) score = Math.max(score, Math.min(50, matchedSkills.length * 10));
@@ -257,7 +303,6 @@ function recommendJobsForUser(user, jobs) {
         '. Revisa si conviene completar tus habilidades antes de postular.'
       );
     }
-    // Las habilidades deseables suman menos puntos que los requisitos obligatorios.
     if (matchedPreferred.length) score += Math.min(6, matchedPreferred.length * 2);
     if (experienceGap === 0) {
       score += 8;
@@ -274,8 +319,6 @@ function recommendJobsForUser(user, jobs) {
     }
     score = Math.max(0, Math.min(100, score));
 
-    // Exigimos señales profesionales reales; ubicación o modalidad por sí solas
-    // nunca hacen que una oferta se considere compatible.
     const hasProfessionalEvidence =
       careerCategoryMatch ||
       matchedSkills.length > 0 ||
@@ -286,6 +329,8 @@ function recommendJobsForUser(user, jobs) {
     const careerMatch = !hasCareerGroupConflict && hasProfessionalEvidence;
 
     const record = job.toObject();
+    record.requiredSkills = requiredSkills;
+    record.preferredSkills = preferredSkills;
     return {
       ...record,
       matchScore: score,
