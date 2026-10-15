@@ -7,6 +7,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
+import 'services/accessibility_page.dart';
 
 const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
 
@@ -2524,6 +2525,15 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         const Section('Privacidad y cuenta'),
         const Text('Puedes eliminar tu cuenta y los datos asociados desde aquí.', style: TextStyle(color: muted, fontSize: 12)),
         const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AccessibilityPreferencesPage(token: widget.token))),
+            icon: const Icon(Icons.accessibility_new_rounded),
+            label: const Text('Preferencias de accesibilidad'),
+          ),
+        ),
+        const SizedBox(height: 8),
         DeleteAccountButton(token: widget.token),
       ],
     );
@@ -3681,6 +3691,11 @@ void showOffer(
             ),
             const SizedBox(height: 20),
             Btn('Postular ahora', () => apply((d['_id'] ?? d['id'] ?? '').toString())),
+            const SizedBox(height: 8),
+            Out('Reportar oferta', () {
+              final id = (d['_id'] ?? d['id'] ?? '').toString();
+              if (id.isNotEmpty && sessionToken != null) showJobReportDialog(sheetContext, sessionToken!, id);
+            }),
             const SizedBox(height: 8),
             Out('Cerrar detalles', () => Navigator.pop(sheetContext)),
           ],

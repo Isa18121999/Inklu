@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const AccessibilityPreferencesSchema = new mongoose.Schema({
+  share: { type: Boolean, default: false },
+  needType: { type: String, trim: true, maxlength: 80, default: '' },
+  preferences: { type: [String], default: [] }
+}, { _id: false });
+
 const CandidateProfileSchema = new mongoose.Schema({
   birth: { type: String, trim: true },
   address: { type: String, trim: true },
@@ -10,7 +16,8 @@ const CandidateProfileSchema = new mongoose.Schema({
   projects: { type: [String], default: [] },
   certifications: { type: [String], default: [] },
   modality: { type: String, trim: true },
-  location: { type: String, trim: true }
+  location: { type: String, trim: true },
+  accessibility: { type: AccessibilityPreferencesSchema, default: () => ({}) }
 }, { _id: false });
 
 const CvSchema = new mongoose.Schema({
@@ -74,6 +81,11 @@ const UserSchema = new mongoose.Schema({
   country: { type: String, default: 'PE' },
   ruc: { type: String, trim: true },
   companyProfile: { type: CompanyProfileSchema, default: () => ({}) },
+  companyVerification: {
+    status: { type: String, enum: ['unverified', 'pending', 'verified'], default: 'unverified' },
+    verifiedAt: { type: Date, default: null },
+    verificationNote: { type: String, trim: true, maxlength: 500, default: '' }
+  },
   conadisNumber: { type: String, trim: true, default: null },
   accreditationType: { type: String, trim: true, default: 'Carné CONADIS' },
   profile: { type: CandidateProfileSchema, default: () => ({}) },
