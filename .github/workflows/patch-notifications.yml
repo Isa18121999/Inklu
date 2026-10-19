@@ -13,40 +13,13 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Replace notifications dialog with full-screen page
+      - name: Patch main.dart
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('flutter_app/lib/main.dart')
-          s = p.read_text(encoding='utf-8')
+          python3 -c 'from pathlib import Path; p=Path("flutter_app/lib/main.dart"); s=p.read_text(encoding="utf-8"); s=s.replace("import '\''create_offer_page.dart'\'';", "import '\''create_offer_page.dart'\'';\nimport '\''notifications_page.dart'\'';", 1) if "import '\''notifications_page.dart'\'';" not in s else s; start=s.index("Future<void> showNotifications(BuildContext context) async {"); end=s.index("\nFuture<void> deleteAccountFlow", start); replacement="""Future<void> showNotifications(BuildContext context) async {\n  final token = sessionToken;\n  if (token == null || token.isEmpty) {\n    toast('Inicia sesión para consultar tus notificaciones.');\n    return;\n  }\n  await Navigator.push<void>(\n    context,\n    MaterialPageRoute(\n      builder: (_) => NotificationsPage(token: token, api: api),\n    ),\n  );\n}\n"""; p.write_text(s[:start]+replacement+s[end:], encoding="utf-8")'
 
-          if "import 'notifications_page.dart';" not in s:
-              s = s.replace("import 'create_offer_page.dart';", "import 'create_offer_page.dart';\nimport 'notifications_page.dart';", 1)
-
-          start = s.index('Future<void> showNotifications(BuildContext context) async {')
-          end = s.index('\nFuture<void> deleteAccountFlow', start)
-          replacement = '''Future<void> showNotifications(BuildContext context) async {
-  final token = sessionToken;
-  if (token == null || token.isEmpty) {
-    toast('Inicia sesión para consultar tus notificaciones.');
-    return;
-  }
-  await Navigator.push<void>(
-    context,
-    MaterialPageRoute(
-      builder: (_) => NotificationsPage(token: token, api: api),
-    ),
-  );
-}
-'''
-          s = s[:start] + replacement + s[end:]
-          p.write_text(s, encoding='utf-8')
-          PY
-
-      - name: Commit patch and remove temporary workflow
+      - name: Commit patch and remove temporary files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
