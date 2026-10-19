@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'services/accessibility_page.dart';
+import 'create_offer_page.dart';
 
 const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
 
@@ -2722,120 +2723,25 @@ class _CompanyHomeState extends State<CompanyHome> {
   }
 
   Future<void> create() async {
-    final title = TextEditingController();
-    final description = TextEditingController();
-    final experience = TextEditingController(text: '0');
-    final requiredSkills = TextEditingController();
-    final preferredSkills = TextEditingController();
-    final accessibilityDetails = TextEditingController();
-    final salary = TextEditingController();
-    final location = TextEditingController(text: 'Lima, Perú');
-    const modalities = ['Remoto', 'Híbrido', 'Presencial'];
-    const categories = ['Tecnología', 'Administración', 'Diseño', 'Atención al cliente', 'Educación', 'Salud', 'Finanzas', 'Logística', 'Marketing', 'Otro'];
-    const contracts = ['Tiempo completo', 'Medio tiempo', 'Temporal', 'Prácticas', 'Freelance', 'Por horas'];
-    String modality = 'Remoto';
-    String category = 'Tecnología';
-    String contractType = 'Tiempo completo';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Nueva oferta laboral'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                F(title, 'Título del puesto'),
-                F(description, 'Descripción del puesto', max: 5),
-                F(requiredSkills, 'Habilidades obligatorias (separadas por comas)', max: 3),
-                F(preferredSkills, 'Habilidades deseables (separadas por comas)', max: 3),
-                F(experience, 'Experiencia requerida en años (0 = sin requisito)', type: TextInputType.number, format: digits(2)),
-                F(accessibilityDetails, 'Accesibilidad y ajustes disponibles', max: 4),
-                F(salary, 'Salario o rango salarial (opcional)'),
-                F(location, 'Ubicación'),
-                DropdownButtonFormField<String>(
-                  initialValue: category,
-                  decoration: const InputDecoration(labelText: 'Área profesional'),
-                  items: categories.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: (value) {
-                    if (value != null) setDialogState(() => category = value);
-                  },
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: modality,
-                  decoration: const InputDecoration(labelText: 'Modalidad'),
-                  items: modalities
-                      .map((value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(value),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) setDialogState(() => modality = value);
-                  },
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: contractType,
-                  decoration: const InputDecoration(labelText: 'Tipo de contrato'),
-                  items: contracts.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: (value) {
-                    if (value != null) setDialogState(() => contractType = value);
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Publicar'),
-            ),
-          ],
+    final token = sessionToken;
+    if (token == null || token.isEmpty) {
+      toast('Inicia sesión para publicar una oferta.');
+      return;
+    }
+
+    final published = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateOfferPage(
+          token: token,
+          api: api,
         ),
       ),
     );
-    if (ok == true &&
-        title.text.trim().isNotEmpty &&
-        description.text.trim().isNotEmpty) {
-      try {
-        await api.createJob(sessionToken!, {
-          'title': title.text.trim(),
-          'description': description.text.trim(),
-          'location': location.text.trim(),
-          'category': category,
-          'modality': modality,
-          'contractType': contractType,
-          'experienceRequired': int.tryParse(experience.text.trim()) ?? 0,
-          'requiredSkills': requiredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
-          'preferredSkills': preferredSkills.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
-          'accessibilityDetails': accessibilityDetails.text.trim(),
-          'accessibility': {
-            'remote': modality.toLowerCase().contains('remoto'),
-            'hybrid': modality.toLowerCase().contains('híbrido') || modality.toLowerCase().contains('hibrido'),
-            'notes': accessibilityDetails.text.trim(),
-          },
-          'salary': salary.text.trim(),
-        });
-        toast('Oferta publicada correctamente.');
-        await load();
-      } catch (x) {
-        toast(x.toString().replaceFirst('Exception: ', ''));
-      }
+
+    if (published == true && mounted) {
+      await load();
     }
-    title.dispose();
-    description.dispose();
-    experience.dispose();
-    requiredSkills.dispose();
-    preferredSkills.dispose();
-    accessibilityDetails.dispose();
-    salary.dispose();
-    location.dispose();
   }
 
   Future<void> changeApplicationStatus(String id, String status) async {
