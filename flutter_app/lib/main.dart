@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'services/accessibility_page.dart';
 import 'create_offer_page.dart';
+import 'notifications_page.dart';
 
 const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
 
@@ -117,63 +118,12 @@ Future<void> showNotifications(BuildContext context) async {
     toast('Inicia sesión para consultar tus notificaciones.');
     return;
   }
-  try {
-    final response = await api.notifications(token);
-    if (!context.mounted) return;
-    final items = response.map((item) => Map<String, dynamic>.from(item as Map)).toList();
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Notificaciones'),
-          content: SizedBox(
-            width: 460,
-            height: 360,
-            child: items.isEmpty
-                ? const Center(child: Text('Todavía no tienes notificaciones.', textAlign: TextAlign.center))
-                : ListView.separated(
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      final read = item['read'] == true;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          read ? Icons.notifications_none_rounded : Icons.notifications_active_rounded,
-                          color: read ? muted : primary,
-                        ),
-                        title: Text(
-                          item['title']?.toString() ?? 'Notificación',
-                          style: TextStyle(fontWeight: read ? FontWeight.w500 : FontWeight.w800),
-                        ),
-                        subtitle: Text(item['message']?.toString() ?? ''),
-                        onTap: read ? null : () async {
-                          final id = item['id']?.toString() ?? '';
-                          if (id.isEmpty) return;
-                          try {
-                            await api.markNotificationRead(token, id);
-                            setDialogState(() => items[index]['read'] = true);
-                          } catch (error) {
-                            toast(error.toString().replaceFirst('Exception: ', ''));
-                          }
-                        },
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        ),
-      ),
-    );
-  } catch (error) {
-    toast(error.toString().replaceFirst('Exception: ', ''));
-  }
+  await Navigator.push<void>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => NotificationsPage(token: token, api: api),
+    ),
+  );
 }
 
 Future<void> deleteAccountFlow(BuildContext context, String token) async {
