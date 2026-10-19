@@ -1,0 +1,84 @@
+name: Patch delete account page
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-delete-account-page.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'Integrar pantalla completa de eliminar cuenta') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Integrate DeleteAccountPage
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('flutter_app/lib/main.dart')
+          text = path.read_text(encoding='utf-8')
+
+          import_line = "import 'delete_account_page.dart';\n"
+          if import_line not in text:
+              anchor = "import 'notifications_page.dart';\n"
+              if anchor not in text:
+                  raise SystemExit('No se encontró el bloque de imports esperado.')
+              text = text.replace(anchor, anchor + import_line, 1)
+
+          start = text.find('Future<void> deleteAccountFlow(BuildContext context, String token) async {')
+          end = text.find('\nclass DeleteAccountButton extends StatelessWidget {', start)
+          if start < 0 or end < 0:
+              raise SystemExit('No se encontró deleteAccountFlow/DeleteAccountButton.')
+
+          new_function = '''Future<void> deleteAccountFlow(BuildContext context, String token) async {
+  final deleted = await Navigator.push<bool>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => DeleteAccountPage(
+        token: token,
+        api: api,
+        onDeleted: () async {
+          await clearSavedSession();
+          sessionToken = null;
+          sessionUser = null;
+        },
+      ),
+    ),
+  );
+  if (deleted == true && context.mounted) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const Welcome()),
+      (_) => false,
+    );
+  }
+}
+'''
+
+          text = text[:start] + new_function + text[end + 1:]
+          path.write_text(text, encoding='utf-8')
+
+          # Keep the existing simple logout confirmation as an AlertDialog.
+          if "title: const Text('Cerrar sesión')" not in text:
+              raise SystemExit('Validación: se perdió el diálogo de cerrar sesión.')
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flutter_app/lib/main.dart
+          git rm .github/workflows/patch-delete-account-page.yml
+          if git diff --cached --quiet; then
+            echo "No hay cambios que aplicar."
+            exit 0
+          fi
+          git commit -m "Integrar pantalla completa de eliminar cuenta"
+          git push
