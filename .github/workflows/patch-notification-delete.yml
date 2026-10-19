@@ -25,7 +25,42 @@ jobs:
           if marker not in text:
               raise SystemExit('No se encontró la ruta de lectura de notificaciones.')
 
-          route = r'''\n\napp.delete('/api/notifications/:id', auth, async (req, res) => {\n  try {\n    if (!mongoose.isValidObjectId(req.params.id)) {\n      return res.status(400).json({ message: 'Notificación no válida.' });\n    }\n    const deleted = await Notification.findOneAndDelete({\n      _id: req.params.id,\n      userId: req.user._id\n    });\n    if (!deleted) return res.status(404).json({ message: 'Notificación no encontrada.' });\n    return res.json({ message: 'Notificación eliminada.', id: String(deleted._id) });\n  } catch (e) {\n    console.error('No se pudo eliminar la notificación:', e);\n    return res.status(500).json({ message: 'No se pudo eliminar la notificación.' });\n  }\n});\n\napp.delete('/api/notifications', auth, async (req, res) => {\n  try {\n    const ids = Array.isArray(req.body?.ids)\n      ? req.body.ids.map(id => String(id)).filter(id => mongoose.isValidObjectId(id))\n      : [];\n    if (!ids.length) return res.status(400).json({ message: 'Selecciona al menos una notificación.' });\n    const result = await Notification.deleteMany({\n      _id: { $in: ids },\n      userId: req.user._id\n    });\n    return res.json({ message: 'Notificaciones eliminadas.', deletedCount: result.deletedCount });\n  } catch (e) {\n    console.error('No se pudieron eliminar las notificaciones:', e);\n    return res.status(500).json({ message: 'No se pudieron eliminar las notificaciones.' });\n  }\n});\n'''
+          route = '''
+
+app.delete('/api/notifications/:id', auth, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Notificación no válida.' });
+    }
+    const deleted = await Notification.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user._id
+    });
+    if (!deleted) return res.status(404).json({ message: 'Notificación no encontrada.' });
+    return res.json({ message: 'Notificación eliminada.', id: String(deleted._id) });
+  } catch (e) {
+    console.error('No se pudo eliminar la notificación:', e);
+    return res.status(500).json({ message: 'No se pudo eliminar la notificación.' });
+  }
+});
+
+app.delete('/api/notifications', auth, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body?.ids)
+      ? req.body.ids.map(id => String(id)).filter(id => mongoose.isValidObjectId(id))
+      : [];
+    if (!ids.length) return res.status(400).json({ message: 'Selecciona al menos una notificación.' });
+    const result = await Notification.deleteMany({
+      _id: { $in: ids },
+      userId: req.user._id
+    });
+    return res.json({ message: 'Notificaciones eliminadas.', deletedCount: result.deletedCount });
+  } catch (e) {
+    console.error('No se pudieron eliminar las notificaciones:', e);
+    return res.status(500).json({ message: 'No se pudieron eliminar las notificaciones.' });
+  }
+});
+'''
 
           if "app.delete('/api/notifications/:id'" not in text:
               text = text.replace(marker, route + "\n" + marker, 1)
