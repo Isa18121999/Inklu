@@ -1,183 +1,28 @@
 name: INKLU accessibility check
 on:
   push:
-    branches: [main]
+    branches: [feature/inklu-accessibility-priorities]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
-      - name: Convertir eliminar cuenta a pantalla completa
+          ref: feature/inklu-accessibility-priorities
+      - name: Check backend syntax
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-          path = Path('flutter_app/lib/main.dart')
-          text = path.read_text(encoding='utf-8')
-          marker = 'class DeleteAccountButton extends StatelessWidget'
-          start = text.index('Future<void> deleteAccountFlow(BuildContext context, String token) async {')
-          end = text.index(marker, start)
-          replacement = '''Future<void> deleteAccountFlow(BuildContext context, String token) async {
-  await Navigator.push<void>(
-    context,
-    MaterialPageRoute(builder: (_) => DeleteAccountPage(token: token)),
-  );
-}
-
-class DeleteAccountPage extends StatefulWidget {
-  final String token;
-  const DeleteAccountPage({super.key, required this.token});
-
-  @override
-  State<DeleteAccountPage> createState() => _DeleteAccountPageState();
-}
-
-class _DeleteAccountPageState extends State<DeleteAccountPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _password = TextEditingController();
-  final _confirmation = TextEditingController();
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _password.dispose();
-    _confirmation.dispose();
-    super.dispose();
-  }
-
-  Future<void> _deleteAccount() async {
-    if (!(_formKey.currentState?.validate() ?? false) || _submitting) return;
-    setState(() => _submitting = true);
-    try {
-      final response = await api.deleteAccount(widget.token, _password.text);
-      await clearSavedSession();
-      sessionToken = null;
-      sessionUser = null;
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const Welcome()),
-        (_) => false,
-      );
-      toast(response['message']?.toString() ?? 'Tu cuenta fue eliminada.');
-    } catch (error) {
-      if (!mounted) return;
-      toast(error.toString().replaceFirst('Exception: ', ''));
-      setState(() => _submitting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Eliminar mi cuenta'),
-      leading: IconButton(
-        tooltip: 'Volver',
-        onPressed: _submitting ? null : () => Navigator.pop(context),
-        icon: const Icon(Icons.arrow_back_rounded),
-      ),
-    ),
-    body: SafeArea(
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 34),
-            ),
-            const SizedBox(height: 20),
-            const Text('Eliminar mi cuenta', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: ink)),
-            const SizedBox(height: 10),
-            const Text(
-              'Esta acción es permanente. Se eliminará tu cuenta y los datos asociados de INKLU, incluidas las postulaciones y conversaciones relacionadas.',
-              style: TextStyle(color: Color(0xFF4B5563), height: 1.5, fontSize: 15),
-            ),
-            const SizedBox(height: 24),
-            TextFormField(
-              controller: _password,
-              obscureText: true,
-              enabled: !_submitting,
-              decoration: const InputDecoration(labelText: 'Contraseña actual', prefixIcon: Icon(Icons.lock_outline_rounded), border: OutlineInputBorder()),
-              validator: (value) => (value ?? '').isEmpty ? 'Ingresa tu contraseña.' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _confirmation,
-              enabled: !_submitting,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(labelText: 'Escribe ELIMINAR para confirmar', prefixIcon: Icon(Icons.warning_amber_rounded), border: OutlineInputBorder()),
-              validator: (value) => value?.trim() == 'ELIMINAR' ? null : 'Escribe ELIMINAR exactamente.',
-            ),
-            const SizedBox(height: 28),
-            OutlinedButton(
-              onPressed: _submitting ? null : () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
-              child: const Text('Cancelar'),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: _submitting ? null : _deleteAccount,
-              style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 15)),
-              icon: _submitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.delete_forever_rounded),
-              label: Text(_submitting ? 'Eliminando cuenta…' : 'Eliminar cuenta'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-'''
-          if 'class DeleteAccountPage extends StatefulWidget' not in text:
-              path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
-          PY
-      - name: Restaurar workflow y guardar cambios
+          node --check backend/server.js
+          node --check backend/models/User.js
+          node --check backend/models/Job.js
+          node --check backend/models/Report.js
+      - name: Check Flutter syntax
+        working-directory: flutter_app
         run: |
-          cat > .github/workflows/inklu-accessibility-check.yml <<'YAML'
-          name: INKLU accessibility check
-          on:
-            push:
-              branches: [feature/inklu-accessibility-priorities]
-            workflow_dispatch:
-          permissions:
-            contents: read
-          jobs:
-            validate:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                  with:
-                    ref: feature/inklu-accessibility-priorities
-                - name: Check backend syntax
-                  run: |
-                    node --check backend/server.js
-                    node --check backend/models/User.js
-                    node --check backend/models/Job.js
-                    node --check backend/models/Report.js
-                - name: Check Flutter syntax
-                  working-directory: flutter_app
-                  run: |
-                    if command -v flutter >/dev/null 2>&1; then
-                      flutter analyze --no-pub lib/main.dart lib/services/api_service.dart lib/services/accessibility_page.dart
-                    else
-                      echo 'Flutter SDK not available; backend syntax check completed.'
-                    fi
-          YAML
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add flutter_app/lib/main.dart .github/workflows/inklu-accessibility-check.yml
-          git commit -m 'Convertir eliminar cuenta a pantalla completa' || exit 0
-          git push
+          if command -v flutter >/dev/null 2>&1; then
+            flutter analyze --no-pub lib/main.dart lib/services/api_service.dart lib/services/accessibility_page.dart
+          else
+            echo 'Flutter SDK not available; backend syntax check completed.'
+          fi
