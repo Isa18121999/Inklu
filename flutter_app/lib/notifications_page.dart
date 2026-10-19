@@ -22,7 +22,9 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   List<Map<String, dynamic>> items = [];
+  final Set<String> selectedIds = <String>{};
   bool loading = true;
+  bool deleting = false;
   String? error;
 
   @override
@@ -41,6 +43,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (!mounted) return;
       setState(() {
         items = response.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+        selectedIds.clear();
         loading = false;
       });
     } catch (e) {
@@ -54,7 +57,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Future<void> markAsRead(int index) async {
     final id = items[index]['id']?.toString() ?? '';
-    if (id.isEmpty || items[index]['read'] == true) return;
+    if (id.isEmpty || items[index]['read'] == true || selectedIds.isNotEmpty) return;
     try {
       await widget.api.markNotificationRead(widget.token, id);
       if (!mounted) return;
@@ -67,8 +70,91 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  void toggleSelection(String id) {
+    setState(() {
+      if (selectedIds.contains(id)) {
+        selectedIds.remove(id);
+      } else {
+        selectedIds.add(id);
+      }
+    });
+  }
+
+  void toggleSelectAll() {
+    final ids = items
+        .map((item) => item['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList();
+    setState(() {
+      if (selectedIds.length == ids.length && ids.isNotEmpty) {
+        selectedIds.clear();
+      } else {
+        selectedIds
+          ..clear()
+          ..addAll(ids);
+      }
+    });
+  }
+
+  Future<void> confirmDelete({String? id}) async {
+    final ids = id != null ? <String>[id] : selectedIds.toList();
+    if (ids.isEmpty || deleting) return;
+
+    final multiple = ids.length > 1;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(multiple ? '¿Eliminar notificaciones?' : '¿Eliminar notificación?'),
+        content: Text(
+          multiple
+              ? 'Se eliminarán ${ids.length} notificaciones seleccionadas. Esta acción no se puede deshacer.'
+              : 'Esta notificación se eliminará de tu cuenta. Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => deleting = true);
+    try {
+      if (ids.length == 1) {
+        await widget.api.deleteNotification(widget.token, ids.first);
+      } else {
+        await widget.api.deleteNotifications(widget.token, ids);
+      }
+      if (!mounted) return;
+      setState(() {
+        items.removeWhere((item) => ids.contains(item['id']?.toString()));
+        selectedIds.removeAll(ids);
+        deleting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ids.length == 1 ? 'Notificación eliminada.' : '${ids.length} notificaciones eliminadas.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => deleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
   Widget notificationCard(Map<String, dynamic> item, int index) {
     final read = item['read'] == true;
+    final id = item['id']?.toString() ?? '';
+    final selected = id.isNotEmpty && selectedIds.contains(id);
     final title = item['title']?.toString().trim().isNotEmpty == true
         ? item['title'].toString()
         : 'Notificación';
@@ -77,19 +163,46 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 0,
-      color: read ? Colors.white : const Color(0xFFF5F3FF),
+      color: selected
+          ? const Color(0xFFEDE9FE)
+          : read
+              ? Colors.white
+              : const Color(0xFFF5F3FF),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: read ? _notificationsLine : const Color(0xFFDCD6FF)),
+        side: BorderSide(
+          color: selected
+              ? _notificationsPrimary
+              : read
+                  ? _notificationsLine
+                  : const Color(0xFFDCD6FF),
+          width: selected ? 1.5 : 1,
+        ),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => markAsRead(index),
+        onTap: () {
+          if (selectedIds.isNotEmpty) {
+            if (id.isNotEmpty) toggleSelection(id);
+          } else {
+            markAsRead(index);
+          }
+        },
+        onLongPress: id.isEmpty ? null : () => toggleSelection(id),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(10, 14, 14, 14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (selectedIds.isNotEmpty || selected)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Checkbox(
+                    value: selected,
+                    activeColor: _notificationsPrimary,
+                    onChanged: id.isEmpty ? null : (_) => toggleSelection(id),
+                  ),
+                ),
               CircleAvatar(
                 backgroundColor: read ? const Color(0xFFF1F5F9) : const Color(0xFFE7E2FF),
                 child: Icon(
@@ -123,6 +236,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               shape: BoxShape.circle,
                             ),
                           ),
+                        IconButton(
+                          tooltip: 'Eliminar',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: id.isEmpty || deleting ? null : () => confirmDelete(id: id),
+                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                        ),
                       ],
                     ),
                     if (message.isNotEmpty) ...[
@@ -149,6 +268,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     final unreadCount = items.where((item) => item['read'] != true).length;
+    final allSelected = items.isNotEmpty && selectedIds.length == items.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -159,9 +279,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
           icon: const Icon(Icons.arrow_back_rounded),
         ),
         actions: [
+          if (items.isNotEmpty)
+            IconButton(
+              tooltip: allSelected ? 'Deseleccionar todas' : 'Seleccionar todas',
+              onPressed: deleting ? null : toggleSelectAll,
+              icon: Icon(allSelected ? Icons.deselect_rounded : Icons.checklist_rounded),
+            ),
           IconButton(
             tooltip: 'Actualizar',
-            onPressed: loading ? null : loadNotifications,
+            onPressed: loading || deleting ? null : loadNotifications,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -220,6 +346,32 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         ],
                       ),
                     ],
+                    if (selectedIds.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: _notificationsLine),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${selectedIds.length} seleccionada${selectedIds.length == 1 ? '' : 's'}',
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: _notificationsInk),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: deleting ? null : () => confirmDelete(),
+                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                              label: const Text('Eliminar', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 18),
                     if (error != null)
                       Container(
@@ -273,7 +425,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
           child: OutlinedButton.icon(
-            onPressed: () => Navigator.pop(context),
+            onPressed: deleting ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back_rounded),
             label: const Text('Volver'),
             style: OutlinedButton.styleFrom(
