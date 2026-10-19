@@ -106,31 +106,102 @@ class _AccessibilityPreferencesPageState extends State<AccessibilityPreferencesP
 }
 
 Future<void> showJobReportDialog(BuildContext context, String token, String jobId) async {
-  String reason = 'Información falsa';
+  await Navigator.push<void>(
+    context,
+    MaterialPageRoute(builder: (_) => JobReportPage(token: token, jobId: jobId)),
+  );
+}
+
+class JobReportPage extends StatefulWidget {
+  final String token;
+  final String jobId;
+  const JobReportPage({super.key, required this.token, required this.jobId});
+
+  @override
+  State<JobReportPage> createState() => _JobReportPageState();
+}
+
+class _JobReportPageState extends State<JobReportPage> {
+  static const reasons = [
+    'Información falsa',
+    'Empresa sospechosa',
+    'Discriminación',
+    'Accesibilidad indicada no disponible',
+    'Requisitos discriminatorios',
+    'Salario engañoso',
+    'Otro',
+  ];
+
+  String reason = reasons.first;
   final details = TextEditingController();
-  const reasons = ['Información falsa', 'Empresa sospechosa', 'Discriminación', 'Accesibilidad indicada no disponible', 'Requisitos discriminatorios', 'Salario engañoso', 'Otro'];
-  final sent = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Reportar oferta'),
-      content: StatefulBuilder(builder: (context, setState) => SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        const Align(alignment: Alignment.centerLeft, child: Text('¿Qué deseas reportar?', style: TextStyle(fontWeight: FontWeight.w700))),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(value: reason, items: reasons.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (v) => setState(() => reason = v ?? reason)),
-        const SizedBox(height: 12),
-        TextField(controller: details, maxLines: 4, decoration: const InputDecoration(labelText: 'Descripción (opcional)', border: OutlineInputBorder())),
-      ]))),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-        FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Enviar reporte')),
-      ],
+  bool sending = false;
+
+  @override
+  void dispose() {
+    details.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    setState(() => sending = true);
+    try {
+      await ApiService().reportJob(widget.token, widget.jobId, reason: reason, details: details.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reporte recibido. Gracias por ayudar a mantener INKLU segura e inclusiva.')));
+      Navigator.pop(context);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Reportar oferta')),
+    body: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(22),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE2E8F0))),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.flag_outlined, color: _purple, size: 28),
+                SizedBox(width: 12),
+                Expanded(child: Text('Ayúdanos a mantener INKLU segura e inclusiva. Selecciona el motivo del reporte y añade detalles si lo consideras necesario.', style: TextStyle(color: _muted, height: 1.45))),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('¿Qué deseas reportar?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            value: reason,
+            decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Motivo del reporte'),
+            items: reasons.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: sending ? null : (v) => setState(() => reason = v ?? reason),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: details,
+            enabled: !sending,
+            maxLines: 7,
+            maxLength: 1000,
+            decoration: const InputDecoration(labelText: 'Descripción (opcional)', hintText: 'Cuéntanos qué ocurrió...', alignLabelWithHint: true, border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: sending ? null : submit,
+            icon: sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.send_outlined),
+            label: Text(sending ? 'Enviando...' : 'Enviar reporte'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(onPressed: sending ? null : () => Navigator.pop(context), child: const Text('Cancelar')),
+        ],
+      ),
     ),
   );
-  if (sent != true) { details.dispose(); return; }
-  try {
-    await ApiService().reportJob(token, jobId, reason: reason, details: details.text.trim());
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reporte recibido. Gracias por ayudar a mantener INKLU segura e inclusiva.')));
-  } catch (e) {
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
-  } finally { details.dispose(); }
 }
