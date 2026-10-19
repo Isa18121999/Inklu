@@ -10,6 +10,7 @@ import 'services/api_service.dart';
 import 'services/accessibility_page.dart';
 import 'create_offer_page.dart';
 import 'notifications_page.dart';
+import 'delete_account_page.dart';
 
 const primary=Color(0xFF4F46E5), ink=Color(0xFF111827), muted=Color(0xFF64748B), line=Color(0xFFE2E8F0);
 
@@ -127,80 +128,27 @@ Future<void> showNotifications(BuildContext context) async {
 }
 
 Future<void> deleteAccountFlow(BuildContext context, String token) async {
-  final password = TextEditingController();
-  final confirmation = TextEditingController();
-  final formKey = GlobalKey<FormState>();
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: const Text('Eliminar mi cuenta'),
-      content: Form(
-        key: formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Esta acción es permanente. Se eliminará tu cuenta y los datos asociados de INKLU, incluidas las postulaciones y conversaciones relacionadas.',
-                style: TextStyle(height: 1.4),
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: password,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Contraseña actual'),
-                validator: (value) => (value ?? '').isEmpty ? 'Ingresa tu contraseña.' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: confirmation,
-                decoration: const InputDecoration(labelText: 'Escribe ELIMINAR para confirmar'),
-                validator: (value) => value?.trim() == 'ELIMINAR' ? null : 'Escribe ELIMINAR exactamente.',
-              ),
-            ],
-          ),
-        ),
+  final deleted = await Navigator.push<bool>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => DeleteAccountPage(
+        token: token,
+        api: api,
+        onDeleted: () async {
+          await clearSavedSession();
+          sessionToken = null;
+          sessionUser = null;
+        },
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
-          onPressed: () {
-            if (formKey.currentState?.validate() ?? false) {
-              Navigator.pop(dialogContext, true);
-            }
-          },
-          child: const Text('Eliminar cuenta'),
-        ),
-      ],
     ),
   );
-  if (confirmed != true || !context.mounted) {
-    password.dispose();
-    confirmation.dispose();
-    return;
-  }
-
-  try {
-    final response = await api.deleteAccount(token, password.text);
-    await clearSavedSession();
-    sessionToken = null;
-    sessionUser = null;
-    if (!context.mounted) return;
+  if (deleted == true && context.mounted) {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const Welcome()),
       (_) => false,
     );
-    toast(response['message']?.toString() ?? 'Tu cuenta fue eliminada.');
-  } catch (error) {
-    toast(error.toString().replaceFirst('Exception: ', ''));
-  } finally {
-    password.dispose();
-    confirmation.dispose();
   }
 }
-
 class DeleteAccountButton extends StatelessWidget {
   final String token;
   const DeleteAccountButton({super.key, required this.token});
