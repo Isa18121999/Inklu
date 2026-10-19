@@ -1,0 +1,45 @@
+name: Patch notification delete API
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-notification-delete.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch backend notification routes
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('backend/server.js')
+          text = path.read_text(encoding='utf-8')
+          marker = "app.patch('/api/notifications/:id/read', auth, async (req, res) => {"
+          if marker not in text:
+              raise SystemExit('No se encontró la ruta de lectura de notificaciones.')
+
+          route = r'''\n\napp.delete('/api/notifications/:id', auth, async (req, res) => {\n  try {\n    if (!mongoose.isValidObjectId(req.params.id)) {\n      return res.status(400).json({ message: 'Notificación no válida.' });\n    }\n    const deleted = await Notification.findOneAndDelete({\n      _id: req.params.id,\n      userId: req.user._id\n    });\n    if (!deleted) return res.status(404).json({ message: 'Notificación no encontrada.' });\n    return res.json({ message: 'Notificación eliminada.', id: String(deleted._id) });\n  } catch (e) {\n    console.error('No se pudo eliminar la notificación:', e);\n    return res.status(500).json({ message: 'No se pudo eliminar la notificación.' });\n  }\n});\n\napp.delete('/api/notifications', auth, async (req, res) => {\n  try {\n    const ids = Array.isArray(req.body?.ids)\n      ? req.body.ids.map(id => String(id)).filter(id => mongoose.isValidObjectId(id))\n      : [];\n    if (!ids.length) return res.status(400).json({ message: 'Selecciona al menos una notificación.' });\n    const result = await Notification.deleteMany({\n      _id: { $in: ids },\n      userId: req.user._id\n    });\n    return res.json({ message: 'Notificaciones eliminadas.', deletedCount: result.deletedCount });\n  } catch (e) {\n    console.error('No se pudieron eliminar las notificaciones:', e);\n    return res.status(500).json({ message: 'No se pudieron eliminar las notificaciones.' });\n  }\n});\n'''
+
+          if "app.delete('/api/notifications/:id'" not in text:
+              text = text.replace(marker, route + "\n" + marker, 1)
+              path.write_text(text, encoding='utf-8')
+
+      - name: Validate backend syntax
+        run: node --check backend/server.js
+
+      - name: Commit backend patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/patch-notification-delete.yml
+          git add backend/server.js
+          git diff --cached --check
+          git commit -m "Añadir API para eliminar notificaciones"
+          git push
