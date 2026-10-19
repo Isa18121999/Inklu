@@ -206,10 +206,10 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Semantics(
+                      Semantics(
                         label: 'Accesibilidad de la oferta',
                         header: true,
-                        child: Row(children: [Icon(Icons.accessibility_new_rounded, color: _primary), SizedBox(width: 8), Expanded(child: Text('Accesibilidad de la oferta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ink)))]),
+                        child: const Row(children: [Icon(Icons.accessibility_new_rounded, color: _primary), SizedBox(width: 8), Expanded(child: Text('Accesibilidad de la oferta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ink)))]),
                       ),
                       const SizedBox(height: 5),
                       const Text('Selecciona las condiciones de accesibilidad que ofrece el puesto.', style: TextStyle(color: _muted, fontSize: 12)),
