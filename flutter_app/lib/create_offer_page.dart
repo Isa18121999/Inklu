@@ -105,11 +105,10 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
     ),
   );
 
-  /// Etiquetas semánticas en español para Voice Access/TalkBack.
-  /// El nombre accesible es el mismo que ve la persona en pantalla.
-  Widget accessibilityTile({required String title, required bool value, required ValueChanged<bool?> onChanged}) => Semantics(
+  /// El texto visible conserva los emojis; la semántica usa solo el nombre limpio.
+  Widget accessibilityTile({required String title, required String semanticLabel, required bool value, required ValueChanged<bool?> onChanged}) => Semantics(
     container: true,
-    label: title,
+    label: semanticLabel,
     checked: value,
     hint: value ? 'Activado. Toca para desactivar.' : 'Desactivado. Toca para activar.',
     child: CheckboxListTile(
@@ -207,16 +206,20 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(children: [Icon(Icons.accessibility_new_rounded, color: _primary), SizedBox(width: 8), Expanded(child: Text('Accesibilidad de la oferta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ink)))]),
+                      const Semantics(
+                        label: 'Accesibilidad de la oferta',
+                        header: true,
+                        child: Row(children: [Icon(Icons.accessibility_new_rounded, color: _primary), SizedBox(width: 8), Expanded(child: Text('Accesibilidad de la oferta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ink)))]),
+                      ),
                       const SizedBox(height: 5),
                       const Text('Selecciona las condiciones de accesibilidad que ofrece el puesto.', style: TextStyle(color: _muted, fontSize: 12)),
                       const SizedBox(height: 8),
-                      accessibilityTile(title: 'Adaptaciones del puesto', value: workplaceAdaptation, onChanged: (v) => setState(() => workplaceAdaptation = v ?? false)),
-                      accessibilityTile(title: 'Tecnología asistiva', value: assistiveTechnology, onChanged: (v) => setState(() => assistiveTechnology = v ?? false)),
-                      accessibilityTile(title: 'Horario flexible', value: flexibleSchedule, onChanged: (v) => setState(() => flexibleSchedule = v ?? false)),
-                      accessibilityTile(title: 'Acceso físico', value: physicalAccess, onChanged: (v) => setState(() => physicalAccess = v ?? false)),
-                      accessibilityTile(title: 'Ascensor', value: elevator, onChanged: (v) => setState(() => elevator = v ?? false)),
-                      accessibilityTile(title: 'Estacionamiento accesible', value: accessibleParking, onChanged: (v) => setState(() => accessibleParking = v ?? false)),
+                      accessibilityTile(title: 'Adaptaciones del puesto', semanticLabel: 'Adaptaciones del puesto', value: workplaceAdaptation, onChanged: (v) => setState(() => workplaceAdaptation = v ?? false)),
+                      accessibilityTile(title: '💻 Tecnología asistiva', semanticLabel: 'Tecnología asistiva', value: assistiveTechnology, onChanged: (v) => setState(() => assistiveTechnology = v ?? false)),
+                      accessibilityTile(title: '🕐 Horario flexible', semanticLabel: 'Horario flexible', value: flexibleSchedule, onChanged: (v) => setState(() => flexibleSchedule = v ?? false)),
+                      accessibilityTile(title: '♿ Acceso físico', semanticLabel: 'Acceso físico', value: physicalAccess, onChanged: (v) => setState(() => physicalAccess = v ?? false)),
+                      accessibilityTile(title: '🛗 Ascensor', semanticLabel: 'Ascensor', value: elevator, onChanged: (v) => setState(() => elevator = v ?? false)),
+                      accessibilityTile(title: '🅿️ Estacionamiento accesible', semanticLabel: 'Estacionamiento accesible', value: accessibleParking, onChanged: (v) => setState(() => accessibleParking = v ?? false)),
                       const SizedBox(height: 4),
                       field(accessibilityDetails, 'Detalles adicionales de accesibilidad (opcional)', maxLines: 4),
                     ],
