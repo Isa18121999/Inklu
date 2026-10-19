@@ -36,6 +36,8 @@ class ApiService {
   Future<Map<String, dynamic>> unsaveJob(String token, String jobId) async => _deleteMap('/jobs/$jobId/save', token);
   Future<List<dynamic>> notifications(String token) async => _getList('/notifications', token);
   Future<Map<String, dynamic>> markNotificationRead(String token, String id) async => _patch('/notifications/$id/read', token, {'read': true});
+  Future<Map<String, dynamic>> deleteNotification(String token, String id) async => _deleteMap('/notifications/$id', token);
+  Future<Map<String, dynamic>> deleteNotifications(String token, List<String> ids) async => _deleteAuth('/notifications', token, {'ids': ids});
   Future<Map<String, dynamic>> deleteAccount(String token, String password) async => _deleteAuth('/profile/me', token, {'password': password});
 
   Future<Map<String, dynamic>> accessibilityProfile(String token) async => _getMap('/profile/accessibility', token);
