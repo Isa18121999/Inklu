@@ -147,102 +147,142 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Notificaciones', style: TextStyle(fontWeight: FontWeight.w800)),
-          leading: IconButton(
-            tooltip: 'Volver',
+  Widget build(BuildContext context) {
+    final unreadCount = items.where((item) => item['read'] != true).length;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Notificaciones', style: TextStyle(fontWeight: FontWeight.w800)),
+        leading: IconButton(
+          tooltip: 'Volver',
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Actualizar',
+            onPressed: loading ? null : loadNotifications,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: loading
+            ? const Center(child: CircularProgressIndicator(color: _notificationsPrimary))
+            : RefreshIndicator(
+                onRefresh: loadNotifications,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Tus notificaciones',
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _notificationsInk),
+                          ),
+                        ),
+                        if (unreadCount > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE7E2FF),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '$unreadCount ${unreadCount == 1 ? 'nueva' : 'nuevas'}',
+                              style: const TextStyle(
+                                color: _notificationsPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    const Text(
+                      'Aquí encontrarás novedades relacionadas con tu actividad en INKLU.',
+                      style: TextStyle(color: _notificationsMuted, height: 1.4),
+                    ),
+                    if (unreadCount > 0) ...[
+                      const SizedBox(height: 10),
+                      const Row(
+                        children: [
+                          Icon(Icons.circle, size: 8, color: _notificationsPrimary),
+                          SizedBox(width: 7),
+                          Text(
+                            'Las nuevas notificaciones están resaltadas.',
+                            style: TextStyle(fontSize: 12, color: _notificationsMuted, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 18),
+                    if (error != null)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7F7),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFF3C7C7)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('No pudimos cargar tus notificaciones.', style: TextStyle(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 6),
+                            Text(error!, style: const TextStyle(color: _notificationsMuted)),
+                            const SizedBox(height: 10),
+                            OutlinedButton.icon(
+                              onPressed: loadNotifications,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Intentar nuevamente'),
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (items.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 46),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: _notificationsLine),
+                        ),
+                        child: const Column(
+                          children: [
+                            Icon(Icons.notifications_none_rounded, size: 54, color: _notificationsMuted),
+                            SizedBox(height: 14),
+                            Text('Todavía no tienes notificaciones.', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _notificationsInk)),
+                            SizedBox(height: 6),
+                            Text('Cuando haya novedades, aparecerán aquí.', textAlign: TextAlign.center, style: TextStyle(color: _notificationsMuted, height: 1.4)),
+                          ],
+                        ),
+                      )
+                    else
+                      ...List.generate(items.length, (index) => notificationCard(items[index], index)),
+                  ],
+                ),
+              ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+          child: OutlinedButton.icon(
             onPressed: () => Navigator.pop(context),
             icon: const Icon(Icons.arrow_back_rounded),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'Actualizar',
-              onPressed: loading ? null : loadNotifications,
-              icon: const Icon(Icons.refresh_rounded),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          child: loading
-              ? const Center(child: CircularProgressIndicator(color: _notificationsPrimary))
-              : RefreshIndicator(
-                  onRefresh: loadNotifications,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
-                    children: [
-                      const Text(
-                        'Tus notificaciones',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _notificationsInk),
-                      ),
-                      const SizedBox(height: 5),
-                      const Text(
-                        'Aquí encontrarás novedades relacionadas con tu actividad en INKLU.',
-                        style: TextStyle(color: _notificationsMuted, height: 1.4),
-                      ),
-                      const SizedBox(height: 18),
-                      if (error != null)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF7F7),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: const Color(0xFFF3C7C7)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('No pudimos cargar tus notificaciones.', style: TextStyle(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 6),
-                              Text(error!, style: const TextStyle(color: _notificationsMuted)),
-                              const SizedBox(height: 10),
-                              OutlinedButton.icon(
-                                onPressed: loadNotifications,
-                                icon: const Icon(Icons.refresh_rounded),
-                                label: const Text('Intentar nuevamente'),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (items.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 46),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: _notificationsLine),
-                          ),
-                          child: const Column(
-                            children: [
-                              Icon(Icons.notifications_none_rounded, size: 54, color: _notificationsMuted),
-                              SizedBox(height: 14),
-                              Text('Todavía no tienes notificaciones.', textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _notificationsInk)),
-                              SizedBox(height: 6),
-                              Text('Cuando haya novedades, aparecerán aquí.', textAlign: TextAlign.center, style: TextStyle(color: _notificationsMuted, height: 1.4)),
-                            ],
-                          ),
-                        )
-                      else
-                        ...List.generate(items.length, (index) => notificationCard(items[index], index)),
-                    ],
-                  ),
-                ),
-        ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back_rounded),
-              label: const Text('Volver'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                foregroundColor: _notificationsPrimary,
-              ),
+            label: const Text('Volver'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              foregroundColor: _notificationsPrimary,
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
