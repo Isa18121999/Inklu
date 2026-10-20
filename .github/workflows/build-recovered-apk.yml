@@ -1,6 +1,10 @@
 name: Build recovered INKLU APK
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-recovered-apk.yml'
   workflow_dispatch:
 
 jobs:
