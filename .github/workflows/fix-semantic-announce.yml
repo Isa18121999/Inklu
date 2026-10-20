@@ -1,0 +1,30 @@
+name: Fix Flutter accessibility announce
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-semantic-announce.yml'
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore and fix main.dart
+        run: |
+          git checkout 2fffd200be1a5517cf9be72322f5ae7341a0cd29 -- flutter_app/lib/main.dart
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('flutter_app/lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('SemanticsService.announce(s, TextDirection.ltr);', 'SemanticsService.sendAnnouncement(TextDirection.ltr, s);')
+          p.write_text(s, encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add flutter_app/lib/main.dart .github/workflows/fix-semantic-announce.yml
+          git commit -m 'Corregir anuncio de accesibilidad de Flutter'
+          git push
