@@ -27,6 +27,7 @@ Desarrollar una plataforma tecnológica que contribuya a la inclusión laboral m
 - ♿ Información sobre accesibilidad de las ofertas.
 - 🔔 Notificaciones y seguimiento de postulaciones.
 - ⭐ Guardado de ofertas y recomendaciones según el CV.
+- 🤖 Matching inteligente de ofertas mediante NLP/TF-IDF, habilidades, formación, experiencia, modalidad, ubicación y preferencias de accesibilidad compartidas.
 
 ---
 
@@ -111,6 +112,15 @@ Los sectores disponibles incluyen:
 - **bcryptjs**
 - **CORS**
 - **dotenv**
+
+### Inteligencia y recomendaciones
+
+- NLP / procesamiento de texto.
+- TF-IDF y similitud de contenido.
+- Matching de habilidades y formación.
+- Comparación de experiencia y modalidad.
+- Compatibilidad de accesibilidad compartida voluntariamente.
+- Explicaciones del porcentaje de coincidencia.
 
 ### Infraestructura
 
@@ -346,6 +356,7 @@ Entre los elementos considerados se encuentran:
 - Diseño pensado para dispositivos móviles.
 - Identidad visual propia de INKLU.
 - Reducción de pasos innecesarios durante el registro.
+- Las preferencias de accesibilidad compartidas voluntariamente pueden contribuir al matching, sin utilizar la discapacidad como criterio de aptitud o penalización.
 
 El proyecto busca que la tecnología funcione como un medio para facilitar el acceso a oportunidades laborales y mejorar la interacción entre candidatos y empresas.
 
@@ -372,8 +383,9 @@ Actualmente se encuentran implementados:
 - [x] Autenticación
 - [x] Despliegue del backend
 - [x] Construcción automática del APK
+- [x] Motor de matching inteligente de ofertas
+- [x] Explicación de coincidencias de las ofertas recomendadas
 - [ ] Integración completa del almacenamiento del CV
-- [ ] Implementación completa de recomendaciones inteligentes
 - [ ] Filtros avanzados de ofertas
 - [ ] Notificaciones de nuevas oportunidades
 - [ ] Pruebas de accesibilidad
