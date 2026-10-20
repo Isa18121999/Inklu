@@ -2173,8 +2173,9 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     setState(() => uploadingCv = true);
     try {
       await api.uploadCv(widget.token, path);
+      await api.analyzeCv(widget.token);
       await loadProfile();
-      toast('Tu CV se guardó correctamente.');
+      toast('Tu CV se guardó y tu perfil fue actualizado automáticamente.');
     } catch (x) {
       toast(x.toString().replaceFirst('Exception: ', ''));
     } finally {
