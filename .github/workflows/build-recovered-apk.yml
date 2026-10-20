@@ -1,0 +1,36 @@
+name: Build recovered INKLU APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: aa9eaa3d0435657b7c5de9bf8fa8d9a00c7d8714
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: stable
+      - name: Fix deprecated accessibility API for build
+        working-directory: flutter_app
+        run: sed -i "s/SemanticsService\.announce(s, TextDirection\.ltr);/SemanticsService.sendAnnouncement(TextDirection.ltr, s);/" lib/main.dart
+      - name: Install dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+      - name: Analyze
+        working-directory: flutter_app
+        run: flutter analyze
+      - name: Test
+        working-directory: flutter_app
+        run: flutter test
+      - name: Build APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: INKLU-Android-actualizado
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
