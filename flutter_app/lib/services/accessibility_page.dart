@@ -80,7 +80,7 @@ class _AccessibilityPreferencesPageState extends State<AccessibilityPreferencesP
         ),
         const SizedBox(height: 14),
         DropdownButtonFormField<String>(
-          value: needType.isEmpty ? null : needType,
+          initialValue: needType.isEmpty ? null : needType,
           decoration: const InputDecoration(labelText: 'Tipo de necesidad de accesibilidad (opcional)', border: OutlineInputBorder()),
           items: needs.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: (v) => setState(() => needType = v ?? ''),
@@ -179,7 +179,7 @@ class _JobReportPageState extends State<JobReportPage> {
           const Text('¿Qué deseas reportar?', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: reason,
+            initialValue: reason,
             decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Motivo del reporte'),
             items: reasons.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             onChanged: sending ? null : (v) => setState(() => reason = v ?? reason),
