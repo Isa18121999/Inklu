@@ -1,0 +1,36 @@
+name: Actualizar recomendaciones al subir CV
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/workflows/auto-refresh-recommendations.yml'
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch upload CV flow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('flutter_app/lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+          old = """      await api.uploadCv(widget.token, path);\n      await loadProfile();\n      toast('Tu CV se guardó correctamente.');"""
+          new = """      await api.uploadCv(widget.token, path);\n      await api.analyzeCv(widget.token);\n      await loadProfile();\n      toast('Tu CV se guardó y tu perfil fue actualizado automáticamente.');"""
+          if old not in s:
+              print('El flujo ya está actualizado; no se requiere ningún cambio.')
+              raise SystemExit(0)
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add flutter_app/lib/main.dart
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Actualizar recomendaciones al subir CV'
+          git push
