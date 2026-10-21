@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/build-recovered-apk.yml'
+      - 'flutter_app/**'
   workflow_dispatch:
 
 jobs:
@@ -13,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: aa9eaa3d0435657b7c5de9bf8fa8d9a00c7d8714
+          ref: main
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.7'
@@ -21,6 +22,17 @@ jobs:
       - name: Fix deprecated accessibility API for build
         working-directory: flutter_app
         run: sed -i "s/SemanticsService\.announce(s, TextDirection\.ltr);/SemanticsService.sendAnnouncement(TextDirection.ltr, s);/" lib/main.dart
+      - name: Sanitize embedded logo data
+        working-directory: flutter_app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('assets/logo.b64')
+          raw = p.read_text(encoding='utf-8')
+          clean = re.sub(r'[^A-Za-z0-9+/=\r\n]', '', raw)
+          p.write_text(clean, encoding='utf-8')
+          PY
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
