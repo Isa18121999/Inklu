@@ -19,9 +19,6 @@ jobs:
         with:
           flutter-version: '3.35.7'
           channel: stable
-      - name: Fix deprecated accessibility API for build
-        working-directory: flutter_app
-        run: sed -i "s/SemanticsService\.announce(s, TextDirection\.ltr);/SemanticsService.sendAnnouncement(TextDirection.ltr, s);/" lib/main.dart
       - name: Sanitize embedded logo data
         working-directory: flutter_app
         run: |
