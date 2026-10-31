@@ -32,8 +32,8 @@ jobs:
           PY
       - name: Repair password visibility toggle
         working-directory: flutter_app
-        shell: python
         run: |
+          python3 - <<'PY'
           from pathlib import Path
           import re
           p = Path('lib/main.dart')
