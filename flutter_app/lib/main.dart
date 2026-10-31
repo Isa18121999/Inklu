@@ -337,7 +337,22 @@ Future<void> next()async{if(step==0&&(!validEmail(e.text)||!validPass(p.text)||n
               F(n, 'Nombres'),
               F(a, 'Apellidos'),
               F(e, 'Correo electrónico', type: TextInputType.emailAddress),
-              F(p, 'Contraseña', obscure: true),
+              TextField(
+              controller: p,
+              obscureText: !_showPassword,
+              enabled: !busy,
+              decoration: InputDecoration(
+                labelText: 'Contraseña',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  tooltip: _showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña',
+                  onPressed: busy ? null : () => setState(() => _showPassword = !_showPassword),
+                  icon: Icon(
+                    _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  ),
+                ),
+              ),
+            ),
               const Text(
                 'Mínimo 8: mayúscula, minúscula, número y símbolo.',
                 style: TextStyle(fontSize: 11, color: muted),
@@ -535,6 +550,7 @@ class _LoginState extends State<Login> {
   final p = TextEditingController();
   bool busy = false;
   bool rememberSession = false;
+  bool _showPassword = false;
 
   Future<void> go() async {
     if (!validEmail(e.text) || p.text.isEmpty) {
