@@ -30,48 +30,6 @@ jobs:
           clean = re.sub(r'[^A-Za-z0-9+/=\r\n]', '', raw)
           p.write_text(clean, encoding='utf-8')
           PY
-      - name: Repair password visibility toggle
-        working-directory: flutter_app
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          p = Path('lib/main.dart')
-          s = p.read_text(encoding='utf-8')
-          candidate = s.index('class CandidateRegister extends StatefulWidget')
-          login = s.index('class Login extends StatefulWidget')
-          candidate_block = s[candidate:login]
-          bad = re.compile(r"\s*TextField\(\s*controller: p,\s*obscureText: !_showPassword,.*?\n\s*\),\n\s*const Text\(\n", re.S)
-          if bad.search(candidate_block):
-              candidate_block = bad.sub("\n              F(p, 'Contraseña', obscure: true),\n              const Text(\n", candidate_block, count=1)
-              s = s[:candidate] + candidate_block + s[login:]
-          login = s.index('class Login extends StatefulWidget')
-          login_end = s.index('class CandidateHome extends StatefulWidget')
-          login_block = s[login:login_end]
-          if 'bool _showPassword = false;' not in login_block:
-              login_block = login_block.replace('  bool rememberSession = false;\n', '  bool rememberSession = false;\n  bool _showPassword = false;\n', 1)
-          if "F(p, 'Contraseña', obscure: true)," in login_block:
-              login_block = login_block.replace(
-                  "            F(p, 'Contraseña', obscure: true),",
-                  """            TextField(
-              controller: p,
-              obscureText: !_showPassword,
-              enabled: !busy,
-              decoration: InputDecoration(
-                labelText: 'Contraseña',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  tooltip: _showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña',
-                  onPressed: busy ? null : () => setState(() => _showPassword = !_showPassword),
-                  icon: Icon(
-                    _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  ),
-                ),
-              ),
-            ),""", 1)
-          s = s[:login] + login_block + s[login_end:]
-          p.write_text(s, encoding='utf-8')
-          PY
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
