@@ -41,10 +41,7 @@ jobs:
           if marker not in text:
               raise SystemExit('Login class not found')
           prefix, login = text.split(marker, 1)
-          # Any password-toggle references before Login belong to another widget.
-          # Make those references non-stateful so they cannot break analyze.
           prefix = prefix.replace('_showPassword', 'false')
-          # Keep the actual visibility state inside Login.
           if 'bool _showPassword = false;' not in login:
               login = login.replace('  bool rememberSession = false;\n', '  bool rememberSession = false;\n  bool _showPassword = false;\n', 1)
           text = prefix + marker + login
@@ -67,3 +64,5 @@ jobs:
         with:
           name: INKLU-Android-actualizado
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+# Triggered again after the password-state repair was committed to main.
