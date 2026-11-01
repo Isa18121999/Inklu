@@ -1,0 +1,40 @@
+name: Repair main.dart after accidental truncation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-main-source.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.event_name == 'workflow_dispatch' || github.sha == github.event.after
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Restore main.dart from known-good commit
+        run: |
+          set -e
+          git checkout e29c37554a89ea4695b89921529922b435c3cba0 -- flutter_app/lib/main.dart
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('flutter_app/lib/main.dart')
+          text = p.read_text(encoding='utf-8')
+          text = text.replace("import 'dart:convert';\n", '', 1)
+          p.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit repaired source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add flutter_app/lib/main.dart
+          git diff --cached --quiet || git commit -m 'Restore main.dart and remove unused import'
+          git push origin HEAD:main
