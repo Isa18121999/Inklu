@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/build-recovered-apk.yml'
       - 'flutter_app/**'
+      - 'assets/logo.png'
   workflow_dispatch:
 
 jobs:
@@ -15,21 +16,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.35.7'
           channel: stable
-      - name: Sanitize embedded logo data
+
+      - name: Regenerate logo Base64 from official PNG
         working-directory: flutter_app
         run: |
+          set -e
+          test -f ../assets/logo.png
+          mkdir -p assets
+          cp ../assets/logo.png assets/logo.png
           python3 - <<'PY'
+          import base64
           from pathlib import Path
-          import re
-          p = Path('assets/logo.b64')
-          raw = p.read_text(encoding='utf-8')
-          clean = re.sub(r'[^A-Za-z0-9+/=\r\n]', '', raw)
-          p.write_text(clean, encoding='utf-8')
+          png = Path('assets/logo.png').read_bytes()
+          if not png.startswith(b'\x89PNG\r\n\x1a\n'):
+              raise SystemExit('assets/logo.png is not a valid PNG')
+          Path('assets/logo.b64').write_text(base64.b64encode(png).decode('ascii'), encoding='ascii')
+          print(f'Canonical logo Base64 generated: {len(png)} bytes')
           PY
+
       - name: Repair password toggle scope
         working-directory: flutter_app
         run: |
@@ -47,22 +56,25 @@ jobs:
           text = prefix + marker + login
           p.write_text(text, encoding='utf-8')
           PY
+
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
+
       - name: Analyze
         working-directory: flutter_app
         run: flutter analyze
+
       - name: Test
         working-directory: flutter_app
         run: flutter test
+
       - name: Build APK
         working-directory: flutter_app
         run: flutter build apk --release
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: INKLU-Android-actualizado
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
-
-# Triggered again after the password-state repair was committed to main.
