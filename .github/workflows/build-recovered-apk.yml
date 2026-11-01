@@ -54,6 +54,36 @@ jobs:
           print('Logo widget switched to official PNG asset')
           PY
 
+      - name: Ensure application status filter helper
+        working-directory: flutter_app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/main.dart')
+          text = p.read_text(encoding='utf-8')
+          if 'bool applicationStatusMatchesFilter(' in text:
+              print('Application status filter helper already present')
+              raise SystemExit(0)
+          marker = 'class CandidateHome extends StatefulWidget'
+          if marker not in text:
+              raise SystemExit('CandidateHome marker not found')
+          helper = '''bool applicationStatusMatchesFilter(String? rawStatus, String selectedFilter) {
+            final filter = normalizeApplicationStatus(selectedFilter).trim().toLowerCase();
+            final status = normalizeApplicationStatus(rawStatus).trim().toLowerCase();
+            if (filter.isEmpty || filter == 'todas') return true;
+            if (filter == 'retirada') return status.contains('retirada');
+            if (filter == 'postulado') return status == 'postulado' || status == 'postulada';
+            if (filter == 'cv visto') return status.contains('cv visto');
+            if (filter == 'en proceso') return status.contains('en proceso');
+            return status == filter;
+          }
+
+          '''
+          text = text.replace(marker, helper + marker, 1)
+          p.write_text(text, encoding='utf-8')
+          print('Application status filter helper inserted')
+          PY
+
       - name: Repair password toggle scope
         working-directory: flutter_app
         run: |
