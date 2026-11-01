@@ -30,6 +30,26 @@ jobs:
           clean = re.sub(r'[^A-Za-z0-9+/=\r\n]', '', raw)
           p.write_text(clean, encoding='utf-8')
           PY
+      - name: Repair password toggle scope
+        working-directory: flutter_app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/main.dart')
+          text = p.read_text(encoding='utf-8')
+          marker = 'class Login extends StatefulWidget'
+          if marker not in text:
+              raise SystemExit('Login class not found')
+          prefix, login = text.split(marker, 1)
+          # Any password-toggle references before Login belong to another widget.
+          # Make those references non-stateful so they cannot break analyze.
+          prefix = prefix.replace('_showPassword', 'false')
+          # Keep the actual visibility state inside Login.
+          if 'bool _showPassword = false;' not in login:
+              login = login.replace('  bool rememberSession = false;\n', '  bool rememberSession = false;\n  bool _showPassword = false;\n', 1)
+          text = prefix + marker + login
+          p.write_text(text, encoding='utf-8')
+          PY
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
