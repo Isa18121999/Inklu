@@ -22,6 +22,20 @@ jobs:
           flutter-version: '3.35.7'
           channel: stable
 
+      - name: Normalize bundled logo base64
+        working-directory: flutter_app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/main.dart')
+          s = p.read_text(encoding='utf-8')
+          old = "base64Decode(x.trim())"
+          new = "base64Decode(x.replaceAll(RegExp(r'\\s+'), ''))"
+          if old not in s:
+              raise SystemExit('Expected logo decoder expression was not found')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
