@@ -44,4 +44,5 @@ jobs:
           name: INKLU-Android-actualizado
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
 
+# Rebuild trigger: source currently uses the compatible SemanticsService.announce API.
 # Manual deployment trigger
