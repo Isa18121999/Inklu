@@ -19,13 +19,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -36,6 +29,13 @@ jobs:
       - name: Generate Android platform
         working-directory: flutter_app
         run: flutter create --platforms=android .
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
 
       - name: Install INKLU branding, launcher icon and internet permission
         working-directory: flutter_app
@@ -57,6 +57,7 @@ jobs:
         working-directory: flutter_app
         run: |
           set -o pipefail
+          : > analyze.txt
           flutter analyze --no-pub 2>&1 | tee analyze.txt
 
       - name: Run widget tests
@@ -69,7 +70,7 @@ jobs:
         with:
           name: INKLU-analyze-latest
           path: flutter_app/analyze.txt
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Verify Java version
         run: java -version
