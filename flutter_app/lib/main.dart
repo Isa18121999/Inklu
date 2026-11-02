@@ -52,7 +52,7 @@ String _skillLabel(dynamic raw) => _readableLabel(raw, _legacySkillLabels);
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
 void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
 void toast(String s) {
-  SemanticsService.sendAnnouncement(_nav.currentContext!, s, TextDirection.ltr);
+  SemanticsService.announce(s, TextDirection.ltr);
   final context = _nav.currentContext;
   if (context != null) {
     ScaffoldMessenger.of(context).showSnackBar(
