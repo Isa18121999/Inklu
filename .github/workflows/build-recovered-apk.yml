@@ -60,3 +60,5 @@ jobs:
         with:
           name: INKLU-Android-actualizado
           path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+# Manual deployment trigger
