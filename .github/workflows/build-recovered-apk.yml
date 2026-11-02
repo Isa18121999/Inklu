@@ -22,23 +22,6 @@ jobs:
           flutter-version: '3.35.7'
           channel: stable
 
-      - name: Prepare official INKLU logo
-        working-directory: flutter_app
-        run: |
-          set -e
-          test -f ../assets/logo.png
-          mkdir -p assets
-          cp ../assets/logo.png assets/logo.png
-          python3 - <<'PY'
-          import base64
-          from pathlib import Path
-          png = Path('assets/logo.png').read_bytes()
-          if not png.startswith(b'\x89PNG\r\n\x1a\n'):
-              raise SystemExit('assets/logo.png is not a valid PNG')
-          Path('assets/logo.b64').write_text(base64.b64encode(png).decode('ascii'), encoding='ascii')
-          print(f'Canonical logo Base64 generated: {len(png)} bytes')
-          PY
-
       - name: Install dependencies
         working-directory: flutter_app
         run: flutter pub get
