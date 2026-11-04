@@ -17,7 +17,7 @@ test('candidatos y usuarios sin identificador no pueden acceder al CV de una pos
 });
 
 test('la proyección de datos para empresas excluye identificadores y datos personales sensibles', () => {
-  const fields = COMPANY_APPLICATION_CANDIDATE_FIELDS.split(/\\s+/);
+  const fields = COMPANY_APPLICATION_CANDIDATE_FIELDS.split(/\s+/);
   for (const forbidden of [
     'conadisNumber',
     'email',
