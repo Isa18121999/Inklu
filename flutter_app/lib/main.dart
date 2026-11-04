@@ -649,7 +649,7 @@ Future<void> go() async {
         tooltip: _showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña',
         onPressed: busy ? null : () => setState(() => _showPassword = !_showPassword),
         icon: Icon(
-          _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          _showPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
         ),
       ),
     ),
