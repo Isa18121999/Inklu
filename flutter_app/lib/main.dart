@@ -2391,7 +2391,10 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           label: 'Formación complementaria',
           value: 'Cursos de edX y Universidad Carlos III de Madrid',
         ),
-        _ProfileValue(icon: Icons.notes_outlined, label: 'Resumen profesional', value: valueOf(profile['professionalSummary'])),
+        const Section('Resumen profesional'),
+        _ExpandableProfileSummary(
+          text: profile['professionalSummary']?.toString() ?? '',
+        ),
         _ProfileValue(icon: Icons.work_history_outlined, label: 'Años de experiencia', value: valueOf(profile['experience'])),
         _ProfileValue(icon: Icons.stars_outlined, label: 'Habilidades', value: valueOf(profile['skills'] is List ? (profile['skills'] as List).map(_skillLabel).where((skill) => skill.isNotEmpty).join(', ') : '')),
         const Section('Proyectos destacados'),
@@ -2548,6 +2551,78 @@ class _ProfileEntryCards extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ExpandableProfileSummary extends StatefulWidget {
+  final String text;
+
+  const _ExpandableProfileSummary({required this.text});
+
+  @override
+  State<_ExpandableProfileSummary> createState() => _ExpandableProfileSummaryState();
+}
+
+class _ExpandableProfileSummaryState extends State<_ExpandableProfileSummary> {
+  bool expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = widget.text.trim();
+    final isEmpty = summary.isEmpty;
+    final canExpand = summary.length > 180;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFAF9FF),
+        border: Border.all(color: line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isEmpty
+                ? 'Añade un resumen breve de tu experiencia, fortalezas y objetivos.'
+                : summary,
+            maxLines: !isEmpty && canExpand && !expanded ? 4 : null,
+            overflow: !isEmpty && canExpand && !expanded
+                ? TextOverflow.ellipsis
+                : TextOverflow.visible,
+            style: TextStyle(
+              color: isEmpty ? muted : ink,
+              height: 1.5,
+            ),
+          ),
+          if (!isEmpty && canExpand) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => expanded = !expanded),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                icon: Icon(
+                  expanded ? Icons.expand_less : Icons.expand_more,
+                  color: primary,
+                ),
+                label: Text(
+                  expanded ? 'Ver menos' : 'Ver más',
+                  style: const TextStyle(
+                    color: primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
