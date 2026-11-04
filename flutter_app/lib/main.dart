@@ -2370,7 +2370,27 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         _ProfileValue(icon: Icons.phone_outlined, label: 'Teléfono', value: phone),
         _ProfileValue(icon: Icons.cake_outlined, label: 'Fecha de nacimiento', value: valueOf(birth)),
         _ProfileValue(icon: Icons.location_on_outlined, label: 'Dirección', value: valueOf(address)),
-        _ProfileValue(icon: Icons.school_outlined, label: 'Carrera o formación', value: valueOf(profile['education'])),
+        const Section('Formación académica'),
+        _ProfileValue(
+          icon: Icons.school_outlined,
+          label: 'Carrera profesional',
+          value: 'Ingeniería de Tecnologías de Información y Sistemas',
+        ),
+        _ProfileValue(
+          icon: Icons.account_balance_outlined,
+          label: 'Universidad',
+          value: 'ESAN University',
+        ),
+        _ProfileValue(
+          icon: Icons.menu_book_outlined,
+          label: 'Situación académica',
+          value: '9.º ciclo',
+        ),
+        _ProfileValue(
+          icon: Icons.cast_for_education_outlined,
+          label: 'Formación complementaria',
+          value: 'Cursos de edX y Universidad Carlos III de Madrid',
+        ),
         _ProfileValue(icon: Icons.notes_outlined, label: 'Resumen profesional', value: valueOf(profile['professionalSummary'])),
         _ProfileValue(icon: Icons.work_history_outlined, label: 'Años de experiencia', value: valueOf(profile['experience'])),
         _ProfileValue(icon: Icons.stars_outlined, label: 'Habilidades', value: valueOf(profile['skills'] is List ? (profile['skills'] as List).map(_skillLabel).where((skill) => skill.isNotEmpty).join(', ') : '')),
