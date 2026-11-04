@@ -22,6 +22,7 @@ const { auditSecurityConfig } = require('./services/security-config');
 const { canCompanyUpdateApplicationStatus } = require('./services/application-workflow');
 const { COMPANY_APPLICATION_CANDIDATE_FIELDS, canCompanyAccessApplicationCv } = require('./services/application-access');
 const { canAccessApplicationConversation } = require('./services/conversation-access');
+const { hasValidCvSignature } = require('./services/file-validation');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -740,11 +741,17 @@ app.post('/api/profile/cv', auth, async (req, res) => {
     const { fileName, mimeType, data } = req.body || {};
     if (!fileName || !data) return res.status(400).json({ message: 'Selecciona un archivo CV.' });
     const extension = String(fileName).toLowerCase().split('.').pop();
-    if (!['pdf','doc','docx'].includes(extension)) return res.status(400).json({ message: 'El CV debe ser PDF, DOC o DOCX.' });
+    const cvMimeTypes = { pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
+    if (!Object.prototype.hasOwnProperty.call(cvMimeTypes, extension)) {
+      return res.status(400).json({ message: 'El CV debe ser PDF, DOC o DOCX.' });
+    }
     const buffer = Buffer.from(String(data), 'base64');
     if (!buffer.length) return res.status(400).json({ message: 'El archivo CV está vacío.' });
     if (buffer.length > MAX_CV_BYTES) return res.status(413).json({ message: 'El CV supera el tamaño máximo de 5 MB.' });
-    req.user.cv = { fileName: String(fileName).trim(), mimeType: String(mimeType || 'application/octet-stream'), data: buffer, size: buffer.length, uploadedAt: new Date() };
+    if (!hasValidCvSignature(extension, buffer)) {
+      return res.status(415).json({ message: 'El contenido del archivo no coincide con un CV PDF, DOC o DOCX válido.' });
+    }
+    req.user.cv = { fileName: String(fileName).trim().replace(/[\\r\\n"]/g, ''), mimeType: cvMimeTypes[extension], data: buffer, size: buffer.length, uploadedAt: new Date() };
     await req.user.save();
     res.json({ message: 'CV guardado correctamente.', fileName: req.user.cv.fileName, size: buffer.length });
   } catch (e) { console.error(e); res.status(500).json({ message: 'No se pudo guardar el CV.' }); }
