@@ -2412,7 +2412,18 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         ),
         _ProfileValue(icon: Icons.map_outlined, label: 'Ubicación preferida', value: valueOf(profile['location'])),
         _ProfileValue(icon: Icons.work_outline, label: 'Modalidad laboral', value: valueOf(profile['modality'])),
-        _ProfileValue(icon: Icons.verified_user_outlined, label: 'Número de CONADIS', value: valueOf(conadis)),
+        _ProfileValue(
+          icon: Icons.verified_user_outlined,
+          label: 'Acreditación CONADIS',
+          value: filled(conadis) ? 'Información registrada' : 'Pendiente de registrar',
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 4, bottom: 8),
+          child: Text(
+            'Tu número de CONADIS es un dato personal y no se muestra en esta vista del perfil.',
+            style: TextStyle(color: muted, fontSize: 12, height: 1.4),
+          ),
+        ),
         const SizedBox(height: 18),
         const Section('Mi currículum'),
         Container(
