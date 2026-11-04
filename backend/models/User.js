@@ -142,6 +142,7 @@ const UserSchema = new mongoose.Schema({
   emailVerificationRequestedAt: { type: Date, select: false },
   phone: { type: String, trim: true },
   passwordHash: { type: String, required: true },
+  tokenVersion: { type: Number, default: 0, min: 0 },
   passwordResetTokenHash: { type: String, select: false },
   passwordResetExpires: { type: Date, select: false },
   passwordResetRequestedAt: { type: Date, select: false },
