@@ -238,7 +238,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           ),
                         IconButton(
                           tooltip: selected ? 'Quitar selección de $title' : 'Seleccionar $title',
-                          semanticLabel: selected ? 'Quitar selección de la notificación $title' : 'Seleccionar la notificación $title',
                           visualDensity: VisualDensity.compact,
                           onPressed: id.isEmpty || deleting ? null : () => toggleSelection(id),
                           icon: Icon(
@@ -248,7 +247,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         ),
                         IconButton(
                           tooltip: 'Eliminar notificación $title',
-                          semanticLabel: 'Eliminar notificación $title',
                           visualDensity: VisualDensity.compact,
                           onPressed: id.isEmpty || deleting ? null : () => confirmDelete(id: id),
                           icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
