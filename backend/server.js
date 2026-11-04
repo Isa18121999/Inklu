@@ -129,15 +129,22 @@ const verifyEmailRateLimit = rateLimit({
 
 function normalizeConadis(value) { return String(value || '').replace(/\s+/g, '').trim(); }
 function validConadis(value) { return /^[A-Za-z0-9-]{5,30}$/.test(value); }
-function tokenFor(user) { return jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: '7d' }); }
+function tokenFor(user) { return jwt.sign({ id: user._id.toString(), role: user.role, tokenVersion: Number(user.tokenVersion || 0) }, JWT_SECRET, { expiresIn: '7d' }); }
 
 async function auth(req, res, next) {
   try {
     const header = req.headers.authorization || '';
     if (!header.startsWith('Bearer ')) return res.status(401).json({ message: 'Sesión requerida.' });
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
+    if (!payload?.id || !mongoose.isValidObjectId(payload.id)) {
+      return res.status(401).json({ message: 'Token inválido o expirado.' });
+    }
     const user = await User.findById(payload.id);
     if (!user) return res.status(401).json({ message: 'Usuario no encontrado.' });
+    // Los tokens anteriores a un restablecimiento de contraseña quedan revocados.
+    if (Number(payload.tokenVersion ?? 0) !== Number(user.tokenVersion || 0)) {
+      return res.status(401).json({ message: 'La sesión ya no es válida. Inicia sesión nuevamente.' });
+    }
     req.user = user;
     next();
   } catch (_) { return res.status(401).json({ message: 'Token inválido o expirado.' }); }
@@ -694,22 +701,33 @@ app.post('/api/auth/reset-password', passwordResetRateLimit, async (req, res) =>
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
       return res.status(400).json({ message: 'Usa al menos 8 caracteres e incluye mayúscula, minúscula, número y símbolo.' });
     }
-    const user = await User.findOne({ email }).select('+passwordResetTokenHash +passwordResetExpires');
-    if (!user || !user.passwordResetTokenHash || !user.passwordResetExpires || new Date(user.passwordResetExpires).getTime() <= Date.now()) {
-      return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita uno nuevo.' });
+    if (!/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({ message: 'El enlace de recuperación no es válido.' });
     }
     const incomingHash = crypto.createHash('sha256').update(token).digest('hex');
-    const expected = Buffer.from(user.passwordResetTokenHash, 'hex');
-    const incoming = Buffer.from(incomingHash, 'hex');
-    if (expected.length !== incoming.length || !crypto.timingSafeEqual(expected, incoming)) {
+    const passwordHash = await bcrypt.hash(password, 12);
+    // Operación atómica: el enlace solo puede consumirse una vez, incluso con solicitudes simultáneas.
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        email,
+        passwordResetTokenHash: incomingHash,
+        passwordResetExpires: { $gt: new Date() }
+      },
+      {
+        $set: { passwordHash },
+        $inc: { tokenVersion: 1 },
+        $unset: {
+          passwordResetTokenHash: 1,
+          passwordResetExpires: 1,
+          passwordResetRequestedAt: 1
+        }
+      },
+      { new: true, runValidators: true }
+    );
+    if (!updatedUser) {
       return res.status(400).json({ message: 'El enlace no es válido o ha caducado. Solicita uno nuevo.' });
     }
-    user.passwordHash = await bcrypt.hash(password, 12);
-    user.passwordResetTokenHash = undefined;
-    user.passwordResetExpires = undefined;
-    user.passwordResetRequestedAt = undefined;
-    await user.save();
-    return res.json({ message: 'Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión en INKLU.' });
+    return res.json({ message: 'Tu contraseña se actualizó correctamente. Inicia sesión nuevamente en INKLU.' });
   } catch (error) {
     console.error('Error restableciendo contraseña:', error);
     return res.status(500).json({ message: 'No se pudo restablecer la contraseña. Inténtalo más tarde.' });
