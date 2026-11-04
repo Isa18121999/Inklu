@@ -2416,30 +2416,75 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         const SizedBox(height: 18),
         const Section('Mi currículum'),
         Container(
-          padding: const EdgeInsets.all(15),
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
+            color: const Color(0xFFFAF9FF),
             border: Border.all(color: line),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.description_outlined, color: primary, size: 30),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hasCv ? valueOf(data['cvFileName']) : 'Todavía no has subido un CV',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasCv ? 'Documento guardado en tu perfil.' : 'Aceptamos PDF, DOC y DOCX. Máximo 5 MB.',
-                      style: const TextStyle(color: muted, fontSize: 12),
+                    child: const Icon(Icons.picture_as_pdf_outlined, color: primary, size: 27),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hasCv ? valueOf(data['cvFileName']) : 'Aún no tienes un CV cargado',
+                          style: const TextStyle(fontWeight: FontWeight.w800, height: 1.3),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              hasCv ? Icons.check_circle : Icons.info_outline,
+                              size: 15,
+                              color: hasCv ? const Color(0xFF25845A) : muted,
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                hasCv ? 'CV guardado en tu perfil' : 'PDF, DOC o DOCX · Máximo 5 MB',
+                                style: const TextStyle(color: muted, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Container(height: 1, color: line),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome_outlined, color: primary, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      hasCv
+                          ? 'Puedes actualizar tu documento o analizarlo para recibir sugerencias de ofertas.'
+                          : 'Sube tu CV para completar tu perfil y recibir sugerencias de ofertas.',
+                      style: const TextStyle(color: muted, fontSize: 12, height: 1.4),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
