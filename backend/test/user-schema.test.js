@@ -2,6 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const User = require('../models/User');
 
+test('las cuentas mantienen una versión de sesión para revocar tokens antiguos', () => {
+  const path = User.schema.path('tokenVersion');
+  assert.ok(path, 'tokenVersion debe existir');
+  assert.equal(path.options.default, 0);
+  assert.equal(path.instance, 'Number');
+});
+
 test('CV y foto quedan excluidos de las consultas normales de usuario', () => {
   const cvSchema = User.schema.path('cv').schema;
   const photoSchema = User.schema.path('profilePhoto').schema;
