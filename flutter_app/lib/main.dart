@@ -61,7 +61,30 @@ void toast(String s) {
   }
 }
 final GlobalKey<NavigatorState> _nav=GlobalKey<NavigatorState>();
-class InkluApp extends StatelessWidget{const InkluApp({super.key});@override Widget build(BuildContext c)=>MaterialApp(debugShowCheckedModeBanner:false,navigatorKey:_nav,title:'INKLU',theme:ThemeData(useMaterial3:true,scaffoldBackgroundColor:Colors.white,colorScheme:ColorScheme.fromSeed(seedColor:primary)),home:const AppStart());}
+class InkluApp extends StatelessWidget {
+  const InkluApp({super.key});
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    debugShowCheckedModeBanner: false,
+    navigatorKey: _nav,
+    title: 'INKLU',
+    theme: ThemeData(
+      useMaterial3: true,
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: ColorScheme.fromSeed(seedColor: primary),
+      visualDensity: VisualDensity.standard,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      ),
+    ),
+    // No se limita textScaler: se respeta el tamaño de texto configurado
+    // en Android para que TalkBack y usuarios con baja visión puedan ampliarlo.
+    home: const AppStart(),
+  );
+}
 const String _rememberKey='inklu_remember_session';
 const String _tokenKey='inklu_saved_token';
 const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
@@ -3942,20 +3965,182 @@ class Dash extends StatelessWidget {
       selectedIndex: tab,
       onDestinationSelected: onTab,
       destinations: [
-        NavigationDestination(icon: const Icon(Icons.home_outlined), label: labels[0]),
-        NavigationDestination(icon: const Icon(Icons.business_center_outlined), label: labels[1]),
-        NavigationDestination(icon: const Icon(Icons.people_outline), label: labels[2]),
-        NavigationDestination(icon: const Icon(Icons.person_outline), label: labels[3]),
+        NavigationDestination(
+          icon: const Icon(Icons.home_outlined),
+          selectedIcon: const Icon(Icons.home),
+          label: labels[0],
+          tooltip: 'Ir a ${labels[0]}',
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.business_center_outlined),
+          selectedIcon: const Icon(Icons.business_center),
+          label: labels[1],
+          tooltip: 'Ir a ${labels[1]}',
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.people_outline),
+          selectedIcon: const Icon(Icons.people),
+          label: labels[2],
+          tooltip: 'Ir a ${labels[2]}',
+        ),
+        NavigationDestination(
+          icon: const Icon(Icons.person_outline),
+          selectedIcon: const Icon(Icons.person),
+          label: labels[3],
+          tooltip: 'Ir a ${labels[3]}',
+        ),
       ],
     ),
   );
 }
 
-class F extends StatelessWidget{final TextEditingController c;final String label;final bool obscure,read;final TextInputType? type;final int max;final List<TextInputFormatter>? format;final VoidCallback? onTap;final Widget? suffix;const F(this.c,this.label,{super.key,this.obscure=false,this.read=false,this.type,this.max=1,this.format,this.onTap,this.suffix});@override Widget build(BuildContext cxt)=>Padding(padding:const EdgeInsets.only(bottom:11),child:TextField(controller:c,obscureText:obscure,readOnly:read,keyboardType:type,maxLines:obscure?1:max,inputFormatters:format,onTap:onTap,decoration:InputDecoration(labelText:label,suffixIcon:suffix)));}
-class Btn extends StatelessWidget{final String text;final VoidCallback? on;const Btn(this.text,this.on,{super.key});@override Widget build(BuildContext c)=>SizedBox(width:double.infinity,height:48,child:FilledButton(onPressed:on,style:FilledButton.styleFrom(backgroundColor:primary,shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(10))),child:Text(text,style:const TextStyle(fontWeight:FontWeight.w700))));}
-class Out extends StatelessWidget{final String text;final VoidCallback on;const Out(this.text,this.on,{super.key});@override Widget build(BuildContext c)=>SizedBox(width:double.infinity,height:46,child:OutlinedButton(onPressed:on,child:Text(text)));}
-class CardRole extends StatelessWidget{final String title,sub;final IconData icon;final VoidCallback on;const CardRole(this.title,this.sub,this.icon,this.on,{super.key});@override Widget build(BuildContext c)=>InkWell(onTap:on,borderRadius:BorderRadius.circular(14),child:Container(padding:const EdgeInsets.all(16),decoration:BoxDecoration(border:Border.all(color:line),borderRadius:BorderRadius.circular(14)),child:Row(children:[CircleAvatar(radius:28,backgroundColor:const Color(0xFFEDE9FE),child:Icon(icon,color:primary,size:30)),const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(title,style:const TextStyle(fontWeight:FontWeight.w800,fontSize:17)),Text(sub,style:const TextStyle(color:muted,fontSize:12))])),const Icon(Icons.arrow_forward_ios,color:primary,size:16)])));}
-class Dots extends StatelessWidget{final int i;const Dots(this.i,{super.key});@override Widget build(BuildContext c)=>Row(mainAxisAlignment:MainAxisAlignment.center,children:List.generate(3,(x)=>Container(width:x==i?8:6,height:x==i?8:6,margin:const EdgeInsets.all(3),decoration:BoxDecoration(shape:BoxShape.circle,color:x==i?primary:line))));}
+class F extends StatelessWidget {
+  final TextEditingController c;
+  final String label;
+  final bool obscure, read;
+  final TextInputType? type;
+  final int max;
+  final List<TextInputFormatter>? format;
+  final VoidCallback? onTap;
+  final Widget? suffix;
+
+  const F(this.c, this.label, {super.key, this.obscure = false, this.read = false,
+    this.type, this.max = 1, this.format, this.onTap, this.suffix});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 11),
+    child: TextField(
+      controller: c,
+      obscureText: obscure,
+      readOnly: read,
+      keyboardType: type,
+      maxLines: obscure ? 1 : max,
+      inputFormatters: format,
+      onTap: onTap,
+      textInputAction: max > 1 ? TextInputAction.newline : TextInputAction.next,
+      enableSuggestions: !obscure,
+      autocorrect: !obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        suffixIcon: suffix,
+      ),
+    ),
+  );
+}
+
+class Btn extends StatelessWidget {
+  final String text;
+  final VoidCallback? on;
+  const Btn(this.text, this.on, {super.key});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: Semantics(
+      button: true,
+      label: text,
+      enabled: on != null,
+      child: ExcludeSemantics(
+        child: FilledButton(
+          onPressed: on,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            backgroundColor: primary,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ),
+      ),
+    ),
+  );
+}
+
+class Out extends StatelessWidget {
+  final String text;
+  final VoidCallback on;
+  const Out(this.text, this.on, {super.key});
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: Semantics(
+      button: true,
+      label: text,
+      child: ExcludeSemantics(
+        child: OutlinedButton(
+          onPressed: on,
+          style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+          child: Text(text),
+        ),
+      ),
+    ),
+  );
+}
+
+class CardRole extends StatelessWidget {
+  final String title, sub;
+  final IconData icon;
+  final VoidCallback on;
+  const CardRole(this.title, this.sub, this.icon, this.on, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '$title. $sub',
+    hint: 'Abre el registro de este tipo de cuenta',
+    child: ExcludeSemantics(
+      child: InkWell(
+        onTap: on,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 80),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(color: line),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(children: [
+            CircleAvatar(radius: 28, backgroundColor: const Color(0xFFEDE9FE),
+              child: Icon(icon, color: primary, size: 30)),
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+                Text(sub, style: const TextStyle(color: muted, fontSize: 12)),
+              ],
+            )),
+            const Icon(Icons.arrow_forward_ios, color: primary, size: 16),
+          ]),
+        ),
+      ),
+    ),
+  );
+}
+
+class Dots extends StatelessWidget {
+  final int i;
+  const Dots(this.i, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Paso ${i + 1} de 3',
+    liveRegion: true,
+    child: ExcludeSemantics(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(3, (x) => Container(
+          width: x == i ? 8 : 6,
+          height: x == i ? 8 : 6,
+          margin: const EdgeInsets.all(3),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: x == i ? primary : line),
+        )),
+      ),
+    ),
+  );
+}
 class JobCard extends StatelessWidget {
   final dynamic j;
   final VoidCallback? onTap;
