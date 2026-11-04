@@ -18,7 +18,7 @@ const { PDFParse } = require('pdf-parse');
 const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser, humanizeSkill } = require('./services/recommendations');
 const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
-const { auditSecurityConfig } = require('./services/security-config');
+const { auditSecurityConfig, getAllowedFrontendOrigins } = require('./services/security-config');
 const { canCompanyUpdateApplicationStatus } = require('./services/application-workflow');
 const { COMPANY_APPLICATION_CANDIDATE_FIELDS, canCompanyAccessApplicationCv } = require('./services/application-access');
 const { canAccessApplicationConversation } = require('./services/conversation-access');
@@ -72,12 +72,7 @@ async function notifyCandidatesAboutMatchingJob(job, companyName) {
 }
 
 
-const allowedFrontendOrigins = String(
-  process.env.FRONTEND_ORIGIN || 'https://isa18121999.github.io'
-)
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(origin => origin && origin !== '*');
+const allowedFrontendOrigins = getAllowedFrontendOrigins(process.env);
 
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
