@@ -237,7 +237,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             ),
                           ),
                         IconButton(
-                          tooltip: 'Eliminar',
+                          tooltip: selected ? 'Quitar selección de $title' : 'Seleccionar $title',
+                          semanticLabel: selected ? 'Quitar selección de la notificación $title' : 'Seleccionar la notificación $title',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: id.isEmpty || deleting ? null : () => toggleSelection(id),
+                          icon: Icon(
+                            selected ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
+                            color: _notificationsPrimary,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Eliminar notificación $title',
+                          semanticLabel: 'Eliminar notificación $title',
                           visualDensity: VisualDensity.compact,
                           onPressed: id.isEmpty || deleting ? null : () => confirmDelete(id: id),
                           icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
