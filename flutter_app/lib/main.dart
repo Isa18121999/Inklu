@@ -2394,8 +2394,19 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         _ProfileValue(icon: Icons.notes_outlined, label: 'Resumen profesional', value: valueOf(profile['professionalSummary'])),
         _ProfileValue(icon: Icons.work_history_outlined, label: 'Años de experiencia', value: valueOf(profile['experience'])),
         _ProfileValue(icon: Icons.stars_outlined, label: 'Habilidades', value: valueOf(profile['skills'] is List ? (profile['skills'] as List).map(_skillLabel).where((skill) => skill.isNotEmpty).join(', ') : '')),
-        _ProfileValue(icon: Icons.folder_open_outlined, label: 'Proyectos', value: valueOf(profile['projects'] is List ? (profile['projects'] as List).join(' · ') : '')),
-        _ProfileValue(icon: Icons.workspace_premium_outlined, label: 'Certificaciones y cursos', value: valueOf(profile['certifications'] is List ? (profile['certifications'] as List).join(' · ') : '')),
+        const Section('Proyectos destacados'),
+        _ProfileEntryCards(
+          icon: Icons.folder_open_outlined,
+          items: _profileEntryList(profile['projects']),
+          emptyMessage: 'Añade tus proyectos, tu participación y los resultados obtenidos.',
+        ),
+        const SizedBox(height: 14),
+        const Section('Certificaciones y cursos'),
+        _ProfileEntryCards(
+          icon: Icons.workspace_premium_outlined,
+          items: _profileEntryList(profile['certifications']),
+          emptyMessage: 'Añade cursos y certificaciones relevantes para tu perfil.',
+        ),
         _ProfileValue(icon: Icons.map_outlined, label: 'Ubicación preferida', value: valueOf(profile['location'])),
         _ProfileValue(icon: Icons.work_outline, label: 'Modalidad laboral', value: valueOf(profile['modality'])),
         _ProfileValue(icon: Icons.verified_user_outlined, label: 'Número de CONADIS', value: valueOf(conadis)),
@@ -2470,6 +2481,72 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         ),
         const SizedBox(height: 8),
         DeleteAccountButton(token: widget.token),
+      ],
+    );
+  }
+}
+
+List<String> _profileEntryList(dynamic raw) {
+  final values = raw is List ? raw : (raw == null ? <dynamic>[] : [raw]);
+  return values
+      .expand((value) => value.toString().split('\\n'))
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toList();
+}
+
+class _ProfileEntryCards extends StatelessWidget {
+  final IconData icon;
+  final List<String> items;
+  final String emptyMessage;
+
+  const _ProfileEntryCards({
+    required this.icon,
+    required this.items,
+    required this.emptyMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAF9FF),
+          border: Border.all(color: line),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(emptyMessage, style: const TextStyle(color: muted, height: 1.4)),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final item in items)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: line),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(icon, color: primary, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    item,
+                    style: const TextStyle(fontWeight: FontWeight.w600, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
