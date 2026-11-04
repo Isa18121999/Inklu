@@ -20,6 +20,7 @@ const { normalizeText, keywordCounts, recommendJobsForUser, humanizeSkill } = re
 const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
 const { auditSecurityConfig } = require('./services/security-config');
 const { canCompanyUpdateApplicationStatus } = require('./services/application-workflow');
+const { COMPANY_APPLICATION_CANDIDATE_FIELDS, canCompanyAccessApplicationCv } = require('./services/application-access');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -1286,7 +1287,7 @@ app.get('/api/applications', auth, async (req, res) => {
     .populate(
       'candidateId',
       req.user.role === 'company'
-        ? 'name profile.education profile.professionalSummary profile.experience profile.skills profile.projects profile.certifications cvAnalysis.skills cv.fileName cv.size'
+        ? COMPANY_APPLICATION_CANDIDATE_FIELDS
         : 'name'
     )
     .populate({ path: 'jobId', populate: { path: 'companyId', select: 'name companyProfile' } })
@@ -1326,6 +1327,9 @@ app.get('/api/applications/:id/cv', auth, async (req, res) => {
     if (req.user.role !== 'company') {
       return res.status(403).json({ message: 'Solo la empresa responsable de la oferta puede descargar el CV de esta postulación.' });
     }
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(404).json({ message: 'Postulación no encontrada.' });
+    }
 
     const application = await Application.findById(req.params.id)
       .populate('jobId', 'companyId title');
@@ -1333,8 +1337,12 @@ app.get('/api/applications/:id/cv', auth, async (req, res) => {
       return res.status(404).json({ message: 'Postulación no encontrada.' });
     }
 
-    if (String(application.jobId.companyId) !== String(req.user._id)) {
-      // Do not disclose whether another company's application exists.
+    if (!canCompanyAccessApplicationCv(
+      req.user.role,
+      req.user._id,
+      application.jobId.companyId
+    )) {
+      // No revelar si existe una postulación perteneciente a otra empresa.
       return res.status(404).json({ message: 'Postulación no encontrada.' });
     }
 
