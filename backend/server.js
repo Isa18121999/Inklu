@@ -21,6 +21,7 @@ const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
 const { auditSecurityConfig } = require('./services/security-config');
 const { canCompanyUpdateApplicationStatus } = require('./services/application-workflow');
 const { COMPANY_APPLICATION_CANDIDATE_FIELDS, canCompanyAccessApplicationCv } = require('./services/application-access');
+const { canAccessApplicationConversation } = require('./services/conversation-access');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -373,15 +374,23 @@ async function analyzeCandidateCv(user) {
 
 
 async function findChatApplication(req, res) {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    res.status(404).json({ message: 'Postulación no encontrada.' });
+    return null;
+  }
   const application = await Application.findById(req.params.id).populate('jobId');
   if (!application || !application.jobId) {
     res.status(404).json({ message: 'Postulación no encontrada.' });
     return null;
   }
-  const isCandidate = String(application.candidateId) === String(req.user._id);
-  const isCompany = String(application.jobId.companyId) === String(req.user._id);
-  if (!isCandidate && !isCompany) {
-    res.status(403).json({ message: 'No tienes acceso a esta conversación.' });
+  const hasAccess = canAccessApplicationConversation(
+    req.user.role,
+    req.user._id,
+    application.candidateId,
+    application.jobId.companyId
+  );
+  if (!hasAccess) {
+    res.status(404).json({ message: 'Postulación no encontrada.' });
     return null;
   }
   if (!chatIsEnabled(application.status)) {
