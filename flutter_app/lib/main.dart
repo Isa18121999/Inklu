@@ -8273,7 +8273,6 @@ class _LoginState extends State<Login> {
   final p = TextEditingController();
   bool busy = false;
   bool rememberSession = false;
-  bool _showPassword = false;
 Future<void> go() async {
     if (!validEmail(e.text) || p.text.isEmpty) {
       toast('Ingresa correo y contraseña.');
