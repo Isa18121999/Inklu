@@ -1,0 +1,9 @@
+name: Build INKLU APK now
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'APK build workflow requires Flutter project restoration.'
