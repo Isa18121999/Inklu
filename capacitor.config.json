@@ -1,0 +1,8 @@
+{
+  "appId": "com.inklu.app",
+  "appName": "INKLU",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

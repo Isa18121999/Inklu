@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#4f46e5">
+<title>Verificar correo | INKLU</title>
+<style>
+:root{--purple:#4f46e5;--ink:#19162d;--muted:#64748b;--line:#e5e0fa;--bg:#f8f7ff}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;display:grid;place-items:center;background:var(--bg);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}main{width:min(100%,470px);padding:28px;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 18px 55px #2d235110}.brand{display:flex;align-items:center;gap:10px;margin-bottom:24px;font-size:20px;font-weight:900}.mark{width:48px;height:48px;border-radius:15px;background:#ede9ff;display:grid;place-items:center;color:var(--purple);font-size:27px}h1{font-size:26px;line-height:1.2;margin:0 0 10px}p{color:var(--muted);margin:0 0 20px}button{width:100%;border:0;border-radius:11px;background:var(--purple);color:#fff;font:inherit;font-weight:800;padding:14px;margin-top:20px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.message{margin-top:18px;padding:13px;border-radius:11px;background:#f1f5f9;color:#334155;overflow-wrap:anywhere}.message.error{background:#fff1f2;color:#9f1239}.foot{margin-top:20px;font-size:12px;text-align:center}a{color:var(--purple);font-weight:700}
+</style></head>
+<body><main>
+<div class="brand"><div class="mark" aria-hidden="true">💜</div><span>INKLU</span></div>
+<h1>Verifica tu correo</h1>
+<p>Estamos comprobando el enlace de verificación de tu cuenta.</p>
+<div id="message" class="message" role="status" aria-live="polite">Validando enlace...</div>
+<button id="retry" type="button" hidden>Intentar nuevamente</button>
+<div class="foot"><a href="https://isa18121999.github.io/Inklu/">Volver a INKLU</a></div>
+<script>
+const API='https://inklu-api.onrender.com/api';
+const params=new URLSearchParams(location.search);
+const token=params.get('token')||'';
+const email=params.get('email')||'';
+const message=document.getElementById('message');
+const retry=document.getElementById('retry');
+let verifying=false;
+function showMessage(text,isError=false){message.textContent=text;message.className='message'+(isError?' error':'')}
+async function verify(){
+  if(verifying)return;
+  if(!token||!email){showMessage('Este enlace no es válido. Abre INKLU y solicita un nuevo enlace de verificación.',true);retry.hidden=false;return}
+  verifying=true;retry.hidden=true;retry.disabled=true;retry.textContent='Verificando...';showMessage('Validando enlace...');
+  try{
+    const response=await fetch(API+'/auth/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,token})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.message||'No se pudo verificar el correo.');
+    showMessage(data.message||'Correo verificado correctamente. Ya puedes volver a INKLU.');
+  }catch(error){
+    showMessage(error.message||'No se pudo conectar al servidor. Inténtalo de nuevo.',true);
+    retry.hidden=false;
+    retry.textContent='Intentar nuevamente';
+  }finally{
+    verifying=false;retry.disabled=false;
+  }
+}
+retry.addEventListener('click',verify);
+verify();
+</script></main></body></html>

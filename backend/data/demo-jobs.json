@@ -1,0 +1,577 @@
+{
+  "schemaVersion": 1,
+  "notice": "DATOS FICTICIOS PARA PRUEBAS. No son vacantes reales ni deben usarse para reclutamiento.",
+  "offers": [
+    {
+      "slug": "backend-junior-nebulatech",
+      "title": "Desarrollador/a Backend Junior",
+      "category": "Tecnología",
+      "description": "Apoyar en el diseño, desarrollo y mantenimiento de servicios backend para productos digitales. Participar en revisiones de código, documentación técnica y pruebas de API.",
+      "modality": "Remoto",
+      "location": "Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 2,500 – 3,200",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Python",
+        "Node.js",
+        "APIs REST",
+        "SQL",
+        "Git"
+      ],
+      "preferredSkills": [
+        "Docker",
+        "MongoDB"
+      ],
+      "accessibilityDetails": "Trabajo remoto en Perú. Reuniones virtuales con materiales compartidos y horario coordinable.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Proceso de selección virtual; ajustes razonables coordinables."
+      }
+    },
+    {
+      "slug": "qa-aurora",
+      "title": "Analista QA de Software",
+      "category": "Tecnología",
+      "description": "Ejecutar pruebas funcionales y de regresión, documentar incidencias y colaborar con desarrollo para mejorar la calidad del producto.",
+      "modality": "Híbrido",
+      "location": "San Isidro, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 2,300 – 3,000",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Pruebas de software",
+        "Postman",
+        "SQL",
+        "Documentación"
+      ],
+      "preferredSkills": [
+        "Selenium",
+        "Jira"
+      ],
+      "accessibilityDetails": "Oficina con ascensor y servicios higiénicos accesibles. Modalidad híbrida coordinada.",
+      "accessibility": {
+        "hybrid": true,
+        "physicalAccess": true,
+        "elevator": true,
+        "accessibleRestroom": true,
+        "flexibleSchedule": true,
+        "notes": "Confirmar necesidades de adaptación antes de la entrevista presencial."
+      }
+    },
+    {
+      "slug": "analista-datos-datanova",
+      "title": "Asistente de Análisis de Datos",
+      "category": "Tecnología",
+      "description": "Preparar, limpiar y analizar conjuntos de datos; elaborar reportes y visualizaciones para apoyar decisiones de negocio.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Prácticas",
+      "salary": "S/ 1,500 – 2,000",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Excel",
+        "Python",
+        "SQL",
+        "Análisis de datos"
+      ],
+      "preferredSkills": [
+        "Power BI",
+        "Pandas"
+      ],
+      "accessibilityDetails": "Prácticas remotas con acompañamiento de mentoría y herramientas colaborativas.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Se pueden coordinar formatos accesibles para documentación y reuniones."
+      }
+    },
+    {
+      "slug": "ux-pixel",
+      "title": "Diseñador/a UX/UI Junior",
+      "category": "Diseño",
+      "description": "Crear wireframes, prototipos y flujos de usuario. Colaborar en pruebas de usabilidad y documentar componentes del sistema de diseño.",
+      "modality": "Híbrido",
+      "location": "Miraflores, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 2,200 – 3,000",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Figma",
+        "Diseño UX/UI",
+        "Prototipado",
+        "Accesibilidad digital"
+      ],
+      "preferredSkills": [
+        "Design Systems",
+        "HTML/CSS"
+      ],
+      "accessibilityDetails": "Equipo híbrido. La oficina cuenta con ascensor; se coordinan ajustes del espacio de trabajo.",
+      "accessibility": {
+        "hybrid": true,
+        "physicalAccess": true,
+        "elevator": true,
+        "workplaceAdaptation": true,
+        "flexibleSchedule": true,
+        "notes": "Se reciben solicitudes de ajustes razonables durante el proceso."
+      }
+    },
+    {
+      "slug": "grafico-creativa",
+      "title": "Asistente de Diseño Gráfico",
+      "category": "Diseño",
+      "description": "Diseñar piezas para redes sociales, adaptar materiales de campañas y mantener consistencia visual de marca.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Medio tiempo",
+      "salary": "S/ 1,300 – 1,800",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Canva",
+        "Diseño gráfico",
+        "Comunicación visual"
+      ],
+      "preferredSkills": [
+        "Illustrator",
+        "Photoshop"
+      ],
+      "accessibilityDetails": "Trabajo remoto de medio tiempo con entregables planificados semanalmente.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Entrevistas virtuales y pruebas prácticas con tiempo razonable."
+      }
+    },
+    {
+      "slug": "marketing-social-conecta",
+      "title": "Asistente de Marketing Digital",
+      "category": "Marketing",
+      "description": "Apoyar en la planificación de contenidos, seguimiento de campañas y elaboración de reportes de redes sociales.",
+      "modality": "Híbrido",
+      "location": "Jesús María, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 2,000 – 2,700",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Marketing digital",
+        "Redes sociales",
+        "Excel",
+        "Redacción"
+      ],
+      "preferredSkills": [
+        "Meta Ads",
+        "Google Analytics"
+      ],
+      "accessibilityDetails": "Modalidad híbrida con horario flexible y reuniones virtuales disponibles.",
+      "accessibility": {
+        "hybrid": true,
+        "flexibleSchedule": true,
+        "physicalAccess": true,
+        "accessibleRestroom": true,
+        "notes": "Acceso físico y ajustes específicos sujetos a coordinación previa."
+      }
+    },
+    {
+      "slug": "contable-altavia",
+      "title": "Auxiliar de Contabilidad",
+      "category": "Finanzas",
+      "description": "Registrar comprobantes, apoyar conciliaciones bancarias y organizar documentación contable bajo supervisión.",
+      "modality": "Presencial",
+      "location": "Lince, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,800 – 2,300",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Contabilidad",
+        "Excel",
+        "Conciliación bancaria"
+      ],
+      "preferredSkills": [
+        "Sistemas contables",
+        "SUNAT"
+      ],
+      "accessibilityDetails": "Puesto presencial en oficina con ascensor, estacionamiento accesible y baño accesible.",
+      "accessibility": {
+        "physicalAccess": true,
+        "elevator": true,
+        "accessibleRestroom": true,
+        "accessibleParking": true,
+        "workplaceAdaptation": true,
+        "notes": "Coordinar visita de accesibilidad antes de aceptar la oferta."
+      }
+    },
+    {
+      "slug": "finanzas-numeria",
+      "title": "Practicante de Finanzas",
+      "category": "Finanzas",
+      "description": "Apoyar en presupuestos, control de gastos, análisis de variaciones y actualización de reportes financieros.",
+      "modality": "Híbrido",
+      "location": "Surco, Lima, Perú",
+      "contractType": "Prácticas",
+      "salary": "S/ 1,400 – 1,900",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Excel",
+        "Finanzas",
+        "Análisis numérico"
+      ],
+      "preferredSkills": [
+        "Power BI",
+        "Modelamiento financiero"
+      ],
+      "accessibilityDetails": "Esquema híbrido y posibilidad de organizar las tareas de concentración en remoto.",
+      "accessibility": {
+        "hybrid": true,
+        "flexibleSchedule": true,
+        "physicalAccess": true,
+        "elevator": true,
+        "notes": "Ajustes de horario y herramientas de apoyo coordinables."
+      }
+    },
+    {
+      "slug": "rrhh-talento",
+      "title": "Asistente de Recursos Humanos",
+      "category": "Administración",
+      "description": "Apoyar en publicación de vacantes, coordinación de entrevistas, actualización de legajos y actividades de integración.",
+      "modality": "Híbrido",
+      "location": "Magdalena del Mar, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,900 – 2,500",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Recursos humanos",
+        "Excel",
+        "Comunicación",
+        "Organización"
+      ],
+      "preferredSkills": [
+        "ATS",
+        "Reclutamiento"
+      ],
+      "accessibilityDetails": "Entrevistas virtuales disponibles y oficina con ascensor y baño accesible.",
+      "accessibility": {
+        "hybrid": true,
+        "physicalAccess": true,
+        "elevator": true,
+        "accessibleRestroom": true,
+        "flexibleSchedule": true,
+        "notes": "Se pueden solicitar ajustes razonables en entrevistas y tareas."
+      }
+    },
+    {
+      "slug": "admin-gestion",
+      "title": "Asistente Administrativo/a",
+      "category": "Administración",
+      "description": "Gestionar documentos, coordinar reuniones, atender solicitudes internas y mantener actualizados registros administrativos.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,700 – 2,200",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Excel",
+        "Microsoft Office",
+        "Gestión documental",
+        "Comunicación"
+      ],
+      "preferredSkills": [
+        "Google Workspace",
+        "ERP"
+      ],
+      "accessibilityDetails": "Puesto remoto con procedimientos documentados y horario flexible.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Documentos digitales compatibles con tecnologías de asistencia."
+      }
+    },
+    {
+      "slug": "atencion-cliente-vincula",
+      "title": "Asesor/a de Atención al Cliente",
+      "category": "Atención al cliente",
+      "description": "Atender consultas por chat y correo, registrar casos y dar seguimiento hasta su resolución con enfoque empático.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,600 – 2,100",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Atención al cliente",
+        "Comunicación escrita",
+        "Empatía"
+      ],
+      "preferredSkills": [
+        "CRM",
+        "Resolución de conflictos"
+      ],
+      "accessibilityDetails": "Atención digital desde casa; capacitación virtual y pausas coordinables.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "No requiere atención telefónica obligatoria; canal principal chat y correo."
+      }
+    },
+    {
+      "slug": "soporte-tecnico-nexared",
+      "title": "Agente de Soporte Técnico Nivel 1",
+      "category": "Tecnología",
+      "description": "Registrar y resolver incidencias básicas de usuarios, documentar soluciones y escalar problemas técnicos.",
+      "modality": "Híbrido",
+      "location": "Cercado de Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,900 – 2,500",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Soporte técnico",
+        "Windows",
+        "Redes básicas",
+        "Atención al usuario"
+      ],
+      "preferredSkills": [
+        "Linux",
+        "Service Desk"
+      ],
+      "accessibilityDetails": "Modelo híbrido. La sede declara contar con ascensor y acceso sin escalones en ingreso principal.",
+      "accessibility": {
+        "hybrid": true,
+        "physicalAccess": true,
+        "elevator": true,
+        "flexibleSchedule": true,
+        "notes": "Verificar medidas y rutas accesibles en visita previa."
+      }
+    },
+    {
+      "slug": "docente-aula-futura",
+      "title": "Tutor/a Virtual de Ofimática",
+      "category": "Educación",
+      "description": "Dictar sesiones virtuales de herramientas ofimáticas, preparar ejercicios y acompañar el avance de estudiantes.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Medio tiempo",
+      "salary": "S/ 1,500 – 2,100",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Educación",
+        "Microsoft Office",
+        "Comunicación",
+        "Planificación"
+      ],
+      "preferredSkills": [
+        "Diseño instruccional",
+        "Google Classroom"
+      ],
+      "accessibilityDetails": "Clases completamente virtuales con materiales descargables y subtítulos cuando estén disponibles.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Se pueden adaptar materiales y formatos de evaluación."
+      }
+    },
+    {
+      "slug": "salud-gestion-vital",
+      "title": "Asistente de Gestión de Citas",
+      "category": "Salud",
+      "description": "Coordinar citas, actualizar registros y orientar a usuarios sobre horarios y procedimientos administrativos.",
+      "modality": "Presencial",
+      "location": "Pueblo Libre, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,700 – 2,200",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Atención al cliente",
+        "Organización",
+        "Ofimática"
+      ],
+      "preferredSkills": [
+        "Sistemas de citas",
+        "Experiencia en salud"
+      ],
+      "accessibilityDetails": "Área administrativa con ascensor, baño accesible y circulación amplia reportada.",
+      "accessibility": {
+        "physicalAccess": true,
+        "elevator": true,
+        "accessibleRestroom": true,
+        "workplaceAdaptation": true,
+        "notes": "Confirmar accesibilidad de rutas internas y puesto concreto."
+      }
+    },
+    {
+      "slug": "logistica-ruta",
+      "title": "Auxiliar de Control de Inventarios",
+      "category": "Logística",
+      "description": "Actualizar inventarios en sistema, revisar diferencias de stock y preparar reportes de movimientos.",
+      "modality": "Presencial",
+      "location": "Callao, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,800 – 2,300",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Excel",
+        "Inventarios",
+        "Atención al detalle"
+      ],
+      "preferredSkills": [
+        "ERP",
+        "Logística"
+      ],
+      "accessibilityDetails": "Puesto administrativo en oficina; no contempla tareas físicas de carga. Acceso y baño accesibles declarados.",
+      "accessibility": {
+        "physicalAccess": true,
+        "elevator": true,
+        "accessibleRestroom": true,
+        "accessibleParking": true,
+        "notes": "Las funciones son de control administrativo, no de manipulación de carga."
+      }
+    },
+    {
+      "slug": "ventas-comercial-brujula",
+      "title": "Asistente Comercial",
+      "category": "Atención al cliente",
+      "description": "Preparar cotizaciones, actualizar base de clientes, coordinar reuniones y apoyar el seguimiento comercial.",
+      "modality": "Híbrido",
+      "location": "San Borja, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 1,900 – 2,600",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Ventas",
+        "Excel",
+        "Comunicación",
+        "Organización"
+      ],
+      "preferredSkills": [
+        "CRM",
+        "Negociación"
+      ],
+      "accessibilityDetails": "Trabajo híbrido con posibilidad de realizar reuniones con clientes por videollamada.",
+      "accessibility": {
+        "hybrid": true,
+        "flexibleSchedule": true,
+        "physicalAccess": true,
+        "elevator": true,
+        "notes": "Los desplazamientos externos no son requisito esencial del puesto."
+      }
+    },
+    {
+      "slug": "comunicaciones-civica",
+      "title": "Asistente de Comunicación Institucional",
+      "category": "Marketing",
+      "description": "Redactar comunicados, apoyar campañas internas y adaptar contenidos para distintos canales digitales.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Temporal",
+      "salary": "S/ 1,800 – 2,400",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Redacción",
+        "Comunicación",
+        "Marketing digital"
+      ],
+      "preferredSkills": [
+        "Accesibilidad de contenidos",
+        "Edición básica"
+      ],
+      "accessibilityDetails": "Trabajo remoto temporal con entregables asincrónicos y reuniones virtuales.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Se aceptan formatos alternativos para pruebas y entrevistas."
+      }
+    },
+    {
+      "slug": "practicante-robotica-robofuture",
+      "title": "Practicante de Robótica e IA",
+      "category": "Tecnología",
+      "description": "Apoyar en prototipos de robótica, procesamiento de imágenes y pruebas de modelos de inteligencia artificial.",
+      "modality": "Híbrido",
+      "location": "La Molina, Lima, Perú",
+      "contractType": "Prácticas",
+      "salary": "S/ 1,400 – 1,900",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Python",
+        "Fundamentos de IA",
+        "Programación"
+      ],
+      "preferredSkills": [
+        "OpenCV",
+        "Arduino",
+        "ROS"
+      ],
+      "accessibilityDetails": "Actividades de análisis y programación híbridas. Se coordinan adaptaciones para sesiones de laboratorio.",
+      "accessibility": {
+        "hybrid": true,
+        "flexibleSchedule": true,
+        "workplaceAdaptation": true,
+        "assistiveTechnology": true,
+        "notes": "Las tareas pueden distribuirse entre trabajo remoto y laboratorio accesible previa coordinación."
+      }
+    },
+    {
+      "slug": "community-educacion-digital",
+      "title": "Coordinador/a de Comunidad Digital",
+      "category": "Educación",
+      "description": "Moderar comunidades de aprendizaje, responder consultas y coordinar actividades virtuales con facilitadores.",
+      "modality": "Remoto",
+      "location": "Perú",
+      "contractType": "Medio tiempo",
+      "salary": "S/ 1,500 – 2,000",
+      "experienceRequired": 0,
+      "requiredSkills": [
+        "Comunicación",
+        "Atención al cliente",
+        "Organización"
+      ],
+      "preferredSkills": [
+        "Community management",
+        "Educación virtual"
+      ],
+      "accessibilityDetails": "Puesto remoto con turnos planificados y herramientas colaborativas accesibles.",
+      "accessibility": {
+        "remote": true,
+        "flexibleSchedule": true,
+        "assistiveTechnology": true,
+        "notes": "Canales escritos disponibles y planificación anticipada de turnos."
+      }
+    },
+    {
+      "slug": "analista-procesos-industria",
+      "title": "Analista Junior de Procesos",
+      "category": "Administración",
+      "description": "Documentar procesos, levantar indicadores y proponer mejoras operativas en coordinación con distintas áreas.",
+      "modality": "Híbrido",
+      "location": "Ate, Lima, Perú",
+      "contractType": "Tiempo completo",
+      "salary": "S/ 2,100 – 2,800",
+      "experienceRequired": 1,
+      "requiredSkills": [
+        "Excel",
+        "Análisis de procesos",
+        "Documentación",
+        "Comunicación"
+      ],
+      "preferredSkills": [
+        "Power BI",
+        "Lean"
+      ],
+      "accessibilityDetails": "Funciones centradas en análisis y documentación. Reuniones de planta solo cuando sean accesibles y necesarias.",
+      "accessibility": {
+        "hybrid": true,
+        "flexibleSchedule": true,
+        "workplaceAdaptation": true,
+        "physicalAccess": true,
+        "notes": "No se exige realizar tareas físicas de planta; accesibilidad de recorridos a validar."
+      }
+    }
+  ],
+  "publisherEmail": "18100102@ue.edu.pe",
+  "publisherNote": "Las 20 ofertas se publican desde la cuenta empresarial existente 18100102@ue.edu.pe. No crear cuentas ficticias."
+}

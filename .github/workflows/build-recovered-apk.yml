@@ -1,9 +1,48 @@
-name: Build recovered APK
+name: Build INKLU APK
+
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'flutter_app/**'
+      - 'assets/logo.png'
+      - '.github/workflows/build-recovered-apk.yml'
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo 'Recovered APK build placeholder.'
+        with:
+          ref: main
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: stable
+
+      - name: Install dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: flutter_app
+        run: flutter analyze
+
+      - name: Test
+        working-directory: flutter_app
+        run: flutter test
+
+      - name: Build APK
+        working-directory: flutter_app
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: INKLU-Android-actualizado
+          path: flutter_app/build/app/outputs/flutter-apk/app-release.apk
+
+# Rebuild trigger: source currently uses the compatible SemanticsService.announce API.
+# Manual deployment trigger

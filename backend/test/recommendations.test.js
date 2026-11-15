@@ -1,0 +1,245 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { recommendJobsForUser, normalizeText, humanizeSkill } = require('../services/recommendations');
+
+function makeJob(values) {
+  return {
+    active: true,
+    modality: 'Remoto',
+    location: 'Lima, Perú',
+    requiredSkills: [],
+    experienceRequired: 0,
+    ...values,
+    toObject() {
+      const { toObject, ...record } = this;
+      return record;
+    }
+  };
+}
+
+function candidate(overrides = {}) {
+  return {
+    role: 'candidate',
+    profile: {
+      education: 'Ingeniería de Sistemas',
+      experience: 1,
+      skills: ['Python', 'SQL'],
+      location: 'Lima Metropolitana',
+      modality: 'Remoto'
+    },
+    cvAnalysis: {
+      skills: ['Python', 'SQL y bases de datos'],
+      keywords: [
+        { term: 'python', count: 5 },
+        { term: 'software', count: 4 },
+        { term: 'sql', count: 3 },
+        { term: 'apis', count: 2 }
+      ]
+    },
+    ...overrides
+  };
+}
+
+test('normaliza tildes y mayúsculas para comparar términos', () => {
+  assert.equal(normalizeText('INGENIERÍA de Sistemas'), 'ingenieria de sistemas');
+});
+
+test('prioriza una oferta profesional relacionada y descarta una de otra área', () => {
+  const related = makeJob({
+    _id: 'tech-job',
+    title: 'Desarrollador Python Junior',
+    description: 'Desarrollo de software y APIs para aplicaciones.',
+    category: 'Tecnología',
+    requiredSkills: ['Python', 'SQL'],
+    experienceRequired: 0
+  });
+  const unrelated = makeJob({
+    _id: 'health-job',
+    title: 'Enfermero clínico',
+    description: 'Atención sanitaria y cuidados de enfermería.',
+    category: 'Salud',
+    requiredSkills: ['Enfermería'],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(candidate(), [unrelated, related]);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0]._id, 'tech-job');
+  assert.ok(results[0].matchScore > 0);
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('Área profesional')));
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('Habilidades')));
+});
+
+test('explica cuando la oferta solicita más experiencia que la indicada', () => {
+  const demanding = makeJob({
+    _id: 'senior-job',
+    title: 'Desarrollador Python',
+    description: 'Desarrollo de software y APIs.',
+    category: 'Tecnología',
+    requiredSkills: ['Python'],
+    experienceRequired: 5
+  });
+
+  const results = recommendJobsForUser(candidate(), [demanding]);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0].experienceFit, false);
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('solicita 5')));
+});
+
+test('no recomienda una oferta sin evidencia de coincidencia profesional', () => {
+  const sparseCandidate = {
+    role: 'candidate',
+    profile: { education: '', experience: 0, skills: [], location: '', modality: '' },
+    cvAnalysis: { skills: [], keywords: [] }
+  };
+  const unrelated = makeJob({
+    _id: 'admin-job',
+    title: 'Auxiliar contable',
+    description: 'Registro de facturas y balances financieros.',
+    category: 'Administración',
+    requiredSkills: ['Contabilidad'],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(sparseCandidate, [unrelated]), []);
+});
+
+test('trata las habilidades deseables como coincidencias secundarias', () => {
+  const tailoredCandidate = candidate({
+    profile: {
+      education: 'Ingeniería de Sistemas',
+      experience: 1,
+      skills: ['Python'],
+      location: '',
+      modality: ''
+    },
+    cvAnalysis: {
+      skills: ['Python'],
+      keywords: [
+        { term: 'python', count: 4 },
+        { term: 'software', count: 3 }
+      ]
+    }
+  });
+  const job = makeJob({
+    _id: 'preferred-skill-job',
+    title: 'Desarrollador de software',
+    description: 'Desarrollo de soluciones de software.',
+    category: 'Tecnología',
+    requiredSkills: ['SQL avanzado'],
+    preferredSkills: ['Python'],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(tailoredCandidate, [job]);
+
+  assert.equal(results.length, 1);
+  assert.deepEqual(results[0].matchedPreferredSkills, ['Python']);
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('Habilidades deseables coincidentes')));
+});
+
+test('does not recommend specialized health roles from generic skills when career is missing', () => {
+  const incompleteCandidate = {
+    role: 'candidate',
+    profile: {
+      education: '',
+      experience: 0,
+      skills: ['Excel', 'Organización'],
+      location: 'Lima',
+      modality: 'Remoto'
+    },
+    cvAnalysis: {
+      skills: ['Excel'],
+      keywords: [
+        { term: 'excel', count: 3 },
+        { term: 'organizacion', count: 2 },
+        { term: 'reportes', count: 2 }
+      ]
+    }
+  };
+  const medical = makeJob({
+    _id: 'medical-generic-skills',
+    title: 'Tecnólogo médico',
+    description: 'Registro de muestras, reportes y sistemas de citas; Excel es deseable.',
+    category: 'Salud',
+    requiredSkills: ['Excel', 'Organización'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(incompleteCandidate, [medical]), []);
+});
+
+test('excludes medical technologist role for a systems candidate', () => {
+  const medical = makeJob({
+    _id: 'medical-tech',
+    title: 'Tecnólogo médico',
+    description: 'Registro de muestras, reportes y sistemas de citas; Excel es deseable.',
+    category: 'Salud',
+    requiredSkills: ['Excel'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(candidate(), [medical]), []);
+});
+
+test('uses profile skills without a pre-analyzed CV and does not return unrelated areas', () => {
+  const profileOnly = {
+    role: 'candidate',
+    profile: {
+      education: 'Ingeniería de Sistemas',
+      experience: 0,
+      skills: ['Python', 'SQL'],
+      location: 'Lima',
+      modality: 'Remoto'
+    },
+    cvAnalysis: { skills: [], keywords: [] }
+  };
+  const relevant = makeJob({
+    _id: 'systems-role',
+    title: 'Asistente de sistemas',
+    description: 'Soporte de software y consultas SQL con Python.',
+    category: 'Tecnología',
+    requiredSkills: ['Python'],
+    preferredSkills: ['SQL'],
+    experienceRequired: 0
+  });
+  const unrelated = makeJob({
+    _id: 'health-role',
+    title: 'Tecnólogo médico',
+    description: 'Atención clínica y procesamiento de muestras de laboratorio.',
+    category: 'Salud',
+    requiredSkills: ['Laboratorio clínico'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  const results = recommendJobsForUser(profileOnly, [unrelated, relevant]);
+  assert.deepEqual(results.map(item => item._id), ['systems-role']);
+});
+
+test('title of a clinical role overrides an incorrect Technology category', () => {
+  const misclassifiedMedicalJob = makeJob({
+    _id: 'misclassified-medical-tech',
+    title: 'Tecnólogo médico',
+    description: 'Gestiona muestras clínicas, resultados de laboratorio y reportes.',
+    // Legacy offer data can have a category that conflicts with the job title.
+    category: 'Tecnología',
+    requiredSkills: ['Excel'],
+    preferredSkills: [],
+    experienceRequired: 0
+  });
+
+  assert.deepEqual(recommendJobsForUser(candidate(), [misclassifiedMedicalJob]), []);
+});
+
+test('maps numeric legacy skill IDs to readable names and hides unknown IDs', () => {
+  assert.equal(humanizeSkill('0'), 'Excel');
+  assert.equal(humanizeSkill('10'), 'Python');
+  assert.equal(humanizeSkill('24'), 'Salud');
+  assert.equal(humanizeSkill('99'), '');
+  assert.equal(humanizeSkill('Python'), 'Python');
+});
