@@ -1,8 +1,12 @@
-name: Deploy INKLU to GitHub Pages
+name: Publish INKLU authentication pages
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'reset-password.html'
+      - 'verify-email.html'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -27,14 +31,30 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Prepare authentication-only site
+        run: |
+          mkdir -p site
+          cp reset-password.html verify-email.html site/
+          cat > site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="es">
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>INKLU</title>
+          <body>
+            <main>
+              <h1>INKLU</h1>
+              <p>INKLU es una aplicación móvil. Esta dirección aloja únicamente las páginas auxiliares para verificar el correo y restablecer la contraseña.</p>
+            </main>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload authentication pages
         uses: actions/upload-pages-artifact@v4
         with:
-          name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .
+          path: site
 
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
-        with:
-          artifact_name: github-pages-${{ github.run_id }}-${{ github.run_attempt }}
