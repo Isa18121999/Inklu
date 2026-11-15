@@ -1,0 +1,9 @@
+name: Repair main source
+on:
+  workflow_dispatch:
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'Repair source workflow requires human review.'
