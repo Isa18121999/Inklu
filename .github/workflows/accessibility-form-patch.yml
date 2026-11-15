@@ -1,0 +1,9 @@
+name: Accessibility form patch
+on:
+  workflow_dispatch:
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'Review accessibility form changes before applying.'
