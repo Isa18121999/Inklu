@@ -1,0 +1,13 @@
+name: Build INKLU Flutter mobile
+on:
+  workflow_dispatch:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+      - run: cd flutter_app && flutter pub get
+      - run: cd flutter_app && flutter analyze
