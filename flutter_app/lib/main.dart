@@ -238,56 +238,32 @@ class _AppStartState extends State<AppStart> {
     return const Welcome();
   }
 }
-class Logo extends StatefulWidget {
+class Logo extends StatelessWidget {
   final double size;
   const Logo({super.key, this.size = 110});
 
   @override
-  State<Logo> createState() => _LogoState();
-}
-
-class _LogoState extends State<Logo> {
-  Uint8List? bytes;
-  bool failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    rootBundle.loadString('assets/logo.b64').then((source) {
-      final normalized = source.replaceAll(RegExp(r'\\s+'), '');
-      final decoded = base64Decode(normalized);
-      if (mounted) setState(() => bytes = decoded);
-    }).catchError((_) {
-      if (mounted) setState(() => failed = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (bytes != null) {
-      return Semantics(
-        label: 'Logo INKLU',
-        image: true,
-        child: Image.memory(bytes!, width: widget.size, height: widget.size, fit: BoxFit.contain),
-      );
-    }
-    if (!failed) return SizedBox(width: widget.size, height: widget.size);
-    return Semantics(
-      label: 'INKLU',
-      image: true,
-      child: SizedBox(
-        width: widget.size,
-        height: widget.size,
+  Widget build(BuildContext context) => Semantics(
+    label: 'Logo INKLU',
+    image: true,
+    child: Image.asset(
+      'assets/logo.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => SizedBox(
+        width: size,
+        height: size,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: const Color(0xFFEDE9FE),
-            borderRadius: BorderRadius.circular(widget.size * 0.22),
+            borderRadius: BorderRadius.circular(size * 0.22),
           ),
-          child: Icon(Icons.work_outline_rounded, color: primary, size: widget.size * 0.58),
+          child: Icon(Icons.work_outline_rounded, color: primary, size: size * 0.58),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 class Welcome extends StatelessWidget {
   const Welcome({super.key});
