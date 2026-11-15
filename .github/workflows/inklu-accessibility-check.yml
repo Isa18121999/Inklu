@@ -1,0 +1,9 @@
+name: INKLU accessibility check
+on:
+  workflow_dispatch:
+jobs:
+  accessibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'Accessibility review workflow.'
