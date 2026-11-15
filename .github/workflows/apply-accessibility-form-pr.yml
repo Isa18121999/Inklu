@@ -1,0 +1,9 @@
+name: Apply accessibility form PR
+on:
+  workflow_dispatch:
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'Review generated accessibility patch before applying.'
