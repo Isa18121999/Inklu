@@ -28,6 +28,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -41,7 +46,7 @@ jobs:
           flutter create --platforms=android .
           mkdir -p assets
           cp ../assets/logo.png assets/logo.png
-          python3 -m pip install --user Pillow
+          python3 -m pip install --user --break-system-packages Pillow
           python3 - <<'PY'
           from PIL import Image, ImageOps
           from pathlib import Path
