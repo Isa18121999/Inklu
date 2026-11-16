@@ -81,8 +81,57 @@ jobs:
       - name: Tests
         run: flutter test
 
+      - name: Configure release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Missing Android signing secrets. Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD in repository Actions secrets."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/inklu-upload.jks
+          cat > android/key.properties <<EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=app/inklu-upload.jks
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle.kts")
+          s = p.read_text()
+          if 'create("release")' not in s:
+              s = 'import java.util.Properties\\nimport java.io.FileInputStream\\n\\n' + s
+              marker = 'android {'
+              config = '''android {
+              signingConfigs {
+                  create("release") {
+                      val props = Properties()
+                      val propsFile = rootProject.file("key.properties")
+                      props.load(FileInputStream(propsFile))
+                      keyAlias = props["keyAlias"] as String
+                      keyPassword = props["keyPassword"] as String
+                      storeFile = file(props["storeFile"] as String)
+                      storePassword = props["storePassword"] as String
+                  }
+              }
+          '''
+              s = s.replace(marker, config, 1)
+              s = s.replace('signingConfig = signingConfigs.getByName("debug")',
+                            'signingConfig = signingConfigs.getByName("release")')
+              p.write_text(s)
+          PY
+
       - name: Build release APK
         run: flutter build apk --release
+
+      - name: Remove signing material
+        if: always()
+        run: rm -f android/key.properties android/app/inklu-upload.jks
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
