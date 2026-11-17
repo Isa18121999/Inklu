@@ -1047,16 +1047,51 @@ app.get('/api/recommendations', auth, async (req, res) => {
     const analysis = await analyzeCandidateCv(req.user);
     const jobs = await Job.find({ active: true }).populate('companyId', 'name companyProfile companyVerification').sort({ createdAt: -1 });
     const recommendations = recommendJobsForUser(req.user, jobs);
+    const candidateState = await User.findById(req.user._id).select('dismissedJobs').lean();
+    const dismissedIds = new Set((candidateState?.dismissedJobs || []).map(id => String(id)));
+    const visibleRecommendations = recommendations.filter(job => !dismissedIds.has(String(job._id)));
     res.json({
       engine: 'skill-match-mvp',
       cvSkills: analysis.skills,
-      recommendations,
-      message: recommendations.length
+      recommendations: visibleRecommendations,
+      message: visibleRecommendations.length
         ? 'Ofertas filtradas y ordenadas por carrera, palabras clave del CV, habilidades y experiencia requerida.'
         : 'No encontramos ofertas suficientemente relacionadas con tu CV y experiencia. Completa tu formación y años de experiencia en tu perfil, o mejora el CV.'
     });
   } catch (e) {
     res.status(e.statusCode || 500).json({ message: e.statusCode ? e.message : 'No se pudieron calcular las recomendaciones.' });
+  }
+});
+
+app.post('/api/jobs/:id/dismiss', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden pasar ofertas.' });
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Oferta no válida.' });
+    const job = await Job.findOne({ _id: req.params.id, active: true });
+    if (!job) return res.status(404).json({ message: 'La oferta no existe o ya no está disponible.' });
+    await User.updateOne(
+      { _id: req.user._id },
+      { $addToSet: { dismissedJobs: job._id } }
+    );
+    res.json({ dismissed: true, jobId: String(job._id) });
+  } catch (error) {
+    console.error('Error registrando oferta omitida:', error);
+    res.status(500).json({ message: 'No se pudo registrar la oferta omitida.' });
+  }
+});
+
+app.delete('/api/jobs/:id/dismiss', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden restaurar ofertas.' });
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Oferta no válida.' });
+    await User.updateOne(
+      { _id: req.user._id },
+      { $pull: { dismissedJobs: new mongoose.Types.ObjectId(req.params.id) } }
+    );
+    res.json({ dismissed: false, jobId: req.params.id });
+  } catch (error) {
+    console.error('Error restaurando oferta omitida:', error);
+    res.status(500).json({ message: 'No se pudo restaurar la oferta.' });
   }
 });
 
