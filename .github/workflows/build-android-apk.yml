@@ -101,6 +101,29 @@ jobs:
           PY
           sed -i 's/android:label="[^"]*"/android:label="INKLU"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Ensure Android Internet permission
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          content = manifest.read_text(encoding="utf-8")
+          permission = '<uses-permission android:name="android.permission.INTERNET" />'
+
+          if not re.search(r'<uses-permission\\s+android:name=["\\']android\\.permission\\.INTERNET["\\']', content):
+              if not re.search(r'<application\\b', content):
+                  raise SystemExit("No se encontró la etiqueta <application> en AndroidManifest.xml")
+              content = re.sub(r'(<application\\b)', permission + "\\n    \\1", content, count=1)
+              manifest.write_text(content, encoding="utf-8")
+
+          check = manifest.read_text(encoding="utf-8")
+          if not re.search(r'<uses-permission\\s+android:name=["\\']android\\.permission\\.INTERNET["\\']', check):
+              raise SystemExit("Falta android.permission.INTERNET en AndroidManifest.xml")
+          print("OK: android.permission.INTERNET está declarado.")
+          PY
+
       - name: Flutter pub get
         run: flutter pub get
 
