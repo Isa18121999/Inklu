@@ -1528,10 +1528,12 @@ class _SwipeJobCardState extends State<SwipeJobCard> {
       } else {
         widget.onPass();
       }
-      if (mounted) setState(() {
-        dragX = 0;
-        completing = false;
-      });
+      if (mounted) {
+        setState(() {
+          dragX = 0;
+          completing = false;
+        });
+      }
     });
   }
 
