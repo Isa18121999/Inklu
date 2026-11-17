@@ -71,7 +71,7 @@ test('prioriza una oferta profesional relacionada y descarta una de otra área',
   assert.ok(results[0].matchReasons.some(reason => reason.includes('Habilidades')));
 });
 
-test('explica cuando la oferta solicita más experiencia que la indicada', () => {
+test('excluye ofertas que requieren más experiencia que la indicada', () => {
   const demanding = makeJob({
     _id: 'senior-job',
     title: 'Desarrollador Python',
@@ -81,11 +81,7 @@ test('explica cuando la oferta solicita más experiencia que la indicada', () =>
     experienceRequired: 5
   });
 
-  const results = recommendJobsForUser(candidate(), [demanding]);
-
-  assert.equal(results.length, 1);
-  assert.equal(results[0].experienceFit, false);
-  assert.ok(results[0].matchReasons.some(reason => reason.includes('solicita 5')));
+  assert.deepEqual(recommendJobsForUser(candidate(), [demanding]), []);
 });
 
 test('no recomienda una oferta sin evidencia de coincidencia profesional', () => {
