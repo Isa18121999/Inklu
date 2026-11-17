@@ -106,20 +106,20 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text(encoding="utf-8")
           permission = '<uses-permission android:name="android.permission.INTERNET" />'
 
-          if not re.search(r'<uses-permission\\s+android:name=["\\']android\\.permission\\.INTERNET["\\']', content):
-              if not re.search(r'<application\\b', content):
+          if permission not in content:
+              marker = "<application"
+              position = content.find(marker)
+              if position < 0:
                   raise SystemExit("No se encontró la etiqueta <application> en AndroidManifest.xml")
-              content = re.sub(r'(<application\\b)', permission + "\\n    \\1", content, count=1)
+              content = content[:position] + permission + "\\n    " + content[position:]
               manifest.write_text(content, encoding="utf-8")
 
-          check = manifest.read_text(encoding="utf-8")
-          if not re.search(r'<uses-permission\\s+android:name=["\\']android\\.permission\\.INTERNET["\\']', check):
+          if permission not in manifest.read_text(encoding="utf-8"):
               raise SystemExit("Falta android.permission.INTERNET en AndroidManifest.xml")
           print("OK: android.permission.INTERNET está declarado.")
           PY
