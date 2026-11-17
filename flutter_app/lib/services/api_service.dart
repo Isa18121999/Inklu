@@ -33,6 +33,7 @@ class ApiService {
   Future<Map<String, dynamic>> deleteJobSearch(String token, String searchId) async => _deleteMap('/jobs/saved-searches/$searchId', token);
   Future<Map<String, dynamic>> saveJob(String token, String jobId) async => _postAuth('/jobs/$jobId/save', token, {});
   Future<Map<String, dynamic>> unsaveJob(String token, String jobId) async => _deleteMap('/jobs/$jobId/save', token);
+  Future<List<dynamic>> dismissedJobs(String token) async => _getList('/jobs/dismissed', token);
   Future<Map<String, dynamic>> dismissJob(String token, String jobId) async => _postAuth('/jobs/$jobId/dismiss', token, {});
   Future<Map<String, dynamic>> restoreDismissedJob(String token, String jobId) async => _deleteMap('/jobs/$jobId/dismiss', token);
   Future<List<dynamic>> notifications(String token) async => _getList('/notifications', token);
