@@ -3314,7 +3314,7 @@ class _CompanyOfferCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: active ? const Color(0xFFE4F8EE) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(99)), child: Text(active ? 'Activa' : 'Cerrada', style: TextStyle(color: active ? const Color(0xFF137B4B) : muted, fontSize: 11, fontWeight: FontWeight.w800))),
-                  ...tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF4F1FF), borderRadius: BorderRadius.circular(99)), child: Text(tag, style: const TextStyle(color: Color(0xFF59508A), fontSize: 11, fontWeight: FontWeight.w600))),
+                  ...tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF4F1FF), borderRadius: BorderRadius.circular(99)), child: Text(tag, style: const TextStyle(color: Color(0xFF59508A), fontSize: 11, fontWeight: FontWeight.w600)))),
                 ]),
               ])),
             ]),
