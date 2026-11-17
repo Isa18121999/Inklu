@@ -1,0 +1,41 @@
+name: Cargar ofertas ficticias INKLU
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inklu-seed-demo-jobs
+  cancel-in-progress: false
+
+jobs:
+  seed-demo-jobs:
+    name: Insertar 20 ofertas de demostración
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias del backend
+        working-directory: backend
+        run: npm install --no-audit --no-fund
+
+      - name: Ejecutar carga idempotente
+        working-directory: backend
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SEED_DEMO_JOBS: 'true'
+        run: |
+          if [ -z "$MONGODB_URI" ]; then
+            echo "::error::Falta configurar el secreto MONGODB_URI en GitHub Actions."
+            exit 1
+          fi
+          node scripts/seed-demo-jobs.js
