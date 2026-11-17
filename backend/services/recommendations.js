@@ -314,17 +314,12 @@ function recommendJobsForUser(user, jobs) {
     };
   });
 
-  // Las ofertas de demostración son visibles para todos los candidatos,
-  // aunque el recomendador no encuentre coincidencias en su perfil.
-  const recommendedJobs = rankedJobs
-    .filter(job => !job.isDemo && job.matchScore > 0 && job.careerMatch)
+  // Mostrar únicamente ofertas relacionadas con la profesión y compatibles
+  // con la experiencia declarada. Las ofertas demo siguen el mismo criterio.
+  return rankedJobs
+    .filter(job => job.matchScore > 0 && job.careerMatch && job.experienceFit)
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 10);
-  const demoJobs = rankedJobs
-    .filter(job => job.isDemo)
-    .sort((a, b) => b.matchScore - a.matchScore);
-
-  return [...recommendedJobs, ...demoJobs];
 }
 
 module.exports = { normalizeText, keywordCounts, tfidfCosineSimilarity, accessibilityMatch, recommendJobsForUser, humanizeSkill };
