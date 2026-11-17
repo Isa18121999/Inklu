@@ -216,7 +216,7 @@ function recommendJobsForUser(user, jobs) {
     }
   }
 
-  return jobDocuments.map(document => {
+  const rankedJobs = jobDocuments.map(document => {
     const { job, requiredSkills, preferredSkills, jobGroups, professionalArea, keywords } = document;
     const jobText = normalizeText([job.title, job.description, job.category, job.modality, job.location, ...requiredSkills].join(' '));
     const matchedSkills = skills.filter(skill => {
@@ -312,10 +312,19 @@ function recommendJobsForUser(user, jobs) {
       experienceFit: experienceGap === 0,
       accessibilityMatch: accessibility
     };
-  })
-    .filter(job => job.matchScore > 0 && job.careerMatch)
+  });
+
+  // Las ofertas de demostración son visibles para todos los candidatos,
+  // aunque el recomendador no encuentre coincidencias en su perfil.
+  const recommendedJobs = rankedJobs
+    .filter(job => !job.isDemo && job.matchScore > 0 && job.careerMatch)
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 10);
+  const demoJobs = rankedJobs
+    .filter(job => job.isDemo)
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  return [...recommendedJobs, ...demoJobs];
 }
 
 module.exports = { normalizeText, keywordCounts, tfidfCosineSimilarity, accessibilityMatch, recommendJobsForUser, humanizeSkill };
