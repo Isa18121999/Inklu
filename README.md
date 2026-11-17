@@ -15,8 +15,6 @@ INKLU es una aplicación móvil para conectar a personas con discapacidad que bu
 
 Las páginas `reset-password.html` y `verify-email.html` son páginas auxiliares de autenticación abiertas desde los enlaces enviados por correo. **No son una versión web de INKLU** y se conservan porque el backend las utiliza. GitHub Pages publica únicamente estas dos páginas auxiliares y una página informativa mínima.
 
-El antiguo prototipo web JavaScript/HTML se conserva, sin formar parte del producto, en `legacy_web/` para referencia y recuperación. No se compila ni despliega como aplicación.
-
 ## Estructura principal
 
 ```text
@@ -32,7 +30,6 @@ Inklu/
 │   ├── lib/
 │   ├── test/
 │   └── pubspec.yaml
-├── legacy_web/               # Prototipo web archivado, no desplegado
 ├── reset-password.html      # Página auxiliar de autenticación
 ├── verify-email.html        # Página auxiliar de autenticación
 ├── render.yaml              # Despliegue del backend
@@ -93,7 +90,7 @@ El backend se despliega mediante Render y utiliza variables de entorno como `MON
 - `reset-password.html`: formulario web para completar la recuperación de contraseña.
 - `verify-email.html`: pantalla web que valida el enlace de verificación de correo.
 
-El backend construye enlaces hacia estas páginas. Por eso se mantienen como HTML estático aunque la experiencia principal sea exclusivamente móvil. El workflow `.github/workflows/pages.yml` publica solo estas páginas y un índice informativo; no publica `legacy_web/`.
+El backend construye enlaces hacia estas páginas. Por eso se mantienen como HTML estático aunque la experiencia principal sea exclusivamente móvil. El workflow `.github/workflows/pages.yml` publica solo estas páginas y un índice informativo.
 
 ## Seguridad
 
