@@ -799,6 +799,7 @@ class _CandidateHomeState extends State<CandidateHome> {
   List<dynamic> apps = [];
   List<dynamic> recommendations = [];
   List<dynamic> savedJobs = [];
+  List<dynamic> dismissedJobs = [];
   Set<String> savedJobIds = <String>{};
   final Set<String> skippedJobIds = <String>{};
   bool showSavedOnly = false;
@@ -822,12 +823,16 @@ class _CandidateHomeState extends State<CandidateHome> {
     try {
       final results = await Future.wait([api.jobs(sessionToken!), api.applications(sessionToken!)]);
       List<dynamic> currentSaved = [];
+      List<dynamic> currentDismissed = [];
       try { currentSaved = await api.savedJobs(sessionToken!); } catch (_) {}
+      try { currentDismissed = await api.dismissedJobs(sessionToken!); } catch (_) {}
       if (!mounted) return;
       setState(() {
         jobs = results[0];
         apps = results[1];
         savedJobs = currentSaved;
+        dismissedJobs = currentDismissed;
+        skippedJobIds.addAll(currentDismissed.map(_jobId).where((id) => id.isNotEmpty));
         savedJobIds = currentSaved.map((item) => (item['_id'] ?? item['id'] ?? '').toString()).where((id) => id.isNotEmpty).toSet();
       });
 
@@ -869,6 +874,23 @@ class _CandidateHomeState extends State<CandidateHome> {
       if (!mounted) return;
       setState(() => skippedJobIds.remove(id));
       toast(error.toString().replaceFirst('Exception: ', 'No se pudo guardar tu decisión: '));
+    }
+  }
+
+  Future<void> restoreDismissedJob(dynamic job) async {
+    final id = _jobId(job);
+    if (id.isEmpty) return;
+    try {
+      await api.restoreDismissedJob(sessionToken!, id);
+      final latest = await api.dismissedJobs(sessionToken!);
+      if (!mounted) return;
+      setState(() {
+        dismissedJobs = latest;
+        skippedJobIds.remove(id);
+      });
+      toast('Oferta restaurada. Volverá a tus recomendaciones si sigue siendo compatible con tu perfil.');
+    } catch (error) {
+      if (mounted) toast(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -1216,6 +1238,38 @@ class _CandidateHomeState extends State<CandidateHome> {
                         ),
                       )),
               ],
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  const Expanded(child: Section('Ofertas omitidas')),
+                  Text('${dismissedJobs.length}', style: const TextStyle(color: muted, fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const Text('Puedes recuperar una oportunidad que hayas pasado anteriormente.', style: TextStyle(color: muted, fontSize: 12)),
+              if (dismissedJobs.isEmpty)
+                const Info('No tienes ofertas omitidas', 'Las ofertas que pases aparecerán aquí para que puedas recuperarlas.')
+              else
+                ...dismissedJobs.map((job) => Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    children: [
+                      JobRecommendationCard(
+                        job: Map<String, dynamic>.from(job),
+                        onTap: () => showOffer(c, job, apply),
+                        isSaved: isJobSaved(job),
+                        onSave: () => toggleSavedJob(job),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () => restoreDismissedJob(job),
+                          icon: const Icon(Icons.undo_rounded),
+                          label: const Text('Recuperar oferta'),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
             ]
           : tab == 1
               ? [
