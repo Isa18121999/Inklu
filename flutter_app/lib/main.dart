@@ -858,11 +858,18 @@ class _CandidateHomeState extends State<CandidateHome> {
 
   String _jobId(dynamic job) => (job['_id'] ?? job['id'] ?? '').toString();
 
-  void skipJob(dynamic job) {
+  Future<void> skipJob(dynamic job) async {
     final id = _jobId(job);
     if (id.isEmpty) return;
     setState(() => skippedJobIds.add(id));
-    toast('Oferta omitida. Puedes seguir explorando otras oportunidades.');
+    try {
+      await api.dismissJob(sessionToken!, id);
+      if (mounted) toast('Oferta omitida. No volverá a aparecer en tus recomendaciones.');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => skippedJobIds.remove(id));
+      toast(error.toString().replaceFirst('Exception: ', 'No se pudo guardar tu decisión: '));
+    }
   }
 
   Future<void> toggleSavedJob(dynamic job) async {
