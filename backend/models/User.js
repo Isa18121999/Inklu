@@ -158,6 +158,7 @@ const UserSchema = new mongoose.Schema({
   cvAnalysis: { type: CvAnalysisSchema, default: undefined },
   profilePhoto: { type: ProfilePhotoSchema, default: undefined },
   savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
+  dismissedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
   savedJobSearches: { type: [SavedJobSearchSchema], default: [] }
 }, { timestamps: true });
 
