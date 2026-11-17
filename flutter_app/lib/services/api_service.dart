@@ -19,11 +19,25 @@ class ApiService {
   Future<Map<String, dynamic>> resetPassword({required String email, required String token, required String password}) => _post('/auth/reset-password', {'email': email.trim(), 'token': token, 'password': password});
 
   Future<Map<String, dynamic>> uploadCv(String token, String path) async {
-    final file = File(path); final bytes = await file.readAsBytes();
+    final file = File(path);
+    return uploadCvBytes(token, path.split(RegExp(r'[/\\]')).last, await file.readAsBytes());
+  }
+
+  Future<Map<String, dynamic>> uploadCvBytes(String token, String fileName, List<int> bytes) async {
+    if (bytes.isEmpty) throw Exception('El archivo seleccionado está vacío. Vuelve a elegir tu CV.');
     if (bytes.length > 5 * 1024 * 1024) throw Exception('El CV supera el tamaño máximo de 5 MB.');
-    final fileName = path.split(RegExp(r'[/\\]')).last; final ext = fileName.toLowerCase().split('.').last;
-    final mime = ext == 'pdf' ? 'application/pdf' : 'application/msword';
-    final r = await http.post(Uri.parse('$baseUrl/profile/cv'), headers: _headers(token), body: jsonEncode({'fileName': fileName, 'mimeType': mime, 'data': base64Encode(bytes)})).timeout(const Duration(seconds: 45));
+    final ext = fileName.toLowerCase().split('.').last;
+    final mime = switch (ext) {
+      'pdf' => 'application/pdf',
+      'doc' => 'application/msword',
+      'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      _ => throw Exception('Selecciona un CV en PDF, DOC o DOCX.')
+    };
+    final r = await http.post(
+      Uri.parse('$baseUrl/profile/cv'),
+      headers: _headers(token),
+      body: jsonEncode({'fileName': fileName, 'mimeType': mime, 'data': base64Encode(bytes)}),
+    ).timeout(const Duration(seconds: 60));
     return _decodeMap(r);
   }
   Future<List<dynamic>> jobs(String token) async { final result = await _getMap('/recommendations', token); final items = result['recommendations']; return items is List ? items : const []; }
