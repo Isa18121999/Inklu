@@ -800,6 +800,7 @@ class _CandidateHomeState extends State<CandidateHome> {
   List<dynamic> recommendations = [];
   List<dynamic> savedJobs = [];
   Set<String> savedJobIds = <String>{};
+  final Set<String> skippedJobIds = <String>{};
   bool showSavedOnly = false;
   List<dynamic> cvSkills = [];
   bool scanningRecommendations = false;
@@ -856,6 +857,13 @@ class _CandidateHomeState extends State<CandidateHome> {
   }
 
   String _jobId(dynamic job) => (job['_id'] ?? job['id'] ?? '').toString();
+
+  void skipJob(dynamic job) {
+    final id = _jobId(job);
+    if (id.isEmpty) return;
+    setState(() => skippedJobIds.add(id));
+    toast('Oferta omitida. Puedes seguir explorando otras oportunidades.');
+  }
 
   Future<void> toggleSavedJob(dynamic job) async {
     final id = _jobId(job);
@@ -1169,28 +1177,37 @@ class _CandidateHomeState extends State<CandidateHome> {
               ),
               const SizedBox(height: 12),
               if (recommendations.isNotEmpty)
-                ...recommendations.map((j) => GestureDetector(
-                  onHorizontalDragEnd: (details) {
-                    if ((details.primaryVelocity ?? 0) > 350) apply(_jobId(j));
-                  },
-                  child: JobRecommendationCard(
-                    job: Map<String, dynamic>.from(j),
-                    onTap: () => showOffer(c, j, apply),
-                    isSaved: isJobSaved(j),
-                    onSave: () => toggleSavedJob(j),
-                  ),
-                ))
+                ...recommendations
+                    .where((j) => !skippedJobIds.contains(_jobId(j)))
+                    .map((j) => SwipeJobCard(
+                      key: ValueKey('home-swipe-${_jobId(j)}'),
+                      onInterested: () => apply(_jobId(j)),
+                      onPass: () => skipJob(j),
+                      child: JobRecommendationCard(
+                        job: Map<String, dynamic>.from(j),
+                        onTap: () => showOffer(c, j, apply),
+                        isSaved: isJobSaved(j),
+                        onSave: () => toggleSavedJob(j),
+                      ),
+                    ))
               else ...[
                 const Section('Ofertas recientes'),
                 if (jobs.isEmpty)
                   const Info('Todavía no hay ofertas', 'Vuelve a revisar pronto.')
                 else
-                  ...jobs.take(3).map((j) => JobCard(
-                    j,
-                    onTap: () => showOffer(c, j, apply),
-                    isSaved: isJobSaved(j),
-                    onSave: () => toggleSavedJob(j),
-                  )),
+                  ...jobs.take(3)
+                      .where((j) => !skippedJobIds.contains(_jobId(j)))
+                      .map((j) => SwipeJobCard(
+                        key: ValueKey('home-recent-${_jobId(j)}'),
+                        onInterested: () => apply(_jobId(j)),
+                        onPass: () => skipJob(j),
+                        child: JobCard(
+                          j,
+                          onTap: () => showOffer(c, j, apply),
+                          isSaved: isJobSaved(j),
+                          onSave: () => toggleSavedJob(j),
+                        ),
+                      )),
               ],
             ]
           : tab == 1
@@ -1304,27 +1321,26 @@ class _CandidateHomeState extends State<CandidateHome> {
                       'Actualiza tu carrera, habilidades, experiencia y CV, o ajusta los filtros. INKLU prioriza ofertas profesionales relacionadas con tus datos.',
                     )
                   else
-                    ...(showSavedOnly ? savedJobs : jobs).map((job) {
-                      if (!showSavedOnly && job is Map && job['matchScore'] is num) {
-                        return JobRecommendationCard(
-                          job: Map<String, dynamic>.from(job),
-                          onTap: () => showOffer(c, job, apply),
-                          isSaved: isJobSaved(job),
-                          onSave: () => toggleSavedJob(job),
-                        );
-                      }
-                      return GestureDetector(
-                        onHorizontalDragEnd: (details) {
-                          if ((details.primaryVelocity ?? 0) > 350) apply(_jobId(job));
-                        },
-                        child: JobCard(
-                          job,
-                          onTap: () => showOffer(c, job, apply),
-                          isSaved: isJobSaved(job),
-                          onSave: () => toggleSavedJob(job),
-                        ),
-                      );
-                    }),
+                    ...(showSavedOnly ? savedJobs : jobs)
+                        .where((job) => showSavedOnly || !skippedJobIds.contains(_jobId(job)))
+                        .map((job) => SwipeJobCard(
+                          key: ValueKey('offers-swipe-${_jobId(job)}'),
+                          onInterested: () => apply(_jobId(job)),
+                          onPass: () => skipJob(job),
+                          child: (!showSavedOnly && job is Map && job['matchScore'] is num)
+                              ? JobRecommendationCard(
+                                  job: Map<String, dynamic>.from(job),
+                                  onTap: () => showOffer(c, job, apply),
+                                  isSaved: isJobSaved(job),
+                                  onSave: () => toggleSavedJob(job),
+                                )
+                              : JobCard(
+                                  job,
+                                  onTap: () => showOffer(c, job, apply),
+                                  isSaved: isJobSaved(job),
+                                  onSave: () => toggleSavedJob(job),
+                                ),
+                        )),
                 ]
               : tab == 2
                   ? [
@@ -1475,6 +1491,145 @@ class JobMetadataChips extends StatelessWidget {
           ),
         )).toList(),
       ),
+    );
+  }
+}
+
+class SwipeJobCard extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onInterested;
+  final VoidCallback onPass;
+
+  const SwipeJobCard({
+    super.key,
+    required this.child,
+    required this.onInterested,
+    required this.onPass,
+  });
+
+  @override
+  State<SwipeJobCard> createState() => _SwipeJobCardState();
+}
+
+class _SwipeJobCardState extends State<SwipeJobCard> {
+  double dragX = 0;
+  bool completing = false;
+
+  void finishSwipe(bool interested) {
+    if (completing) return;
+    setState(() {
+      completing = true;
+      dragX = interested ? MediaQuery.sizeOf(context).width : -MediaQuery.sizeOf(context).width;
+    });
+    Future<void>.delayed(const Duration(milliseconds: 190), () {
+      if (!mounted) return;
+      if (interested) {
+        widget.onInterested();
+      } else {
+        widget.onPass();
+      }
+      if (mounted) setState(() {
+        dragX = 0;
+        completing = false;
+      });
+    });
+  }
+
+  void handleDragEnd(DragEndDetails details) {
+    if (completing) return;
+    if (dragX > 90 || (details.primaryVelocity ?? 0) > 650) {
+      finishSwipe(true);
+    } else if (dragX < -90 || (details.primaryVelocity ?? 0) < -650) {
+      finishSwipe(false);
+    } else {
+      setState(() => dragX = 0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (dragX.abs() / 115).clamp(0.0, 1.0);
+    final interested = dragX >= 0;
+    return Column(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragUpdate: completing ? null : (details) {
+            setState(() => dragX += details.delta.dx);
+          },
+          onHorizontalDragEnd: completing ? null : handleDragEnd,
+          child: Transform.translate(
+            offset: Offset(dragX, 0),
+            child: Transform.rotate(
+              angle: dragX / 950,
+              child: Stack(
+                children: [
+                  widget.child,
+                  if (dragX.abs() > 12)
+                    Positioned(
+                      top: 10,
+                      left: interested ? 14 : null,
+                      right: interested ? null : 14,
+                      child: Opacity(
+                        opacity: progress,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: interested ? const Color(0xFFE8F8EF) : const Color(0xFFFFEEEE),
+                            border: Border.all(color: interested ? const Color(0xFF23864D) : const Color(0xFFC43D4D), width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            child: Text(
+                              interested ? 'ME INTERESA' : 'PASAR',
+                              style: TextStyle(
+                                color: interested ? const Color(0xFF23864D) : const Color(0xFFC43D4D),
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: completing ? null : () => finishSwipe(false),
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Pasar'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFB83C4B),
+                    side: const BorderSide(color: Color(0xFFE8C7CC)),
+                    minimumSize: const Size(0, 44),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: completing ? null : () => finishSwipe(true),
+                  icon: const Icon(Icons.favorite_border_rounded),
+                  label: const Text('Me interesa'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 44),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
