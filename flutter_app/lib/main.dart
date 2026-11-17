@@ -2589,20 +2589,29 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'doc', 'docx'],
-      withData: false,
+      withData: true,
     );
     if (result == null) return;
-    final path = result.files.single.path;
-    if (path == null || path.isEmpty) {
-      toast('No se pudo leer el archivo. Selecciona el CV nuevamente.');
+    final selected = result.files.single;
+    final bytes = selected.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      toast('Android no pudo leer el documento. Guarda el CV en Descargas o Archivos e inténtalo otra vez.');
       return;
     }
     setState(() => uploadingCv = true);
     try {
-      await api.uploadCv(widget.token, path);
-      await api.analyzeCv(widget.token);
+      await api.uploadCvBytes(widget.token, selected.name, bytes);
       await loadProfile();
-      toast('Tu CV se guardó y tu perfil fue actualizado automáticamente.');
+      final currentProfile = user ?? <String, dynamic>{};
+      if (currentProfile['hasCv'] != true) {
+        throw Exception('El servidor recibió el documento, pero no confirmó que el CV quedó guardado. Actualiza tu perfil e inténtalo nuevamente.');
+      }
+      final analysis = await api.analyzeCv(widget.token);
+      await loadProfile();
+      final skills = (analysis['skills'] as List?)?.map((e) => e.toString()).toList() ?? [];
+      toast(skills.isEmpty
+          ? 'CV guardado. No se detectaron habilidades conocidas; revisa que el documento tenga texto seleccionable.'
+          : 'CV guardado y analizado. Habilidades detectadas: ${skills.take(6).join(', ')}.');
     } catch (x) {
       toast(x.toString().replaceFirst('Exception: ', ''));
     } finally {
