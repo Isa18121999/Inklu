@@ -3183,6 +3183,102 @@ class _CompanyOfferCard extends StatelessWidget {
   final Map<String, dynamic> job;
   const _CompanyOfferCard({required this.job});
 
+  void _showDetails(BuildContext context) {
+    final title = (job['title'] ?? 'Oferta laboral').toString();
+    final description = (job['description'] ?? '').toString().trim();
+    final location = (job['location'] ?? '').toString().trim();
+    final modality = (job['modality'] ?? '').toString().trim();
+    final category = (job['category'] ?? job['professionalArea'] ?? '').toString().trim();
+    final contract = (job['contractType'] ?? '').toString().trim();
+    final salary = (job['salary'] ?? '').toString().trim();
+    final experience = (job['experienceRequired'] ?? '').toString().trim();
+    final accessibility = (job['accessibilityDetails'] ?? '').toString().trim();
+    final requiredSkills = job['requiredSkills'] is List
+        ? (job['requiredSkills'] as List).map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
+        : <String>[];
+    final preferredSkills = job['preferredSkills'] is List
+        ? (job['preferredSkills'] as List).map((item) => item.toString()).where((item) => item.trim().isNotEmpty).toList()
+        : <String>[];
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: Color(0xFF211B43))),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                if (category.isNotEmpty) Chip(avatar: const Icon(Icons.work_outline, size: 17), label: Text(category)),
+                if (location.isNotEmpty) Chip(avatar: const Icon(Icons.location_on_outlined, size: 17), label: Text(location)),
+                if (modality.isNotEmpty) Chip(label: Text(modality)),
+                if (contract.isNotEmpty) Chip(label: Text(contract)),
+              ]),
+              const SizedBox(height: 18),
+              const Text('Descripción del puesto', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              SelectableText(description.isEmpty ? 'No se proporcionó una descripción.' : description, style: const TextStyle(height: 1.5)),
+              if (salary.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text('Remuneración', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 5),
+                Text(salary),
+              ],
+              if (experience.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text('Experiencia requerida', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 5),
+                Text('$experience año(s)'),
+              ],
+              if (requiredSkills.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text('Requisitos y habilidades', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text(requiredSkills.join(' · ')),
+              ],
+              if (preferredSkills.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text('Habilidades deseables', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                Text(preferredSkills.join(' · ')),
+              ],
+              if (accessibility.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                const Text('Accesibilidad y ajustes', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 6),
+                SelectableText(accessibility, style: const TextStyle(height: 1.4)),
+              ],
+              if (job['isDemo'] == true) ...[
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: const Color(0xFFFFF4DF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE8C98F))),
+                  child: const Text('OFERTA FICTICIA · DATOS DE PRUEBA. Esta vacante no es real y no corresponde a un proceso de selección.', style: TextStyle(color: Color(0xFF6B4B12), fontWeight: FontWeight.w700, fontSize: 12)),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Cerrar'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = (job['title'] ?? 'Oferta laboral').toString();
@@ -3199,35 +3295,41 @@ class _CompanyOfferCard extends StatelessWidget {
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE5E0FA))),
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(color: const Color(0xFFEDE9FF), borderRadius: BorderRadius.circular(13)),
-              child: const Icon(Icons.work_outline_rounded, color: primary, size: 24),
-            ),
-            const SizedBox(width: 11),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF211B43))),
-              const SizedBox(height: 4),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: active ? const Color(0xFFE4F8EE) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(99)), child: Text(active ? 'Activa' : 'Cerrada', style: TextStyle(color: active ? const Color(0xFF137B4B) : muted, fontSize: 11, fontWeight: FontWeight.w800))),
-                ...tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF4F1FF), borderRadius: BorderRadius.circular(99)), child: Text(tag, style: const TextStyle(color: Color(0xFF59508A), fontSize: 11, fontWeight: FontWeight.w600)))),
-              ]),
-            ])),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _showDetails(context),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(color: const Color(0xFFEDE9FF), borderRadius: BorderRadius.circular(13)),
+                child: const Icon(Icons.work_outline_rounded, color: primary, size: 24),
+              ),
+              const SizedBox(width: 11),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF211B43))),
+                const SizedBox(height: 4),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: active ? const Color(0xFFE4F8EE) : const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(99)), child: Text(active ? 'Activa' : 'Cerrada', style: TextStyle(color: active ? const Color(0xFF137B4B) : muted, fontSize: 11, fontWeight: FontWeight.w800))),
+                  ...tags.map((tag) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFF4F1FF), borderRadius: BorderRadius.circular(99)), child: Text(tag, style: const TextStyle(color: Color(0xFF59508A), fontSize: 11, fontWeight: FontWeight.w600))),
+                ]),
+              ])),
+            ]),
+            if (location.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Row(children: [const Icon(Icons.location_on_outlined, size: 16, color: muted), const SizedBox(width: 5), Expanded(child: Text(location, style: const TextStyle(color: muted, fontSize: 12)))]),
+            ],
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(description, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5F5A77), fontSize: 12, height: 1.35)),
+            ],
+            const SizedBox(height: 8),
+            const Align(alignment: Alignment.centerRight, child: Text('Ver oferta completa  ›', style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w800))),
           ]),
-          if (location.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Row(children: [const Icon(Icons.location_on_outlined, size: 16, color: muted), const SizedBox(width: 5), Expanded(child: Text(location, style: const TextStyle(color: muted, fontSize: 12)))]),
-          ],
-          if (description.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(description, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFF5F5A77), fontSize: 12, height: 1.35)),
-          ],
-        ]),
+        ),
       ),
     );
   }
