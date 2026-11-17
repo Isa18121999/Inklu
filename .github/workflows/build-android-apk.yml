@@ -105,7 +105,7 @@ jobs:
           p = Path("android/app/build.gradle.kts")
           s = p.read_text()
           if 'create("release")' not in s:
-              s = 'import java.util.Properties\\nimport java.io.FileInputStream\\n\\n' + s
+              s = 'import java.util.Properties\nimport java.io.FileInputStream\n\n' + s
               marker = 'android {'
               config = '''android {
               signingConfigs {
@@ -115,7 +115,7 @@ jobs:
                       props.load(FileInputStream(propsFile))
                       keyAlias = props["keyAlias"] as String
                       keyPassword = props["keyPassword"] as String
-                      storeFile = file(props["storeFile"] as String)
+                      storeFile = rootProject.file(props["storeFile"] as String)
                       storePassword = props["storePassword"] as String
                   }
               }
