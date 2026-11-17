@@ -145,7 +145,7 @@ test('muestra requisitos obligatorios no encontrados en el perfil sin afirmar qu
   assert.ok(result.matchReasons.some(reason => reason.includes('No encontramos en tu perfil estos requisitos')));
 });
 
-test('marca cuando la experiencia indicada no alcanza el requisito', () => {
+test('excluye ofertas que requieren más experiencia que la declarada por el candidato', () => {
   const demandingJob = job({
     _id: 'job-senior',
     title: 'Desarrollador senior JavaScript',
@@ -162,10 +162,7 @@ test('marca cuando la experiencia indicada no alcanza el requisito', () => {
     ...candidate,
     profile: { ...candidate.profile, experience: 0 }
   };
-  const [result] = recommendJobsForUser(newCandidate, [demandingJob]);
-  assert.ok(result);
-  assert.equal(result.experienceFit, false);
-  assert.ok(result.matchReasons.some(reason => reason.includes('solicita 5 año(s)')));
+  assert.deepEqual(recommendJobsForUser(newCandidate, [demandingJob]), []);
 });
 
 test('excluye ofertas de salud para candidatos de sistemas aunque compartan palabras genéricas', () => {
