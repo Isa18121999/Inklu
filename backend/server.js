@@ -1063,6 +1063,21 @@ app.get('/api/recommendations', auth, async (req, res) => {
   }
 });
 
+app.get('/api/jobs/dismissed', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Las ofertas omitidas están disponibles para candidatos.' });
+    const candidate = await User.findById(req.user._id).select('dismissedJobs').lean();
+    const ids = candidate?.dismissedJobs || [];
+    const jobs = await Job.find({ _id: { $in: ids }, active: true })
+      .populate('companyId', 'name companyProfile companyVerification')
+      .sort({ updatedAt: -1 });
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error cargando ofertas omitidas:', error);
+    res.status(500).json({ message: 'No se pudieron cargar las ofertas omitidas.' });
+  }
+});
+
 app.post('/api/jobs/:id/dismiss', auth, async (req, res) => {
   try {
     if (req.user.role !== 'candidate') return res.status(403).json({ message: 'Solo los candidatos pueden pasar ofertas.' });
