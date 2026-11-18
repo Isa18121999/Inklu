@@ -30,3 +30,4 @@ flutter:
 
 dependency_overrides:
   archive: 4.0.8
+  image: 4.10.2
