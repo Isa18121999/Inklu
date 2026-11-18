@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -2439,7 +2442,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     if (user == null) return;
     final birth = TextEditingController(text: profile['birth']?.toString() ?? '');
     final address = TextEditingController(text: profile['address']?.toString() ?? '');
-    final education = TextEditingController(text: profile['education']?.toString() ?? '');
+    final education = TextEditingController(text: profile['education']?.toString().trim().isNotEmpty == true ? profile['education'].toString() : 'Ingeniería de Tecnología de Información y Sistemas');
     final professionalSummary = TextEditingController(text: profile['professionalSummary']?.toString() ?? '');
     final experience = TextEditingController(text: profile['experience']?.toString() ?? '0');
     final skillsController = TextEditingController(text: profile['skills'] is List ? (profile['skills'] as List).map(_skillLabel).where((skill) => skill.isNotEmpty).join(', ') : '');
@@ -2583,6 +2586,48 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     skillsController.dispose();
     projectsController.dispose();
     certificationsController.dispose();
+  }
+
+  Future<void> createAtsCv() async {
+    if (user == null) return;
+    final skills = _profileEntryList(profile['skills']).map(_skillLabel).where((v) => v.isNotEmpty).toList();
+    final projects = _profileEntryList(profile['projects']);
+    final certifications = _profileEntryList(profile['certifications']);
+    final name = (user?['name'] ?? user?['fullName'] ?? '').toString().trim();
+    final email = (user?['email'] ?? '').toString().trim();
+    final phone = (user?['phone'] ?? '').toString().trim();
+    final career = (profile['education'] ?? 'Ingeniería de Tecnología de Información y Sistemas').toString().trim();
+    final summary = (profile['professionalSummary'] ?? '').toString().trim();
+    final years = int.tryParse((profile['experience'] ?? 0).toString()) ?? 0;
+    final doc = pw.Document();
+    pw.Widget heading(String value) => pw.Padding(
+      padding: const pw.EdgeInsets.only(top: 12, bottom: 5),
+      child: pw.Text(value.toUpperCase(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+    );
+    pw.Widget paragraph(String value) => pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 4),
+      child: pw.Text(value, style: const pw.TextStyle(fontSize: 9.5, lineSpacing: 2)),
+    );
+    doc.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.fromLTRB(48, 42, 48, 42),
+      build: (context) => [
+        pw.Text(name.isEmpty ? 'NOMBRE Y APELLIDOS' : name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        if (email.isNotEmpty || phone.isNotEmpty || (profile['location']?.toString().isNotEmpty ?? false))
+          paragraph([email, phone, (profile['location'] ?? '').toString()].where((v) => v.trim().isNotEmpty).join(' | ')),
+        paragraph(career),
+        if (summary.isNotEmpty) ...[heading('Perfil profesional'), paragraph(summary)],
+        heading('Experiencia profesional'),
+        paragraph('$years años de experiencia declarados.'),
+        heading('Formación académica'),
+        paragraph(career),
+        if (skills.isNotEmpty) ...[heading('Habilidades'), paragraph(skills.join(' | '))],
+        if (projects.isNotEmpty) ...[heading('Proyectos relevantes'), ...projects.map(paragraph)],
+        if (certifications.isNotEmpty) ...[heading('Certificaciones y cursos'), ...certifications.map(paragraph)],
+      ],
+    ));
+    final safeName = (name.isEmpty ? 'CV_INKLU' : name.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_'));
+    await Printing.sharePdf(bytes: await doc.save(), filename: '${safeName}_CV_ATS.pdf');
   }
 
   Future<void> replaceCv() async {
@@ -2843,6 +2888,21 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           child: Text(
             'Tu número de CONADIS es un dato personal y no se muestra en esta vista del perfil.',
             style: TextStyle(color: muted, fontSize: 12, height: 1.4),
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Section('Crear CV compatible con ATS'),
+        const Text(
+          'Genera un currículum de una sola columna, con texto seleccionable y secciones convencionales para sistemas de seguimiento de candidatos.',
+          style: TextStyle(color: muted, fontSize: 12, height: 1.4),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: loading || saving ? null : createAtsCv,
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Crear y descargar CV ATS (PDF)'),
           ),
         ),
         const SizedBox(height: 18),
