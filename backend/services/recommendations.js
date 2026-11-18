@@ -168,7 +168,7 @@ function recommendJobsForUser(user, jobs) {
   const candidateExperience = Math.max(0, Number(user.profile?.experience || 0));
 
   const careerGroups = [
-    { key: 'tecnologia', signals: ['tecnologia', 'informatica', 'computacion', 'sistemas', 'software', 'programacion', 'desarrollo web', 'desarrollo de software', 'flutter', 'javascript', 'typescript', 'python', 'java', 'sql', 'ciberseguridad', 'redes informaticas', 'ingenieria de sistemas', 'ingenieria informatica', 'computacion e informatica', 'ciencia de la computacion', 'analista programador', 'tecnologias de la informacion', 'soporte tecnico', 'infraestructura'] },
+    { key: 'tecnologia', signals: ['tecnologia', 'informatica', 'computacion', 'sistemas', 'software', 'programacion', 'desarrollo web', 'desarrollo de software', 'flutter', 'javascript', 'typescript', 'python', 'java', 'sql', 'ciberseguridad', 'redes informaticas', 'ingenieria de sistemas', 'ingenieria informatica', 'computacion e informatica', 'ciencia de la computacion', 'analista programador', 'tecnologias de la informacion', 'soporte tecnico', 'infraestructura', 'mesa de ayuda', 'help desk', 'soporte ti', 'administrador de sistemas', 'qa', 'testing', 'calidad de software', 'devops', 'cloud', 'automatizacion'] },
     { key: 'administracion', signals: ['administracion', 'administrativo', 'gestion empresarial', 'negocios', 'contabilidad', 'finanzas', 'economia', 'recursos humanos', 'reclutamiento', 'asistente contable', 'auxiliar contable', 'tesoreria', 'planillas'] },
     { key: 'diseno', signals: ['diseno', 'ux', 'ui', 'figma', 'photoshop', 'illustrator', 'diseno grafico', 'diseno digital'] },
     { key: 'datos', signals: ['analisis de datos', 'analitica de datos', 'estadistica', 'power bi', 'tableau', 'data analysis', 'bases de datos', 'business intelligence', 'inteligencia de negocios'] },
@@ -186,6 +186,13 @@ function recommendJobsForUser(user, jobs) {
   const candidateGroups = educationGroups.size > 0
     ? educationGroups
     : new Set(careerGroups.filter(group => group.signals.some(signal => candidateCareerText.includes(normalizeText(signal)))).map(group => group.key));
+
+  // Tecnología de la información también abarca análisis de datos y gestión
+  // de proyectos tecnológicos; se consideran áreas afines, no profesiones ajenas.
+  if (candidateGroups.has('tecnologia')) {
+    candidateGroups.add('datos');
+    candidateGroups.add('proyectos');
+  }
 
   const groupsForText = value => {
     const normalized = normalizeText(value);
@@ -256,6 +263,8 @@ function recommendJobsForUser(user, jobs) {
     }
 
     const experienceRequired = Math.max(0, Number(job.experienceRequired || 0));
+    const roleText = normalizeText([job.title, job.description].join(' '));
+    const isEarlyCareerRole = /\\b(junior|jr|trainee|practicante|practicas|pasante|intern|entry level|sin experiencia|asistente|auxiliar|becario)\\b/.test(roleText);
     const experienceGap = Math.max(0, experienceRequired - candidateExperience);
     let score = Math.round(similarity * 60);
     if (matchedSkills.length) score = Math.max(score, Math.min(50, matchedSkills.length * 10));
@@ -267,6 +276,10 @@ function recommendJobsForUser(user, jobs) {
       reasons.push('No encontramos en tu perfil estos requisitos: ' + missingRequiredSkills.slice(0, 4).join(', ') + '. Revisa si conviene completar tus habilidades antes de postular.');
     }
     if (matchedPreferred.length) score += Math.min(6, matchedPreferred.length * 2);
+    if (isEarlyCareerRole) {
+      score += 8;
+      reasons.push('Puesto orientado a perfiles junior, prácticas o etapa inicial');
+    }
     if (experienceGap === 0) {
       score += 8;
       reasons.push('Experiencia requerida compatible con tu perfil');
