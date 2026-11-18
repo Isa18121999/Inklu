@@ -277,7 +277,7 @@ function recommendJobsForUser(user, jobs) {
     }
     if (matchedPreferred.length) score += Math.min(6, matchedPreferred.length * 2);
     if (isEarlyCareerRole) {
-      score += 8;
+      score += 20;
       reasons.push('Puesto orientado a perfiles junior, prácticas o etapa inicial');
     }
     if (experienceGap === 0) {
