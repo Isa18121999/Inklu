@@ -239,3 +239,45 @@ test('maps numeric legacy skill IDs to readable names and hides unknown IDs', ()
   assert.equal(humanizeSkill('99'), '');
   assert.equal(humanizeSkill('Python'), 'Python');
 });
+
+
+test('incluye análisis de datos como área afín a Ingeniería de TI y Sistemas', () => {
+  const dataRole = makeJob({
+    _id: 'data-analyst',
+    title: 'Analista de datos junior',
+    description: 'Consultas SQL, análisis de datos y elaboración de reportes.',
+    category: 'Análisis de datos',
+    requiredSkills: ['SQL'],
+    experienceRequired: 1
+  });
+
+  const results = recommendJobsForUser(candidate(), [dataRole]);
+
+  assert.equal(results.length, 1);
+  assert.equal(results[0]._id, 'data-analyst');
+  assert.ok(results[0].careerMatch);
+});
+
+test('prioriza puestos junior y prácticas cuando el perfil cumple la experiencia', () => {
+  const junior = makeJob({
+    _id: 'junior-role',
+    title: 'Desarrollador Python Junior',
+    description: 'Desarrollo de software con Python y SQL.',
+    category: 'Tecnología',
+    requiredSkills: ['Python', 'SQL'],
+    experienceRequired: 1
+  });
+  const general = makeJob({
+    _id: 'general-role',
+    title: 'Desarrollador Python',
+    description: 'Desarrollo de software con Python y SQL.',
+    category: 'Tecnología',
+    requiredSkills: ['Python', 'SQL'],
+    experienceRequired: 1
+  });
+
+  const results = recommendJobsForUser(candidate(), [general, junior]);
+
+  assert.equal(results[0]._id, 'junior-role');
+  assert.ok(results[0].matchReasons.some(reason => reason.includes('junior')));
+});
