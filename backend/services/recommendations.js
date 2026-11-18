@@ -264,7 +264,7 @@ function recommendJobsForUser(user, jobs) {
 
     const experienceRequired = Math.max(0, Number(job.experienceRequired || 0));
     const roleText = normalizeText([job.title, job.description].join(' '));
-    const isEarlyCareerRole = /\\b(junior|jr|trainee|practicante|practicas|pasante|intern|entry level|sin experiencia|asistente|auxiliar|becario)\\b/.test(roleText);
+    const isEarlyCareerRole = /\b(junior|jr|trainee|practicante|practicas|pasante|intern|entry level|sin experiencia|asistente|auxiliar|becario)\b/.test(roleText);
     const experienceGap = Math.max(0, experienceRequired - candidateExperience);
     let score = Math.round(similarity * 60);
     if (matchedSkills.length) score = Math.max(score, Math.min(50, matchedSkills.length * 10));
