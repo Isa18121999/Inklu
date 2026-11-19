@@ -1029,8 +1029,18 @@ app.patch('/api/notifications/:id/read', auth, async (req, res) => {
       { $set: { readAt: new Date() } },
       { new: true }
     );
-    if (!item) return res.status(404).json({ message: 'No se encontró una notificación pendiente.' });
-    res.json({ success: true, id: String(item._id), read: true });
+    if (item) {
+      return res.json({ success: true, id: String(item._id), read: true });
+    }
+
+    // Hacer la operación idempotente: volver a marcar una notificación propia
+    // como leída no debe convertirse en un error.
+    const existing = await Notification.findOne({
+      _id: req.params.id,
+      userId: req.user._id
+    }).select('_id readAt');
+    if (!existing) return res.status(404).json({ message: 'Notificación no encontrada.' });
+    return res.json({ success: true, id: String(existing._id), read: Boolean(existing.readAt) });
   } catch (error) {
     console.error('Error actualizando notificación:', error);
     res.status(500).json({ message: 'No se pudo actualizar la notificación.' });
