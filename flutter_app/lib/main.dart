@@ -2188,6 +2188,16 @@ class ApplicationProgressCard extends StatelessWidget {
     return 'Hace ${(diff.inDays / 365).floor()} años';
   }
 
+  String formatHistoryDate(DateTime? date) {
+    if (date == null) return 'Fecha no disponible';
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final year = date.year.toString();
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year · $hour:$minute';
+  }
+
   Map<String, dynamic>? historyFor(String status) {
     final history = application['statusHistory'];
     if (history is! List) return null;
@@ -2211,7 +2221,24 @@ class ApplicationProgressCard extends StatelessWidget {
     final modality = job['modality']?.toString().trim() ?? '';
     final applicantCount = (application['applicantCount'] as num?)?.toInt() ?? 1;
     final rawHistory = application['statusHistory'];
-    final lastHistory = rawHistory is List && rawHistory.isNotEmpty ? Map<String, dynamic>.from(rawHistory.last) : <String, dynamic>{};
+    final historyEntries = rawHistory is List
+        ? rawHistory.whereType<Map>().map((entry) => Map<String, dynamic>.from(entry)).toList()
+        : <Map<String, dynamic>>[];
+    if (historyEntries.isEmpty) {
+      historyEntries.add({
+        'status': status,
+        'changedAt': application['updatedAt'] ?? application['createdAt'],
+      });
+    }
+    historyEntries.sort((a, b) {
+      final dateA = dateFrom(a['changedAt']);
+      final dateB = dateFrom(b['changedAt']);
+      if (dateA == null && dateB == null) return 0;
+      if (dateA == null) return -1;
+      if (dateB == null) return 1;
+      return dateA.compareTo(dateB);
+    });
+    final lastHistory = historyEntries.isNotEmpty ? historyEntries.last : <String, dynamic>{};
     final changedAt = dateFrom(lastHistory['changedAt'] ?? application['createdAt']);
     final isWeb = title.toLowerCase().contains('web') || title.toLowerCase().contains('desarroll') || title.toLowerCase().contains('frontend');
     final isHealth = title.toLowerCase().contains('salud') || title.toLowerCase().contains('enfer') || title.toLowerCase().contains('clínic');
@@ -2288,7 +2315,53 @@ class ApplicationProgressCard extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(child: Text('$applicantCount ${applicantCount == 1 ? 'persona postulada' : 'personas postuladas'}', style: const TextStyle(fontSize: 12, color: Color(0xFF6F698A)))),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
+              leading: const Icon(Icons.history_rounded, color: primary),
+              title: const Text('Historial de seguimiento', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF292342))),
+              subtitle: Text('${historyEntries.length} ${historyEntries.length == 1 ? 'actualización' : 'actualizaciones'}', style: const TextStyle(fontSize: 11, color: Color(0xFF77728D))),
+              children: [
+                for (var index = 0; index < historyEntries.length; index++)
+                  Builder(builder: (context) {
+                    final entry = historyEntries[index];
+                    final entryStatus = normalizeApplicationStatus(entry['status']?.toString());
+                    final entryDate = dateFrom(entry['changedAt']);
+                    final isLast = index == historyEntries.length - 1;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        SizedBox(
+                          width: 24,
+                          child: Column(children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: isLast ? primary : const Color(0xFFB8B2D8),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            if (!isLast)
+                              Container(width: 2, height: 34, color: const Color(0xFFE6E2F3)),
+                          ]),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(entryStatus, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: isLast ? primary : const Color(0xFF514B70))),
+                          const SizedBox(height: 3),
+                          Text(formatHistoryDate(entryDate), style: const TextStyle(fontSize: 11, color: Color(0xFF77728D))),
+                        ])),
+                      ]),
+                    );
+                  }),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           if (chatAvailableForStatus(status))
             SizedBox(width: double.infinity, child: FilledButton.icon(
               style: FilledButton.styleFrom(backgroundColor: const Color(0xFFEDE9FF), foregroundColor: primary),
