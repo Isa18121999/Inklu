@@ -11,6 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'services/api_service.dart';
 import 'services/accessibility_page.dart';
+import 'services/accessibility_settings.dart';
 import 'create_offer_page.dart';
 import 'notifications_page.dart';
 import 'delete_account_page.dart';
@@ -129,7 +130,7 @@ void ensureUnreadNotificationCountLoaded(String token) {
     },
   );
 }
-void main() async { WidgetsFlutterBinding.ensureInitialized(); await Firebase.initializeApp(); await _initializePushNotifications(); await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]); runApp(const InkluApp()); }
+void main() async { WidgetsFlutterBinding.ensureInitialized(); await AccessibilitySettings.load(); await Firebase.initializeApp(); await _initializePushNotifications(); await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]); runApp(const InkluApp()); }
 void toast(String s) {
   final context = _nav.currentContext;
   if (context != null) {
@@ -142,26 +143,74 @@ final GlobalKey<NavigatorState> _nav=GlobalKey<NavigatorState>();
 class InkluApp extends StatelessWidget {
   const InkluApp({super.key});
 
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    debugShowCheckedModeBanner: false,
-    navigatorKey: _nav,
-    title: 'INKLU',
-    theme: ThemeData(
+  ThemeData _theme({required bool highContrast}) {
+    final base = ColorScheme.fromSeed(seedColor: primary, brightness: Brightness.light);
+    final scheme = highContrast
+        ? base.copyWith(
+            primary: const Color(0xFF171047),
+            onPrimary: Colors.white,
+            secondary: const Color(0xFF003B70),
+            onSecondary: Colors.white,
+            surface: Colors.white,
+            onSurface: Colors.black,
+            outline: const Color(0xFF333333),
+            error: const Color(0xFF9B0000),
+            onError: Colors.white,
+          )
+        : base;
+    return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: Colors.white,
-      colorScheme: ColorScheme.fromSeed(seedColor: primary),
+      scaffoldBackgroundColor: highContrast ? Colors.white : Colors.white,
+      colorScheme: scheme,
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
-      inputDecorationTheme: const InputDecorationTheme(
-        border: OutlineInputBorder(),
-        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      dividerColor: highContrast ? Colors.black : null,
+      textTheme: highContrast
+          ? ThemeData.light().textTheme.apply(bodyColor: Colors.black, displayColor: Colors.black)
+          : null,
+      inputDecorationTheme: InputDecorationTheme(
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        enabledBorder: highContrast ? const OutlineInputBorder(borderSide: BorderSide(color: Colors.black, width: 1.5)) : null,
+        focusedBorder: highContrast ? const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF171047), width: 3)) : null,
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<AccessibilityDisplayPreferences>(
+    valueListenable: AccessibilitySettings.preferences,
+    builder: (context, preferences, _) => MaterialApp(
+      debugShowCheckedModeBanner: false,
+      navigatorKey: _nav,
+      title: 'INKLU',
+      theme: _theme(highContrast: preferences.highContrast),
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        return MediaQuery(
+          data: media.copyWith(
+            textScaler: _PreferenceTextScaler(media.textScaler, preferences.textScale),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+      home: const AppStart(),
     ),
-    // No se limita textScaler: se respeta el tamaño de texto configurado
-    // en Android para que TalkBack y usuarios con baja visión puedan ampliarlo.
-    home: const AppStart(),
   );
+}
+
+/// Multiplies INKLU's preference by the Android/iOS system text scaling,
+/// preserving the user's system-level accessibility setting.
+class _PreferenceTextScaler extends TextScaler {
+  final TextScaler systemScaler;
+  final double multiplier;
+  const _PreferenceTextScaler(this.systemScaler, this.multiplier);
+
+  @override
+  double scale(double fontSize) => systemScaler.scale(fontSize) * multiplier;
+
+  @override
+  double get textScaleFactor => systemScaler.textScaleFactor * multiplier;
 }
 const String _rememberKey='inklu_remember_session';
 const String _tokenKey='inklu_saved_token';
