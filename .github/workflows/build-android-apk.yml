@@ -124,6 +124,42 @@ jobs:
           print("OK: android.permission.INTERNET está declarado.")
           PY
 
+      - name: Configure Firebase Android SDK
+        env:
+          FIREBASE_CONFIG: ${{ secrets.FIREBASE_GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "$FIREBASE_CONFIG" ]; then
+            echo "::error::Missing FIREBASE_GOOGLE_SERVICES_JSON repository secret."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_CONFIG" > android/app/google-services.json
+          python3 - <<'PY'
+          from pathlib import Path
+
+          settings = Path("android/settings.gradle.kts")
+          settings_text = settings.read_text(encoding="utf-8")
+          plugin_line = '    id("com.google.gms.google-services") version "4.6.0" apply false'
+          if "com.google.gms.google-services" not in settings_text:
+              marker = "plugins {"
+              if marker not in settings_text:
+                  raise SystemExit("No se encontró el bloque plugins en settings.gradle.kts")
+              settings_text = settings_text.replace(marker, marker + "\\n" + plugin_line, 1)
+              settings.write_text(settings_text, encoding="utf-8")
+
+          app_gradle = Path("android/app/build.gradle.kts")
+          app_text = app_gradle.read_text(encoding="utf-8")
+          app_plugin = '    id("com.google.gms.google-services")'
+          if "com.google.gms.google-services" not in app_text:
+              marker = "plugins {"
+              if marker not in app_text:
+                  raise SystemExit("No se encontró el bloque plugins en app/build.gradle.kts")
+              app_text = app_text.replace(marker, marker + "\\n" + app_plugin, 1)
+              app_gradle.write_text(app_text, encoding="utf-8")
+
+          print("Firebase Android config and Gradle plugin configured.")
+          PY
+
       - name: Flutter pub get
         run: flutter pub get
 
