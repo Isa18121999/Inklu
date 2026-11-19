@@ -2957,8 +2957,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
       await loadProfile();
       final skills = (analysis['skills'] as List?)?.map((e) => e.toString()).toList() ?? [];
       toast(skills.isEmpty
-          ? 'CV guardado. No se detectaron habilidades conocidas; revisa que el documento tenga texto seleccionable.'
-          : 'CV guardado y analizado. Habilidades detectadas: ${skills.take(6).join(', ')}.');
+          ? 'CV leído. Revisa los datos que se pudieron extraer y completa tu perfil manualmente si falta información.'
+          : 'CV leído y perfil autocompletado. Se detectaron: ${skills.take(6).join(', ')}. Revisa y edita los datos antes de generar tu CV ATS.');
     } catch (x) {
       toast(x.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -3188,7 +3188,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         const SizedBox(height: 18),
         const Section('Crear CV compatible con ATS'),
         const Text(
-          'Genera un currículum de una sola columna, con texto seleccionable y secciones convencionales para sistemas de seguimiento de candidatos.',
+          'Al subir tu CV, INKLU extrae la información disponible y completa los campos del perfil. Revisa y edita los datos; después genera una versión ATS de una columna, con texto seleccionable y secciones convencionales.',
           style: TextStyle(color: muted, fontSize: 12, height: 1.4),
         ),
         const SizedBox(height: 8),
@@ -3245,7 +3245,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
                             const SizedBox(width: 5),
                             Expanded(
                               child: Text(
-                                hasCv ? 'CV guardado en tu perfil' : 'PDF, DOC o DOCX · Máximo 5 MB',
+                                hasCv ? 'CV guardado · datos extraídos para revisar y editar' : 'PDF, DOC o DOCX · Máximo 5 MB',
                                 style: const TextStyle(color: muted, fontSize: 12),
                               ),
                             ),
