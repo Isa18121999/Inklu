@@ -202,6 +202,18 @@ Future<void> confirmLogout(BuildContext context) async {
     ),
   );
   if (shouldLogout != true || !context.mounted) return;
+  // Desvincular este dispositivo de la cuenta antes de cerrar la sesión.
+  final activeToken = sessionToken;
+  if (activeToken != null && activeToken.isNotEmpty) {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        await api.unregisterFcmToken(activeToken, fcmToken);
+      }
+    } catch (error) {
+      debugPrint('No se pudo desvincular el token FCM al cerrar sesión: $error');
+    }
+  }
   try {
     await clearSavedSession();
   } catch (_) {}
