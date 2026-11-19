@@ -25,6 +25,7 @@ const { canAccessApplicationConversation } = require('./services/conversation-ac
 const { getApplicationMessageReceiver, buildApplicationMessageNotification } = require('./services/application-notifications');
 const { hasValidCvSignature } = require('./services/file-validation');
 const { buildCoverLetter } = require('./services/cover-letter');
+const { sendPushToUser } = require('./services/firebase-admin');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -65,7 +66,8 @@ async function notifyCandidatesAboutMatchingJob(job, companyName) {
     }
 
     if (notifications.length) {
-      await Notification.insertMany(notifications, { ordered: false });
+      const inserted = await Notification.insertMany(notifications, { ordered: false });
+      await Promise.all(inserted.map(item => sendPushToUser(item.userId, { title: item.title, body: item.message, data: { type: item.type, relatedId: item.relatedId || '' } })));
     }
   } catch (error) {
     // La publicación de una oferta no debe fallar si las alertas tienen un problema.
@@ -973,6 +975,32 @@ app.delete('/api/profile/me', auth, async (req, res) => {
   }
 });
 
+app.post('/api/notifications/device-token', auth, async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const platform = ['android', 'ios', 'web'].includes(String(req.body?.platform || '').toLowerCase()) ? String(req.body.platform).toLowerCase() : 'android';
+    if (token.length < 40 || token.length > 4096) return res.status(400).json({ message: 'Token FCM no válido.' });
+    await User.updateOne({ _id: req.user._id }, { $pull: { fcmTokens: { token } } });
+    await User.updateOne({ _id: req.user._id }, { $push: { fcmTokens: { token, platform, updatedAt: new Date() } } });
+    return res.json({ success: true, message: 'Dispositivo registrado para notificaciones.' });
+  } catch (error) {
+    console.error('No se pudo registrar el token FCM:', error.message);
+    return res.status(500).json({ message: 'No se pudo registrar este dispositivo.' });
+  }
+});
+
+app.delete('/api/notifications/device-token', auth, async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    if (!token) return res.status(400).json({ message: 'Token FCM requerido.' });
+    await User.updateOne({ _id: req.user._id }, { $pull: { fcmTokens: { token } } });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('No se pudo quitar el token FCM:', error.message);
+    return res.status(500).json({ message: 'No se pudo quitar el dispositivo.' });
+  }
+});
+
 app.get('/api/notifications', auth, async (req, res) => {
   try {
     const items = await Notification.find({ userId: req.user._id })
@@ -1510,6 +1538,7 @@ app.post('/api/applications', auth, async (req, res) => {
         type: 'application',
         relatedId: application._id
       });
+      await sendPushToUser(job.companyId, { title: 'Nueva postulación', body: req.user.name + ' se postuló a la oferta “' + job.title + '”.', data: { type: 'application', relatedId: application._id } });
     } catch (notificationError) {
       console.error('No se pudo crear la notificación de postulación:', notificationError.message);
     }
@@ -1557,6 +1586,7 @@ app.post('/api/applications/:id/withdraw', auth, async (req, res) => {
         type: 'application_withdrawn',
         relatedId: application._id
       });
+      await sendPushToUser(application.jobId.companyId, { title: 'Postulación retirada', body: 'La persona candidata retiró su postulación a “' + application.jobId.title + '”.', data: { type: 'application_withdrawn', relatedId: application._id } });
     } catch (notificationError) {
       console.error('No se pudo notificar el retiro de postulación:', notificationError.message);
     }
@@ -1612,6 +1642,7 @@ app.patch('/api/applications/:id/status', auth, async (req, res) => {
           type: 'application_status',
           relatedId: application._id
         });
+        await sendPushToUser(application.candidateId, { title: 'Actualización de tu postulación', body: 'Tu postulación a “' + application.jobId.title + '” cambió a: ' + nextStatus + '.', data: { type: 'application_status', relatedId: application._id } });
       } catch (notificationError) {
         console.error('No se pudo crear la notificación de estado:', notificationError.message);
       }
@@ -1678,6 +1709,7 @@ app.post('/api/applications/:id/messages', auth, async (req, res) => {
         senderName: req.user.name,
         jobTitle: application.jobId.title
       }));
+      await sendPushToUser(receiverId, { title: 'Nuevo mensaje de ' + req.user.name, body: 'Tienes un mensaje sobre “' + application.jobId.title + '”.', data: { type: 'application_message', relatedId: application._id } });
     } catch (notificationError) {
       console.error('No se pudo crear la notificación de mensaje:', notificationError.message);
     }
