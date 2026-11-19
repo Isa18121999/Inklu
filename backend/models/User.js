@@ -117,6 +117,56 @@ function extractLabeled(text, aliases, maxLength = 180) {
 function sectionItems(section, maxItems = 20) { if (!section) return []; return section.split(/\n|•|·|▪|◦/).map(cleanCvLine).filter(v => v.length >= 3).filter((v, i, a) => a.findIndex(x => x.toLowerCase() === v.toLowerCase()) === i).slice(0, maxItems); }
 function experienceYears(text) { const matches = [...cleanCvText(text).toLowerCase().matchAll(/(\d+(?:[.,]\d+)?)\s*(?:años|anos)\s+(?:de\s+)?experiencia/g)]; const values = matches.map(m => Number(String(m[1]).replace(',', '.'))).filter(v => Number.isFinite(v) && v >= 0 && v <= 60); return values.length ? Math.max(...values) : 0; }
 
+function extractLanguages(section) {
+  const levels = [
+    { pattern: /\b(nativo|native|lengua materna|materno)\b/i, level: 'Nativo' },
+    { pattern: /\b(avanzado|advanced|c1|c2)\b/i, level: 'Avanzado' },
+    { pattern: /\b(intermedio|intermediate|b1|b2)\b/i, level: 'Intermedio' },
+    { pattern: /\b(b[aá]sico|basic|elemental|a1|a2)\b/i, level: 'Básico' }
+  ];
+  return sectionItems(section, 20).map(line => {
+    const match = levels.find(item => item.pattern.test(line));
+    const name = cleanCvLine(line.replace(/[:|–—-]+/g, ' ').replace(/\b(nativo|native|lengua materna|materno|avanzado|advanced|intermedio|intermediate|b[aá]sico|basic|elemental|c1|c2|b1|b2|a1|a2)\b/ig, '').trim());
+    return name ? { name: name.slice(0, 80), level: match?.level || 'Básico' } : null;
+  }).filter(Boolean);
+}
+
+function extractWorkExperience(section) {
+  if (!section) return [];
+  const lines = cleanCvText(section).split('\n').map(cleanCvLine).filter(Boolean);
+  const datePattern = /(?:\b(?:19|20)\d{2}\b|\b\d{1,2}[/-](?:\d{2}|(?:19|20)\d{2})\b|\b(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\.?\s+(?:19|20)\d{2}\b)/i;
+  const groups = [];
+  let current = null;
+  for (const line of lines) {
+    if (datePattern.test(line) && current && (current.startDate || current.endDate || current.functions)) {
+      groups.push(current);
+      current = null;
+    }
+    if (!current) current = { company: '', position: '', startDate: '', endDate: '', functions: [] };
+    if (datePattern.test(line) && !current.startDate) {
+      const dates = line.match(/(?:\b(?:19|20)\d{2}\b|\b\d{1,2}[/-](?:\d{2}|(?:19|20)\d{2})\b|\b(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\.?\s+(?:19|20)\d{2}\b)/ig) || [];
+      current.startDate = dates[0] || '';
+      current.endDate = /actualidad|presente|present|current/i.test(line) ? 'Actualidad' : (dates[1] || '');
+      const remainder = cleanCvLine(line.replace(datePattern, '').replace(/[|–—-]+/g, ' '));
+      if (remainder && !current.position) current.position = remainder.slice(0, 160);
+    } else if (!current.position) {
+      current.position = line.slice(0, 160);
+    } else if (!current.company) {
+      current.company = line.slice(0, 160);
+    } else {
+      current.functions.push(line);
+    }
+  }
+  if (current && (current.position || current.company || current.functions.length)) groups.push(current);
+  return groups.map(item => ({
+    company: item.company,
+    position: item.position,
+    startDate: item.startDate,
+    endDate: item.endDate,
+    functions: item.functions.join(' ').slice(0, 1200)
+  })).filter(item => item.company || item.position).slice(0, 20);
+}
+
 async function extractProfileFromCv(buffer, fileName) {
   const extension = String(fileName || '').toLowerCase().split('.').pop();
   let text = '';
@@ -131,11 +181,16 @@ async function extractProfileFromCv(buffer, fileName) {
   const summary = extractSection(text, ['perfil profesional', 'resumen profesional', 'objetivo profesional', 'sobre mi', 'acerca de mi'], 1200);
   const projects = sectionItems(extractSection(text, ['proyectos', 'proyectos destacados'], 1200));
   const certifications = sectionItems(extractSection(text, ['certificaciones', 'certificados', 'cursos'], 1000));
+  const languages = extractLanguages(extractSection(text, ['idiomas', 'languages'], 600));
+  const workExperience = extractWorkExperience(extractSection(text, ['experiencia laboral', 'experiencia profesional', 'experiencia', 'work experience', 'professional experience'], 5000));
   let education = educationSection;
   if (!education) education = text.split('\n').map(cleanCvLine).filter(line => /(universidad|instituto|institución|licenciatura|ingenier[ií]a|bachiller|t[ée]cnico|maestr[ií]a|doctorado)/i.test(line)).slice(0, 3).join(' · ').slice(0, 600);
   let modality = extractLabeled(text, ['modalidad', 'modalidad laboral', 'tipo de trabajo']);
   if (!modality) modality = /\btrabajo\s+remoto\b|\bmodalidad\s+remota\b/i.test(text) ? 'Remoto' : /\btrabajo\s+h[ií]brido\b|\bmodalidad\s+h[ií]brida\b/i.test(text) ? 'Híbrido' : /\btrabajo\s+presencial\b|\bmodalidad\s+presencial\b/i.test(text) ? 'Presencial' : '';
-  return { education, professionalSummary: summary, experience: experienceYears(text), skills, projects, certifications, modality, location: extractLabeled(text, ['ubicacion', 'ubicación', 'residencia', 'ciudad', 'localidad'], 120) };
+  const university = text.split('\n').map(cleanCvLine).find(line => /universidad|university|instituto|college/i.test(line)) || '';
+  const academicStatus = text.split('\n').map(cleanCvLine).find(line => /9[º°.]?\s*ciclo|estudiante|egresad[oa]|bachiller|titulado|graduad[oa]/i.test(line)) || '';
+  const complementaryEducation = extractSection(text, ['formacion complementaria', 'formación complementaria', 'educacion complementaria', 'educación complementaria'], 1000);
+  return { education, university, academicStatus, complementaryEducation, professionalSummary: summary, experience: experienceYears(text), skills, projects, certifications, languages, workExperience, modality, location: extractLabeled(text, ['ubicacion', 'ubicación', 'residencia', 'ciudad', 'localidad'], 120) };
 }
 
 const UserSchema = new mongoose.Schema({
@@ -175,6 +230,9 @@ UserSchema.pre('save', async function autofillProfileFromCv() {
     const extracted = await extractProfileFromCv(Buffer.from(this.cv.data), this.cv.fileName);
     const profile = this.profile || {};
     if (!String(profile.education || '').trim() && extracted.education) profile.education = extracted.education;
+    if (!String(profile.university || '').trim() && extracted.university) profile.university = extracted.university;
+    if (!String(profile.academicStatus || '').trim() && extracted.academicStatus) profile.academicStatus = extracted.academicStatus;
+    if (!String(profile.complementaryEducation || '').trim() && extracted.complementaryEducation) profile.complementaryEducation = extracted.complementaryEducation;
     if (!String(profile.professionalSummary || '').trim() && extracted.professionalSummary) profile.professionalSummary = extracted.professionalSummary;
     if ((!Number(profile.experience) || Number(profile.experience) < 1) && extracted.experience > 0) profile.experience = extracted.experience;
     if (!String(profile.modality || '').trim() && extracted.modality) profile.modality = extracted.modality;
@@ -182,6 +240,8 @@ UserSchema.pre('save', async function autofillProfileFromCv() {
     profile.skills = [...new Set([...(Array.isArray(profile.skills) ? profile.skills.map(String) : []), ...(extracted.skills || [])])].slice(0, 40);
     profile.projects = [...new Set([...(Array.isArray(profile.projects) ? profile.projects.map(String) : []), ...(extracted.projects || [])])].slice(0, 20);
     profile.certifications = [...new Set([...(Array.isArray(profile.certifications) ? profile.certifications.map(String) : []), ...(extracted.certifications || [])])].slice(0, 20);
+    if (!Array.isArray(profile.languages) || profile.languages.length === 0) profile.languages = extracted.languages || [];
+    if (!Array.isArray(profile.workExperience) || profile.workExperience.length === 0) profile.workExperience = extracted.workExperience || [];
     this.profile = profile;
   } catch (error) { console.error('No se pudo autocompletar el perfil desde el CV:', error.message); }
 });
