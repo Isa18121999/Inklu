@@ -1614,7 +1614,7 @@ app.patch('/api/applications/:id/status', auth, async (req, res) => {
     if (!application || !application.jobId || String(application.jobId.companyId) !== String(req.user._id)) {
       return res.status(404).json({ message: 'Postulación no encontrada.' });
     }
-    const allowed = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+    const allowed = ['Postulado', 'CV visto', 'En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado'];
     if (!allowed.includes(req.body?.status)) return res.status(400).json({ message: 'Etapa de postulación inválida.' });
     const currentStatus = normalizeApplicationStatus(application.status);
     const nextStatus = req.body.status;
