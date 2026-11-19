@@ -51,6 +51,15 @@ dynamic _firstNonEmptyLabelValue(List<dynamic> values) {
 
 String _skillLabel(dynamic raw) => _readableLabel(raw, _legacySkillLabels);
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
+final ValueNotifier<int> unreadNotificationCount = ValueNotifier<int>(0);
+Future<void> refreshUnreadNotificationCount(String token) async {
+  try {
+    final count = await api.unreadNotificationCount(token);
+    unreadNotificationCount.value = count < 0 ? 0 : count;
+  } catch (_) {
+    // Mantener el último contador conocido si la conexión no está disponible.
+  }
+}
 void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
 void toast(String s) {
   final context = _nav.currentContext;
@@ -142,12 +151,14 @@ Future<void> showNotifications(BuildContext context) async {
     toast('Inicia sesión para consultar tus notificaciones.');
     return;
   }
+  await refreshUnreadNotificationCount(token);
   await Navigator.push<void>(
     context,
     MaterialPageRoute(
       builder: (_) => NotificationsPage(token: token, api: api),
     ),
   );
+  await refreshUnreadNotificationCount(token);
 }
 
 Future<void> deleteAccountFlow(BuildContext context, String token) async {
@@ -4434,10 +4445,33 @@ class Dash extends StatelessWidget {
         const Text('INKLU', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: Color(0xFF19162D))),
       ]),
       actions: [
-        IconButton(
-          tooltip: 'Notificaciones',
-          onPressed: () => showNotifications(c),
-          icon: const Icon(Icons.notifications_active_outlined, color: primary),
+        ValueListenableBuilder<int>(
+          valueListenable: unreadNotificationCount,
+          builder: (context, count, _) => IconButton(
+            tooltip: count > 0 ? 'Notificaciones: $count sin leer' : 'Notificaciones',
+            onPressed: () => showNotifications(c),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_active_outlined, color: primary),
+                if (count > 0)
+                  Positioned(
+                    right: -7,
+                    top: -6,
+                    child: Container(
+                      constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                      alignment: Alignment.center,
+                      child: Text(
+                        count > 99 ? '99+' : '$count',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
         IconButton(
           tooltip: 'Cerrar sesión',
