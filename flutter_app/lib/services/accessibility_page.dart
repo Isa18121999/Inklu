@@ -1,8 +1,82 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
+import 'accessibility_settings.dart';
 
 const _purple = Color(0xFF4F46E5);
 const _muted = Color(0xFF64748B);
+
+
+Widget _displayAccessibilityControls() => ValueListenableBuilder<AccessibilityDisplayPreferences>(
+  valueListenable: AccessibilitySettings.preferences,
+  builder: (context, preferences, _) => Card(
+    margin: EdgeInsets.zero,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Visualización y lectura', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          const Text('Estos ajustes se guardan en este dispositivo y se aplican en toda la aplicación.', style: TextStyle(color: _muted)),
+          const SizedBox(height: 12),
+          Semantics(
+            label: 'Tamaño del texto',
+            hint: 'Usa los controles para aumentar o reducir el tamaño del texto en INKLU',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(child: Text('Tamaño del texto', style: TextStyle(fontWeight: FontWeight.w700))),
+                    Text('${(preferences.textScale * 100).round()}%'),
+                  ],
+                ),
+                Slider(
+                  value: preferences.textScale,
+                  min: 0.9,
+                  max: 1.5,
+                  divisions: 6,
+                  label: '${(preferences.textScale * 100).round()}%',
+                  semanticFormatterCallback: (value) => '${(value * 100).round()} por ciento',
+                  onChanged: AccessibilitySettings.setTextScale,
+                ),
+              ],
+            ),
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Alto contraste'),
+            subtitle: const Text('Aumenta el contraste de textos, bordes y controles en INKLU.'),
+            value: preferences.highContrast,
+            onChanged: AccessibilitySettings.setHighContrast,
+            secondary: const Icon(Icons.contrast),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: preferences.highContrast ? Colors.white : const Color(0xFFF8FAFC),
+              border: Border.all(color: preferences.highContrast ? Colors.black : const Color(0xFFCBD5E1), width: preferences.highContrast ? 2 : 1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              'Vista previa: INKLU conecta talento con oportunidades.',
+              style: TextStyle(color: preferences.highContrast ? Colors.black : const Color(0xFF334155), fontWeight: FontWeight.w600),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: AccessibilitySettings.resetDisplayPreferences,
+              icon: const Icon(Icons.restart_alt),
+              label: const Text('Restablecer visualización'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
 
 class AccessibilityPreferencesPage extends StatefulWidget {
   final String token;
@@ -71,6 +145,8 @@ class _AccessibilityPreferencesPageState extends State<AccessibilityPreferencesP
         const SizedBox(height: 8),
         const Text('Esta información es opcional. Tú decides si INKLU puede usarla para encontrar oportunidades compatibles.', style: TextStyle(color: _muted, height: 1.45)),
         const SizedBox(height: 18),
+        _displayAccessibilityControls(),
+        const SizedBox(height: 22),
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           title: const Text('Usar mis preferencias para recomendar ofertas', style: TextStyle(fontWeight: FontWeight.w700)),
