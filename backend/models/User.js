@@ -159,7 +159,8 @@ const UserSchema = new mongoose.Schema({
   profilePhoto: { type: ProfilePhotoSchema, default: undefined },
   savedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
   dismissedJobs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Job' }],
-  savedJobSearches: { type: [SavedJobSearchSchema], default: [] }
+  savedJobSearches: { type: [SavedJobSearchSchema], default: [] },
+  fcmTokens: { type: [{ token: { type: String, required: true }, platform: { type: String, enum: ['android', 'ios', 'web'], default: 'android' }, updatedAt: { type: Date, default: Date.now } }], default: [], select: false }
 }, { timestamps: true });
 
 UserSchema.pre('save', async function autofillProfileFromCv() {
