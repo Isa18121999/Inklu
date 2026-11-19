@@ -144,7 +144,7 @@ jobs:
               marker = "plugins {"
               if marker not in settings_text:
                   raise SystemExit("No se encontró el bloque plugins en settings.gradle.kts")
-              settings_text = settings_text.replace(marker, marker + "\\n" + plugin_line, 1)
+              settings_text = settings_text.replace(marker, marker + "\n" + plugin_line, 1)
               settings.write_text(settings_text, encoding="utf-8")
 
           app_gradle = Path("android/app/build.gradle.kts")
@@ -154,7 +154,7 @@ jobs:
               marker = "plugins {"
               if marker not in app_text:
                   raise SystemExit("No se encontró el bloque plugins en app/build.gradle.kts")
-              app_text = app_text.replace(marker, marker + "\\n" + app_plugin, 1)
+              app_text = app_text.replace(marker, marker + "\n" + app_plugin, 1)
               app_gradle.write_text(app_text, encoding="utf-8")
 
           print("Firebase Android config and Gradle plugin configured.")
