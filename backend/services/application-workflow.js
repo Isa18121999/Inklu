@@ -14,6 +14,12 @@ function normalizeApplicationStatus(status) {
   return LEGACY_STATUSES[status] || status || 'Postulado';
 }
 
+function chatIsEnabled(status) {
+  return ['En proceso', 'Aceptado', 'Proceso terminado'].includes(
+    normalizeApplicationStatus(status)
+  );
+}
+
 function canCompanyUpdateApplicationStatus(currentStatus, nextStatus) {
   const current = normalizeApplicationStatus(currentStatus);
   const next = normalizeApplicationStatus(nextStatus);
@@ -27,4 +33,4 @@ function canCompanyUpdateApplicationStatus(currentStatus, nextStatus) {
   return Number.isInteger(currentIndex) && Number.isInteger(nextIndex) && nextIndex > currentIndex;
 }
 
-module.exports = { normalizeApplicationStatus, canCompanyUpdateApplicationStatus };
+module.exports = { normalizeApplicationStatus, canCompanyUpdateApplicationStatus, chatIsEnabled };
