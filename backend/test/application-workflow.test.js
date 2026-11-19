@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   normalizeApplicationStatus,
-  canCompanyUpdateApplicationStatus
+  canCompanyUpdateApplicationStatus,
+  chatIsEnabled
 } = require('../services/application-workflow');
 
 test('normaliza los estados heredados al flujo actual', () => {
@@ -31,4 +32,17 @@ test('los estados finales y las postulaciones retiradas no se pueden reabrir', (
 
 test('permite conservar la etapa actual sin crear una transición nueva', () => {
   assert.equal(canCompanyUpdateApplicationStatus('CV visto', 'CV visto'), true);
+});
+
+
+test('el chat solo se habilita desde En proceso y conserva compatibilidad con estados heredados', () => {
+  assert.equal(chatIsEnabled('Postulado'), false);
+  assert.equal(chatIsEnabled('CV visto'), false);
+  assert.equal(chatIsEnabled('En proceso'), true);
+  assert.equal(chatIsEnabled('Aceptado'), true);
+  assert.equal(chatIsEnabled('Proceso terminado'), true);
+  assert.equal(chatIsEnabled('Retirada por candidato'), false);
+  assert.equal(chatIsEnabled('Entrevista'), true);
+  assert.equal(chatIsEnabled('Seleccionada'), true);
+  assert.equal(chatIsEnabled('No seleccionada'), true);
 });
