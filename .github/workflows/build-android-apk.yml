@@ -113,18 +113,21 @@ jobs:
           start = content.find("pluginManagement")
           if start < 0:
               raise SystemExit("No se encontró pluginManagement en settings.gradle.kts")
-          match = re.search(r"repositories\\s*\\{([^{}]*)\\}", content[start:])
+
+          match = re.search(r"repositories\s*\{([^{}]*)\}", content[start:])
           required = ["google()", "mavenCentral()", "gradlePluginPortal()"]
           if match:
               body = match.group(1)
               for repo in required:
                   if repo not in body:
-                      body += "\\n        " + repo
-              replacement = "repositories {" + body + "\\n    }"
+                      body += "\n        " + repo
+              replacement = "repositories {" + body + "\n    }"
               content = content[:start] + content[start:].replace(match.group(0), replacement, 1)
           else:
               marker = "pluginManagement {"
-              content = content.replace(marker, marker + "\\n    repositories {\\n        google()\\n        mavenCentral()\\n        gradlePluginPortal()\\n    }", 1)
+              block = marker + "\n    repositories {\n        google()\n        mavenCentral()\n        gradlePluginPortal()\n    }"
+              content = content.replace(marker, block, 1)
+
           settings.write_text(content, encoding="utf-8")
           print("OK: Gradle plugin repositories configured.")
           PY
