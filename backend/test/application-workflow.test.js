@@ -9,7 +9,7 @@ const {
 test('normaliza los estados heredados al flujo actual', () => {
   assert.equal(normalizeApplicationStatus('Postulada'), 'Postulado');
   assert.equal(normalizeApplicationStatus('En revisión'), 'CV visto');
-  assert.equal(normalizeApplicationStatus('Entrevista'), 'En proceso');
+  assert.equal(normalizeApplicationStatus('Entrevista'), 'Entrevista');
   assert.equal(normalizeApplicationStatus('Seleccionada'), 'Aceptado');
   assert.equal(normalizeApplicationStatus('No seleccionada'), 'Proceso terminado');
 });
@@ -17,7 +17,8 @@ test('normaliza los estados heredados al flujo actual', () => {
 test('permite avanzar sin retroceder en el proceso de selección', () => {
   assert.equal(canCompanyUpdateApplicationStatus('Postulado', 'CV visto'), true);
   assert.equal(canCompanyUpdateApplicationStatus('CV visto', 'En proceso'), true);
-  assert.equal(canCompanyUpdateApplicationStatus('En proceso', 'Aceptado'), true);
+  assert.equal(canCompanyUpdateApplicationStatus('En proceso', 'Entrevista'), true);
+  assert.equal(canCompanyUpdateApplicationStatus('Entrevista', 'Aceptado'), true);
   assert.equal(canCompanyUpdateApplicationStatus('Postulado', 'Proceso terminado'), true);
   assert.equal(canCompanyUpdateApplicationStatus('En proceso', 'CV visto'), false);
   assert.equal(canCompanyUpdateApplicationStatus('CV visto', 'Postulado'), false);
@@ -39,6 +40,7 @@ test('el chat solo se habilita desde En proceso y conserva compatibilidad con es
   assert.equal(chatIsEnabled('Postulado'), false);
   assert.equal(chatIsEnabled('CV visto'), false);
   assert.equal(chatIsEnabled('En proceso'), true);
+  assert.equal(chatIsEnabled('Entrevista'), true);
   assert.equal(chatIsEnabled('Aceptado'), true);
   assert.equal(chatIsEnabled('Proceso terminado'), true);
   assert.equal(chatIsEnabled('Retirada por candidato'), false);
