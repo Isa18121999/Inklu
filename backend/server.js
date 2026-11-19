@@ -875,6 +875,9 @@ app.patch('/api/profile/me', auth, async (req, res) => {
         birth: 40,
         address: 250,
         education: 160,
+        university: 160,
+        academicStatus: 100,
+        complementaryEducation: 500,
         professionalSummary: 1200,
         modality: 40,
         location: 100
@@ -893,7 +896,7 @@ app.patch('/api/profile/me', auth, async (req, res) => {
         updates['profile.experience'] = years;
       }
 
-      for (const key of ['skills', 'projects', 'certifications']) {
+      for (const key of ['skills', 'projects', 'certifications', 'languages']) {
         if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
         const raw = Array.isArray(body[key]) ? body[key] : String(body[key] || '').split(/[,\n]/);
         const limit = key === 'skills' ? 40 : 20;
