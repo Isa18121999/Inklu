@@ -70,7 +70,7 @@ void ensureUnreadNotificationCountLoaded(String token) {
   // Mantener el indicador actualizado mientras el dashboard está abierto,
   // tanto para cuentas de candidato como de empresa.
   _notificationCountTimer = Timer.periodic(
-    const Duration(seconds: 60),
+    const Duration(seconds: 10),
     (_) {
       if (_notificationCountToken == token && sessionToken == token) {
         refreshUnreadNotificationCount(token);
@@ -2202,7 +2202,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     loadMessages();
-    refreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+    refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!sending) loadMessages(silent: true);
     });
   }
