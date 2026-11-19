@@ -60,6 +60,12 @@ Future<void> refreshUnreadNotificationCount(String token) async {
     // Mantener el último contador conocido si la conexión no está disponible.
   }
 }
+String? _notificationCountToken;
+void ensureUnreadNotificationCountLoaded(String token) {
+  if (_notificationCountToken == token) return;
+  _notificationCountToken = token;
+  refreshUnreadNotificationCount(token);
+}
 void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
 void toast(String s) {
   final context = _nav.currentContext;
@@ -4434,7 +4440,10 @@ class Dash extends StatelessWidget {
   const Dash({super.key, required this.title, required this.tab, required this.onTab, required this.children, this.labels = const ['Inicio', 'Ofertas', 'Postulaciones', 'Perfil']});
 
   @override
-  Widget build(BuildContext c) => Scaffold(
+  Widget build(BuildContext c) {
+    final token = sessionToken;
+    if (token != null && token.isNotEmpty) ensureUnreadNotificationCountLoaded(token);
+    return Scaffold(
     backgroundColor: const Color(0xFFFAF9FF),
     appBar: AppBar(
       backgroundColor: const Color(0xFFFAF9FF),
@@ -4682,6 +4691,7 @@ class Dots extends StatelessWidget {
       ),
     ),
   );
+  }
 }
 class JobCard extends StatelessWidget {
   final dynamic j;
