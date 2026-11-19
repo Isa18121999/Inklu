@@ -147,34 +147,50 @@ class _AccessibilityPreferencesPageState extends State<AccessibilityPreferencesP
         const SizedBox(height: 18),
         _displayAccessibilityControls(),
         const SizedBox(height: 22),
-        SwitchListTile.adaptive(
+        Semantics(
+          label: 'Usar mis preferencias para recomendar ofertas',
+          hint: 'Activa o desactiva el uso de tus preferencias de accesibilidad para recomendar ofertas',
+          child: SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           title: const Text('Usar mis preferencias para recomendar ofertas', style: TextStyle(fontWeight: FontWeight.w700)),
           subtitle: const Text('No se utilizará tu discapacidad para reducir tu compatibilidad.', style: TextStyle(color: _muted)),
           value: shareAccessibility,
           onChanged: (v) => setState(() => shareAccessibility = v),
+          ),
         ),
         const SizedBox(height: 14),
-        DropdownButtonFormField<String>(
+        Semantics(
+          label: 'Tipo de necesidad de accesibilidad, opcional',
+          child: DropdownButtonFormField<String>(
           initialValue: needType.isEmpty ? null : needType,
           decoration: const InputDecoration(labelText: 'Tipo de necesidad de accesibilidad (opcional)', border: OutlineInputBorder()),
           items: needs.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
           onChanged: (v) => setState(() => needType = v ?? ''),
+          ),
         ),
         const SizedBox(height: 20),
         const Text('¿Qué condiciones o ajustes necesitas?', style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        ...preferences.map((item) => CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          title: Text(item),
-          value: selected.contains(item),
-          onChanged: (v) => setState(() => v == true ? selected.add(item) : selected.remove(item)),
+        ...preferences.map((item) => Semantics(
+          label: item,
+          value: selected.contains(item) ? 'Seleccionado' : 'No seleccionado',
+          hint: 'Toca para cambiar esta preferencia',
+          child: CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(item),
+            value: selected.contains(item),
+            onChanged: (v) => setState(() => v == true ? selected.add(item) : selected.remove(item)),
+          ),
         )),
         const SizedBox(height: 12),
-        FilledButton.icon(
+        Semantics(
+          label: saving ? 'Guardando preferencias de accesibilidad' : 'Guardar preferencias de accesibilidad',
+          button: true,
+          child: FilledButton.icon(
           onPressed: saving ? null : _save,
           icon: saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.save_outlined),
           label: Text(saving ? 'Guardando...' : 'Guardar preferencias'),
+          ),
         ),
       ],
     ),
