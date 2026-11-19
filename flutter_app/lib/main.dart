@@ -3024,6 +3024,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
       profile['academicStatus'],
       profile['complementaryEducation'],
       profile['languages'] is List && (profile['languages'] as List).isNotEmpty ? 'languages' : null,
+      profile['workExperience'] is List && (profile['workExperience'] as List).isNotEmpty ? 'workExperience' : null,
       profile['professionalSummary'],
       profile['experience'],
       profile['skills'] is List && (profile['skills'] as List).isNotEmpty ? 'skills' : null,
