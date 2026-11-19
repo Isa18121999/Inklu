@@ -994,6 +994,19 @@ app.get('/api/notifications', auth, async (req, res) => {
   }
 });
 
+app.get('/api/notifications/unread-count', auth, async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({
+      userId: req.user._id,
+      readAt: null
+    });
+    res.json({ count });
+  } catch (error) {
+    console.error('Error contando notificaciones pendientes:', error);
+    res.status(500).json({ message: 'No se pudo consultar el contador de notificaciones.' });
+  }
+});
+
 
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   try {
