@@ -158,6 +158,7 @@ Future<void> showNotifications(BuildContext context) async {
     return;
   }
   await refreshUnreadNotificationCount(token);
+  if (!context.mounted) return;
   await Navigator.push<void>(
     context,
     MaterialPageRoute(
@@ -4543,6 +4544,7 @@ class Dash extends StatelessWidget {
       ],
     ),
   );
+  }
 }
 
 class F extends StatelessWidget {
@@ -4691,7 +4693,6 @@ class Dots extends StatelessWidget {
       ),
     ),
   );
-  }
 }
 class JobCard extends StatelessWidget {
   final dynamic j;
