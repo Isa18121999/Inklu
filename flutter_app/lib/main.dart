@@ -207,10 +207,7 @@ class _PreferenceTextScaler extends TextScaler {
   const _PreferenceTextScaler(this.systemScaler, this.multiplier);
 
   @override
-  double scale(double fontSize) => systemScaler.scale(fontSize) * multiplier;
-
-  @override
-  double get textScaleFactor => systemScaler.textScaleFactor * multiplier;
+  double scale(double fontSize) => systemScaler.scale(fontSize * multiplier);
 }
 const String _rememberKey='inklu_remember_session';
 const String _tokenKey='inklu_saved_token';
