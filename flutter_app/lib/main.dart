@@ -208,6 +208,12 @@ class _PreferenceTextScaler extends TextScaler {
 
   @override
   double scale(double fontSize) => systemScaler.scale(fontSize * multiplier);
+
+  // TextScaler still requires this legacy getter in Flutter 3.35.x.
+  // The app uses scale() for actual rendering, preserving nonlinear scaling.
+  // ignore: deprecated_member_use
+  @override
+  double get textScaleFactor => systemScaler.textScaleFactor * multiplier;
 }
 const String _rememberKey='inklu_remember_session';
 const String _tokenKey='inklu_saved_token';
