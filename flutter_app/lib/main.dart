@@ -2707,7 +2707,11 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     if (user == null) return;
     final birth = TextEditingController(text: profile['birth']?.toString() ?? '');
     final address = TextEditingController(text: profile['address']?.toString() ?? '');
-    final education = TextEditingController(text: profile['education']?.toString().trim().isNotEmpty == true ? profile['education'].toString() : 'Ingeniería de Tecnología de Información y Sistemas');
+    final education = TextEditingController(text: profile['education']?.toString() ?? '');
+    final university = TextEditingController(text: profile['university']?.toString() ?? '');
+    final academicStatus = TextEditingController(text: profile['academicStatus']?.toString() ?? '');
+    final complementaryEducation = TextEditingController(text: profile['complementaryEducation']?.toString() ?? '');
+    final languagesController = TextEditingController(text: profile['languages'] is List ? (profile['languages'] as List).join(', ') : '');
     final professionalSummary = TextEditingController(text: profile['professionalSummary']?.toString() ?? '');
     final experience = TextEditingController(text: profile['experience']?.toString() ?? '0');
     final skillsController = TextEditingController(text: profile['skills'] is List ? (profile['skills'] as List).map(_skillLabel).where((skill) => skill.isNotEmpty).join(', ') : '');
@@ -2748,6 +2752,10 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
                 F(birth, 'Fecha de nacimiento (dd/mm/aaaa)'),
                 F(address, 'Dirección'),
                 F(education, 'Carrera o formación profesional'),
+                F(university, 'Universidad o institución'),
+                F(academicStatus, 'Situación académica (ej. 9.º ciclo, egresado)'),
+                F(complementaryEducation, 'Formación complementaria'),
+                F(languagesController, 'Idiomas (separados por comas)'),
                 F(professionalSummary, 'Resumen profesional', max: 4),
                 F(experience, 'Años de experiencia', type: TextInputType.number, format: digits(2)),
                 F(skillsController, 'Habilidades (separadas por comas)', max: 3),
@@ -2824,6 +2832,10 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           'birth': birth.text.trim(),
           'address': address.text.trim(),
           'education': education.text.trim(),
+          'university': university.text.trim(),
+          'academicStatus': academicStatus.text.trim(),
+          'complementaryEducation': complementaryEducation.text.trim(),
+          'languages': languagesController.text.split(',').map((item) => item.trim()).where((item) => item.isNotEmpty).take(20).toList(),
           'professionalSummary': professionalSummary.text.trim(),
           'experience': int.tryParse(experience.text.trim()) ?? 0,
           'skills': skillsController.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
@@ -2846,6 +2858,10 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     birth.dispose();
     address.dispose();
     education.dispose();
+    university.dispose();
+    academicStatus.dispose();
+    complementaryEducation.dispose();
+    languagesController.dispose();
     professionalSummary.dispose();
     experience.dispose();
     skillsController.dispose();
@@ -2861,7 +2877,11 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     final name = (user?['name'] ?? user?['fullName'] ?? '').toString().trim();
     final email = (user?['email'] ?? '').toString().trim();
     final phone = (user?['phone'] ?? '').toString().trim();
-    final career = (profile['education'] ?? 'Ingeniería de Tecnología de Información y Sistemas').toString().trim();
+    final career = (profile['education'] ?? '').toString().trim();
+    final university = (profile['university'] ?? '').toString().trim();
+    final academicStatus = (profile['academicStatus'] ?? '').toString().trim();
+    final complementaryEducation = (profile['complementaryEducation'] ?? '').toString().trim();
+    final languages = _profileEntryList(profile['languages']);
     final summary = (profile['professionalSummary'] ?? '').toString().trim();
     final years = int.tryParse((profile['experience'] ?? 0).toString()) ?? 0;
     final doc = pw.Document();
@@ -2880,15 +2900,16 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         pw.Text(name.isEmpty ? 'NOMBRE Y APELLIDOS' : name, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
         if (email.isNotEmpty || phone.isNotEmpty || (profile['location']?.toString().isNotEmpty ?? false))
           paragraph([email, phone, (profile['location'] ?? '').toString()].where((v) => v.trim().isNotEmpty).join(' | ')),
-        paragraph(career),
+        if (career.isNotEmpty) paragraph(career),
+        if (university.isNotEmpty || academicStatus.isNotEmpty) ...[heading('Formación académica'), if (university.isNotEmpty) paragraph(university), if (academicStatus.isNotEmpty) paragraph(academicStatus)],
+        if (complementaryEducation.isNotEmpty) ...[heading('Formación complementaria'), paragraph(complementaryEducation)],
         if (summary.isNotEmpty) ...[heading('Perfil profesional'), paragraph(summary)],
         heading('Experiencia profesional'),
         paragraph('$years años de experiencia declarados.'),
-        heading('Formación académica'),
-        paragraph(career),
         if (skills.isNotEmpty) ...[heading('Habilidades'), paragraph(skills.join(' | '))],
         if (projects.isNotEmpty) ...[heading('Proyectos relevantes'), ...projects.map(paragraph)],
         if (certifications.isNotEmpty) ...[heading('Certificaciones y cursos'), ...certifications.map(paragraph)],
+        if (languages.isNotEmpty) ...[heading('Idiomas'), paragraph(languages.join(' | '))],
       ],
     ));
     final safeName = (name.isEmpty ? 'CV_INKLU' : name.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '_'));
@@ -2983,6 +3004,10 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
       birth,
       address,
       profile['education'],
+      profile['university'],
+      profile['academicStatus'],
+      profile['complementaryEducation'],
+      profile['languages'] is List && (profile['languages'] as List).isNotEmpty ? 'languages' : null,
       profile['professionalSummary'],
       profile['experience'],
       profile['skills'] is List && (profile['skills'] as List).isNotEmpty ? 'skills' : null,
@@ -3102,26 +3127,10 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         _ProfileValue(icon: Icons.cake_outlined, label: 'Fecha de nacimiento', value: valueOf(birth)),
         _ProfileValue(icon: Icons.location_on_outlined, label: 'Dirección', value: valueOf(address)),
         const Section('Formación académica'),
-        _ProfileValue(
-          icon: Icons.school_outlined,
-          label: 'Carrera profesional',
-          value: 'Ingeniería de Tecnologías de Información y Sistemas',
-        ),
-        _ProfileValue(
-          icon: Icons.account_balance_outlined,
-          label: 'Universidad',
-          value: 'ESAN University',
-        ),
-        _ProfileValue(
-          icon: Icons.menu_book_outlined,
-          label: 'Situación académica',
-          value: '9.º ciclo',
-        ),
-        _ProfileValue(
-          icon: Icons.cast_for_education_outlined,
-          label: 'Formación complementaria',
-          value: 'Cursos de edX y Universidad Carlos III de Madrid',
-        ),
+        _ProfileValue(icon: Icons.school_outlined, label: 'Carrera profesional', value: valueOf(profile['education'])),
+        _ProfileValue(icon: Icons.account_balance_outlined, label: 'Universidad', value: valueOf(profile['university'])),
+        _ProfileValue(icon: Icons.menu_book_outlined, label: 'Situación académica', value: valueOf(profile['academicStatus'])),
+        _ProfileValue(icon: Icons.cast_for_education_outlined, label: 'Formación complementaria', value: valueOf(profile['complementaryEducation'])),
         const Section('Resumen profesional'),
         _ExpandableProfileSummary(
           text: profile['professionalSummary']?.toString() ?? '',
@@ -3135,6 +3144,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           emptyMessage: 'Añade tus proyectos, tu participación y los resultados obtenidos.',
         ),
         const SizedBox(height: 14),
+        const Section('Idiomas'),
+        _ProfileValue(icon: Icons.language_outlined, label: 'Idiomas', value: valueOf(profile['languages'] is List ? (profile['languages'] as List).join(', ') : '')),
         const Section('Certificaciones y cursos'),
         _ProfileEntryCards(
           icon: Icons.workspace_premium_outlined,
