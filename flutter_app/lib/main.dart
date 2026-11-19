@@ -75,24 +75,30 @@ Future<void> _registerFcmTokenForSession(String token) async {
 Future<void> _initializePushNotifications() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
-  _fcmTokenSubscription ??= FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+  _fcmTokenSubscription ??= FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
     final token = sessionToken;
     if (token != null && token.isNotEmpty) {
-      api.registerFcmToken(token, newToken, platform: 'android').catchError((error) {
+      try {
+        await api.registerFcmToken(token, newToken, platform: 'android');
+      } catch (error) {
         debugPrint('No se pudo actualizar el token FCM: $error');
-      });
+      }
     }
   });
   FirebaseMessaging.onMessage.listen((message) {
     final title = message.notification?.title ?? 'INKLU';
     final body = message.notification?.body ?? 'Tienes una nueva notificación.';
-    toast(title + ': ' + body);
+    toast('$title: $body');
     final token = sessionToken;
     if (token != null) refreshUnreadNotificationCount(token);
   });
   FirebaseMessaging.onMessageOpenedApp.listen((message) {
-    final context = _nav.currentContext;
-    if (context != null && sessionToken != null) showNotifications(context);
+    final token = sessionToken;
+    if (token != null && token.isNotEmpty) {
+      _nav.currentState?.push(MaterialPageRoute(
+        builder: (_) => NotificationsPage(token: token, api: api),
+      ));
+    }
   });
 }
 
