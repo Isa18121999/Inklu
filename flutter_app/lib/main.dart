@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -50,7 +52,50 @@ dynamic _firstNonEmptyLabelValue(List<dynamic> values) {
 }
 
 String _skillLabel(dynamic raw) => _readableLabel(raw, _legacySkillLabels);
+
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
+StreamSubscription<String>? _fcmTokenSubscription;
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
+Future<void> _registerFcmTokenForSession(String token) async {
+  try {
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    if (fcmToken != null && fcmToken.isNotEmpty) {
+      await api.registerFcmToken(token, fcmToken, platform: 'android');
+    }
+  } catch (error) {
+    debugPrint('No se pudo registrar el token FCM: $error');
+  }
+}
+
+Future<void> _initializePushNotifications() async {
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await FirebaseMessaging.instance.requestPermission(alert: true, badge: true, sound: true);
+  _fcmTokenSubscription ??= FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    final token = sessionToken;
+    if (token != null && token.isNotEmpty) {
+      api.registerFcmToken(token, newToken, platform: 'android').catchError((error) {
+        debugPrint('No se pudo actualizar el token FCM: $error');
+      });
+    }
+  });
+  FirebaseMessaging.onMessage.listen((message) {
+    final title = message.notification?.title ?? 'INKLU';
+    final body = message.notification?.body ?? 'Tienes una nueva notificación.';
+    toast(title + ': ' + body);
+    final token = sessionToken;
+    if (token != null) refreshUnreadNotificationCount(token);
+  });
+  FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    final context = _nav.currentContext;
+    if (context != null && sessionToken != null) showNotifications(context);
+  });
+}
+
 final ValueNotifier<int> unreadNotificationCount = ValueNotifier<int>(0);
 Timer? _notificationCountTimer;
 Future<void> refreshUnreadNotificationCount(String token) async {
@@ -78,7 +123,7 @@ void ensureUnreadNotificationCountLoaded(String token) {
     },
   );
 }
-void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
+void main() async { WidgetsFlutterBinding.ensureInitialized(); await Firebase.initializeApp(); await _initializePushNotifications(); await SystemChrome.setPreferredOrientations(const [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]); runApp(const InkluApp()); }
 void toast(String s) {
   final context = _nav.currentContext;
   if (context != null) {
@@ -247,6 +292,7 @@ class _AppStartState extends State<AppStart> {
           final currentUser = await api.profile(token);
           sessionToken = token;
           sessionUser = currentUser;
+          await _registerFcmTokenForSession(token);
           restored = true;
         }
       }
@@ -693,6 +739,7 @@ Future<void> go() async {
       final r = await api.login(e.text.trim(), p.text);
       sessionToken = r['token'];
       sessionUser = r['user'];
+      if (sessionToken != null) await _registerFcmTokenForSession(sessionToken!);
       await saveLoginSession(rememberSession);
       final company = sessionUser?['role'] == 'company';
       if (mounted) {
