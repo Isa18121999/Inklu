@@ -51,6 +51,7 @@ class ApiService {
   Future<Map<String, dynamic>> dismissJob(String token, String jobId) async => _postAuth('/jobs/$jobId/dismiss', token, {});
   Future<Map<String, dynamic>> restoreDismissedJob(String token, String jobId) async => _deleteMap('/jobs/$jobId/dismiss', token);
   Future<List<dynamic>> notifications(String token) async => _getList('/notifications', token);
+  Future<int> unreadNotificationCount(String token) async => (await _getMap('/notifications/unread-count', token))['count'] as int? ?? 0;
   Future<Map<String, dynamic>> markNotificationRead(String token, String id) async => _patch('/notifications/$id/read', token, {'read': true});
   Future<Map<String, dynamic>> deleteNotification(String token, String id) async => _deleteMap('/notifications/$id', token);
   Future<Map<String, dynamic>> deleteNotifications(String token, List<String> ids) async => _deleteAuth('/notifications', token, {'ids': ids});
