@@ -872,6 +872,19 @@ class _CandidateHomeState extends State<CandidateHome> {
     setState(() => skippedJobIds.add(id));
     try {
       await api.dismissJob(sessionToken!, id);
+      if (!mounted) return;
+      // Refleja la decisión inmediatamente en la sección de ofertas omitidas.
+      setState(() {
+        if (!dismissedJobs.any((item) => _jobId(item) == id)) {
+          dismissedJobs = [job, ...dismissedJobs];
+        }
+      });
+      try {
+        final latest = await api.dismissedJobs(sessionToken!);
+        if (mounted) setState(() => dismissedJobs = latest);
+      } catch (_) {
+        // La omisión ya quedó guardada en el servidor; conserva el estado local.
+      }
       if (mounted) toast('Oferta omitida. No volverá a aparecer en tus recomendaciones.');
     } catch (error) {
       if (!mounted) return;
@@ -885,13 +898,20 @@ class _CandidateHomeState extends State<CandidateHome> {
     if (id.isEmpty) return;
     try {
       await api.restoreDismissedJob(sessionToken!, id);
-      final latest = await api.dismissedJobs(sessionToken!);
       if (!mounted) return;
       setState(() {
-        dismissedJobs = latest;
+        dismissedJobs = dismissedJobs.where((item) => _jobId(item) != id).toList();
         skippedJobIds.remove(id);
       });
-      toast('Oferta restaurada. Volverá a tus recomendaciones si sigue siendo compatible con tu perfil.');
+      // Las recomendaciones del servidor excluyen las ofertas omitidas;
+      // se vuelven a consultar para que la oferta restaurada pueda reaparecer.
+      try {
+        final latestRecommendations = await api.recommendations(sessionToken!);
+        if (mounted) setState(() => recommendations = latestRecommendations);
+      } catch (_) {
+        // La restauración quedó guardada; se actualizarán al recargar Inicio.
+      }
+      if (mounted) toast('Oferta restaurada. Volverá a tus recomendaciones si sigue siendo compatible con tu perfil.');
     } catch (error) {
       if (mounted) toast(error.toString().replaceFirst('Exception: ', ''));
     }
