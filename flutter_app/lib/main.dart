@@ -52,6 +52,7 @@ dynamic _firstNonEmptyLabelValue(List<dynamic> values) {
 String _skillLabel(dynamic raw) => _readableLabel(raw, _legacySkillLabels);
 final api=ApiService(); String? sessionToken; Map<String,dynamic>? sessionUser;
 final ValueNotifier<int> unreadNotificationCount = ValueNotifier<int>(0);
+Timer? _notificationCountTimer;
 Future<void> refreshUnreadNotificationCount(String token) async {
   try {
     final count = await api.unreadNotificationCount(token);
@@ -64,7 +65,18 @@ String? _notificationCountToken;
 void ensureUnreadNotificationCountLoaded(String token) {
   if (_notificationCountToken == token) return;
   _notificationCountToken = token;
+  _notificationCountTimer?.cancel();
   refreshUnreadNotificationCount(token);
+  // Mantener el indicador actualizado mientras el dashboard está abierto,
+  // tanto para cuentas de candidato como de empresa.
+  _notificationCountTimer = Timer.periodic(
+    const Duration(seconds: 60),
+    (_) {
+      if (_notificationCountToken == token && sessionToken == token) {
+        refreshUnreadNotificationCount(token);
+      }
+    },
+  );
 }
 void main() async{WidgetsFlutterBinding.ensureInitialized();await SystemChrome.setPreferredOrientations(const[DeviceOrientation.portraitUp,DeviceOrientation.portraitDown]);runApp(const InkluApp());}
 void toast(String s) {
