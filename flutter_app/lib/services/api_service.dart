@@ -56,6 +56,8 @@ class ApiService {
   Future<Map<String, dynamic>> deleteNotification(String token, String id) async => _deleteMap('/notifications/$id', token);
   Future<Map<String, dynamic>> deleteNotifications(String token, List<String> ids) async => _deleteAuth('/notifications', token, {'ids': ids});
   Future<Map<String, dynamic>> deleteAccount(String token, String password) async => _deleteAuth('/profile/me', token, {'password': password});
+  Future<Map<String, dynamic>> registerFcmToken(String token, String fcmToken, {String platform = 'android'}) async => _postAuth('/notifications/device-token', token, {'token': fcmToken, 'platform': platform});
+  Future<Map<String, dynamic>> unregisterFcmToken(String token, String fcmToken) async => _deleteAuth('/notifications/device-token', token, {'token': fcmToken});
 
   Future<Map<String, dynamic>> accessibilityProfile(String token) async => _getMap('/profile/accessibility', token);
   Future<Map<String, dynamic>> updateAccessibilityProfile(String token, Map<String, dynamic> data) async => _patch('/profile/accessibility', token, data);
