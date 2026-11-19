@@ -900,7 +900,7 @@ class _CandidateHomeState extends State<CandidateHome> {
   String? selectedCategoryFilter;
   bool searchingJobs = false;
   bool filtersExpanded = false;
-  static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+  static const applicationFilters = ['Todas', 'Postulado', 'CV Visto', 'En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado'];
 
   @override
   void initState() { super.initState(); load(); }
@@ -1644,7 +1644,7 @@ String normalizeApplicationStatus(String? raw) {
     case 'En revisión':
       return 'CV visto';
     case 'Entrevista':
-      return 'En proceso';
+      return 'Entrevista';
     case 'Seleccionada':
       return 'Aceptado';
     case 'No seleccionada':
@@ -1663,7 +1663,7 @@ bool applicationStatusMatchesFilter(String? rawStatus, String selectedFilter) {
 }
 
 bool chatAvailableForStatus(String status) =>
-    const ['En proceso', 'Aceptado', 'Proceso terminado']
+    const ['En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado']
         .contains(normalizeApplicationStatus(status));
 
 class JobMetadataChips extends StatelessWidget {
@@ -2146,11 +2146,12 @@ class ApplicationProgressCard extends StatelessWidget {
   final String token;
   const ApplicationProgressCard({super.key, required this.application, required this.token});
 
-  static const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+  static const stages = ['Postulado', 'CV visto', 'En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado'];
   static const descriptions = [
     'La empresa recibió tu candidatura. Todavía no ha marcado el CV como visto.',
     'La empresa indicó que ha revisado tu currículum.',
     'La selección continúa. Ya puedes conversar con la empresa a través del chat privado.',
+    'La empresa programó o inició una entrevista contigo.',
     'La empresa marcó tu candidatura como aceptada.',
     'La empresa ha finalizado el proceso de selección para esta postulación.',
   ];
@@ -2284,7 +2285,7 @@ class ApplicationProgressCard extends StatelessWidget {
               label: const Text('Conversar con la empresa'),
             ))
           else
-            const Text('El chat se habilita cuando la empresa actualice la etapa a “En proceso”.', style: TextStyle(color: Color(0xFF77728D), fontSize: 11)),
+            const Text('El chat se habilita cuando la empresa actualice la etapa a “En proceso” o “Entrevista”.', style: TextStyle(color: Color(0xFF77728D), fontSize: 11)),
         ]),
       ),
     );
@@ -3858,7 +3859,7 @@ class CompanyApplicationCard extends StatelessWidget {
         : <String, dynamic>{};
     final appId = (application['_id'] ?? application['id'] ?? '').toString();
     final jobTitle = job['title']?.toString() ?? 'Oferta';
-    const stages = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+    const stages = ['Postulado', 'CV visto', 'En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado'];
 
     String fieldText(dynamic value) => value == null ? '' : value.toString().trim();
 
@@ -4015,7 +4016,7 @@ class CompanyApplicationCard extends StatelessWidget {
               )
             else
               const Text(
-                'El chat aparecerá cuando actualices el estado a “En proceso”.',
+                'El chat se habilita cuando la postulación llegue a “En proceso” o “Entrevista”.',
                 style: TextStyle(color: muted, fontSize: 12),
               ),
           ],
