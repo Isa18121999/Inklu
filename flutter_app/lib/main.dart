@@ -1062,73 +1062,28 @@ class _CandidateHomeState extends State<CandidateHome> {
   }
 
   Future<void> apply(String id) async {
-    if (id.isEmpty) {
-      toast('No se pudo identificar esta oferta.');
+    if (id.isEmpty || sessionToken == null) {
+      toast('No se pudo identificar esta oferta o tu sesión ha expirado.');
       return;
     }
-    final controller = TextEditingController();
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ApplyPage(token: sessionToken!, jobId: id, api: api),
+      ),
+    );
+    if (created != true || !mounted) return;
     try {
-      final draft = await api.generateCoverLetter(sessionToken!, id);
-      controller.text = draft['coverLetter']?.toString() ?? '';
-      if (controller.text.trim().isEmpty || !mounted) {
-        toast('No se pudo preparar la carta de presentación.');
-        return;
-      }
-      final approvedLetter = await showDialog<String>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Tu carta de presentación'),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('La hemos personalizado con tu perfil y esta oferta. Puedes editarla antes de enviar tu postulación.'),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: controller,
-                    minLines: 10,
-                    maxLines: 16,
-                    maxLength: 5000,
-                    keyboardType: TextInputType.multiline,
-                    decoration: const InputDecoration(
-                      labelText: 'Carta de presentación',
-                      alignLabelWithHint: true,
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const Text('No se enviará nada hasta que confirmes.', style: TextStyle(color: muted, fontSize: 12)),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
-            FilledButton(
-              onPressed: () {
-                final text = controller.text.trim();
-                if (text.length < 80) {
-                  toast('La carta debe tener al menos 80 caracteres.');
-                  return;
-                }
-                Navigator.pop(dialogContext, text);
-              },
-              child: const Text('Confirmar y postularme'),
-            ),
-          ],
-        ),
-      );
-      if (approvedLetter == null) return;
-      await api.apply(sessionToken!, id, approvedLetter);
-      toast('¡Postulación enviada con tu carta de presentación!');
-      await load();
-    } catch (x) {
-      toast(x.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      controller.dispose();
+      final latestApplications = await api.applications(sessionToken!);
+      if (!mounted) return;
+      setState(() {
+        apps = latestApplications;
+        selectedApplicationFilter = 'Todas';
+        tab = 2;
+      });
+      toast('Postulación registrada. Ya puedes seguir sus etapas.');
+    } catch (error) {
+      if (mounted) toast('Se envió la postulación, pero no se pudo actualizar la lista. Desliza hacia abajo para reintentar.');
     }
   }
 
@@ -1558,6 +1513,127 @@ class _CandidateHomeState extends State<CandidateHome> {
                   : [CandidateProfilePanel(token: sessionToken!)],
     );
   }
+}
+
+
+class ApplyPage extends StatefulWidget {
+  final String token;
+  final String jobId;
+  final ApiService api;
+  const ApplyPage({super.key, required this.token, required this.jobId, required this.api});
+
+  @override
+  State<ApplyPage> createState() => _ApplyPageState();
+}
+
+class _ApplyPageState extends State<ApplyPage> {
+  final TextEditingController letterController = TextEditingController();
+  bool loading = true;
+  bool sending = false;
+  String? error;
+  String jobTitle = 'Postulación laboral';
+  String companyName = 'Empresa';
+
+  @override
+  void initState() {
+    super.initState();
+    prepareLetter();
+  }
+
+  Future<void> prepareLetter() async {
+    try {
+      final draft = await widget.api.generateCoverLetter(widget.token, widget.jobId);
+      if (!mounted) return;
+      letterController.text = draft['coverLetter']?.toString() ?? '';
+      final job = draft['job'];
+      if (job is Map) {
+        jobTitle = job['title']?.toString() ?? jobTitle;
+        companyName = job['company']?.toString() ?? companyName;
+      }
+      if (letterController.text.trim().isEmpty) error = 'No se pudo preparar la carta. Puedes redactarla manualmente.';
+    } catch (e) {
+      error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> submitApplication() async {
+    final letter = letterController.text.trim();
+    if (letter.length < 80) {
+      setState(() => error = 'La carta debe tener al menos 80 caracteres.');
+      return;
+    }
+    setState(() { sending = true; error = null; });
+    try {
+      await widget.api.apply(widget.token, widget.jobId, letter);
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      if (mounted) setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => sending = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    letterController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Enviar postulación')),
+    body: loading
+      ? const Center(child: CircularProgressIndicator(color: primary))
+      : SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              const Text('FORMULARIO DE POSTULACIÓN', style: TextStyle(color: primary, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+              const SizedBox(height: 8),
+              Text(jobTitle, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: ink)),
+              Text(companyName, style: const TextStyle(color: muted, fontSize: 15)),
+              const SizedBox(height: 22),
+              const Divider(),
+              const Text('Carta de presentación', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              const Text('Revisa y edita el texto antes de enviarlo. Tu perfil y CV se adjuntan desde INKLU.', style: TextStyle(color: muted, height: 1.4)),
+              const SizedBox(height: 14),
+              TextField(
+                controller: letterController,
+                minLines: 12,
+                maxLines: 20,
+                maxLength: 5000,
+                textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                decoration: const InputDecoration(
+                  labelText: 'Presentación profesional',
+                  hintText: 'Explica por qué te interesa el puesto y qué puedes aportar.',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+              ],
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: sending ? null : submitApplication,
+                  icon: sending
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.send_rounded),
+                  label: Text(sending ? 'Enviando...' : 'Enviar postulación'),
+                  style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+  );
 }
 
 
