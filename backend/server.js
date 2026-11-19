@@ -283,7 +283,7 @@ function normalizeApplicationStatus(status) {
   const legacy = {
     'Postulada': 'Postulado',
     'En revisión': 'CV visto',
-    'Entrevista': 'En proceso',
+    'Entrevista': 'Entrevista',
     'Seleccionada': 'Aceptado',
     'No seleccionada': 'Proceso terminado'
   };
