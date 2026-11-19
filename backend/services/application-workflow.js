@@ -1,12 +1,12 @@
 const LEGACY_STATUSES = {
   'Postulada': 'Postulado',
   'En revisión': 'CV visto',
-  'Entrevista': 'En proceso',
+  'Entrevista': 'Entrevista',
   'Seleccionada': 'Aceptado',
   'No seleccionada': 'Proceso terminado'
 };
 
-const COMPANY_STATUSES = ['Postulado', 'CV visto', 'En proceso', 'Aceptado', 'Proceso terminado'];
+const COMPANY_STATUSES = ['Postulado', 'CV visto', 'En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado'];
 const TERMINAL_STATUSES = new Set(['Aceptado', 'Proceso terminado', 'Retirada por candidato']);
 const STAGE_INDEX = new Map(COMPANY_STATUSES.map((status, index) => [status, index]));
 
@@ -15,7 +15,7 @@ function normalizeApplicationStatus(status) {
 }
 
 function chatIsEnabled(status) {
-  return ['En proceso', 'Aceptado', 'Proceso terminado'].includes(
+  return ['En proceso', 'Entrevista', 'Aceptado', 'Proceso terminado'].includes(
     normalizeApplicationStatus(status)
   );
 }
