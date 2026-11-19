@@ -22,6 +22,7 @@ const { auditSecurityConfig, getAllowedFrontendOrigins } = require('./services/s
 const { canCompanyUpdateApplicationStatus, chatIsEnabled } = require('./services/application-workflow');
 const { COMPANY_APPLICATION_CANDIDATE_FIELDS, canCompanyAccessApplicationCv } = require('./services/application-access');
 const { canAccessApplicationConversation } = require('./services/conversation-access');
+const { getApplicationMessageReceiver, buildApplicationMessageNotification } = require('./services/application-notifications');
 const { hasValidCvSignature } = require('./services/file-validation');
 const { buildCoverLetter } = require('./services/cover-letter');
 
@@ -1638,7 +1639,8 @@ app.post('/api/applications/:id/messages', auth, async (req, res) => {
     if (content.length > 2000) return res.status(400).json({ message: 'El mensaje no puede superar los 2000 caracteres.' });
     const candidateId = application.candidateId;
     const companyId = application.jobId.companyId;
-    const receiverId = String(req.user._id) === String(candidateId) ? companyId : candidateId;
+    const receiverId = getApplicationMessageReceiver(req.user._id, candidateId, companyId);
+    if (!receiverId) return res.status(403).json({ message: 'No tienes permiso para enviar mensajes en esta postulación.' });
     const message = await ChatMessage.create({
       applicationId: application._id,
       candidateId,
@@ -1646,6 +1648,16 @@ app.post('/api/applications/:id/messages', auth, async (req, res) => {
       senderId: req.user._id,
       content
     });
+    try {
+      await Notification.create(buildApplicationMessageNotification({
+        receiverId,
+        applicationId: application._id,
+        senderName: req.user.name,
+        jobTitle: application.jobId.title
+      }));
+    } catch (notificationError) {
+      console.error('No se pudo crear la notificación de mensaje:', notificationError.message);
+    }
     res.status(201).json({
       id: String(message._id),
       content: message.content,
