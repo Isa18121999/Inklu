@@ -896,7 +896,7 @@ app.patch('/api/profile/me', auth, async (req, res) => {
         updates['profile.experience'] = years;
       }
 
-      for (const key of ['skills', 'projects', 'certifications', 'languages']) {
+      for (const key of ['skills', 'projects', 'certifications']) {
         if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
         const raw = Array.isArray(body[key]) ? body[key] : String(body[key] || '').split(/[,\n]/);
         const limit = key === 'skills' ? 40 : 20;
@@ -904,6 +904,26 @@ app.patch('/api/profile/me', auth, async (req, res) => {
           .map(item => String(item ?? '').trim().slice(0, 180))
           .filter(Boolean)
           .slice(0, limit);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, 'languages')) {
+        const raw = Array.isArray(body.languages) ? body.languages : [];
+        const allowedLevels = ['Básico', 'Intermedio', 'Avanzado', 'Nativo'];
+        updates['profile.languages'] = raw.map(item => ({
+          name: String(item?.name ?? '').trim().slice(0, 80),
+          level: allowedLevels.includes(String(item?.level ?? '')) ? String(item.level) : 'Básico'
+        })).filter(item => item.name).slice(0, 20);
+      }
+
+      if (Object.prototype.hasOwnProperty.call(body, 'workExperience')) {
+        const raw = Array.isArray(body.workExperience) ? body.workExperience : [];
+        updates['profile.workExperience'] = raw.map(item => ({
+          company: String(item?.company ?? '').trim().slice(0, 160),
+          position: String(item?.position ?? '').trim().slice(0, 160),
+          startDate: String(item?.startDate ?? '').trim().slice(0, 40),
+          endDate: String(item?.endDate ?? '').trim().slice(0, 40),
+          functions: String(item?.functions ?? '').trim().slice(0, 1200)
+        })).filter(item => item.company || item.position || item.functions).slice(0, 20);
       }
     } else if (req.user.role === 'company') {
       if (Object.prototype.hasOwnProperty.call(body, 'name')) {
