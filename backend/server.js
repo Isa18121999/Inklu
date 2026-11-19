@@ -19,7 +19,7 @@ const mammoth = require('mammoth');
 const { normalizeText, keywordCounts, recommendJobsForUser, humanizeSkill } = require('./services/recommendations');
 const { matchesSavedJobSearch } = require('./services/saved-search-matcher');
 const { auditSecurityConfig, getAllowedFrontendOrigins } = require('./services/security-config');
-const { canCompanyUpdateApplicationStatus } = require('./services/application-workflow');
+const { canCompanyUpdateApplicationStatus, chatIsEnabled } = require('./services/application-workflow');
 const { COMPANY_APPLICATION_CANDIDATE_FIELDS, canCompanyAccessApplicationCv } = require('./services/application-access');
 const { canAccessApplicationConversation } = require('./services/conversation-access');
 const { hasValidCvSignature } = require('./services/file-validation');
@@ -287,11 +287,6 @@ function normalizeApplicationStatus(status) {
   return legacy[status] || status || 'Postulado';
 }
 
-function chatIsEnabled(status) {
-  return ['En proceso', 'Aceptado', 'Proceso terminado'].includes(
-    normalizeApplicationStatus(status)
-  );
-}
 
 async function analyzeCandidateCv(user) {
   if (user.role !== 'candidate') {
