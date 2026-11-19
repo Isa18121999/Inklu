@@ -2711,7 +2711,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     final university = TextEditingController(text: profile['university']?.toString() ?? '');
     final academicStatus = TextEditingController(text: profile['academicStatus']?.toString() ?? '');
     final complementaryEducation = TextEditingController(text: profile['complementaryEducation']?.toString() ?? '');
-    final languagesController = TextEditingController(text: profile['languages'] is List ? (profile['languages'] as List).join(', ') : '');
+    final languagesController = TextEditingController(text: profile['languages'] is List ? (profile['languages'] as List).map((item) => item is Map ? '${item['name'] ?? ''} | ${item['level'] ?? 'Básico'}' : item.toString()).join('\n') : '');
+    final workExperienceController = TextEditingController(text: profile['workExperience'] is List ? (profile['workExperience'] as List).whereType<Map>().map((item) => [item['company'], item['position'], item['startDate'], item['endDate'], item['functions']].map((value) => value?.toString() ?? '').join(' | ')).join('\n') : '');
     final professionalSummary = TextEditingController(text: profile['professionalSummary']?.toString() ?? '');
     final experience = TextEditingController(text: profile['experience']?.toString() ?? '0');
     final skillsController = TextEditingController(text: profile['skills'] is List ? (profile['skills'] as List).map(_skillLabel).where((skill) => skill.isNotEmpty).join(', ') : '');
@@ -2755,7 +2756,9 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
                 F(university, 'Universidad o institución'),
                 F(academicStatus, 'Situación académica (ej. 9.º ciclo, egresado)'),
                 F(complementaryEducation, 'Formación complementaria'),
-                F(languagesController, 'Idiomas (separados por comas)'),
+                F(languagesController, 'Idiomas y nivel (uno por línea: Inglés | Avanzado)', max: 4),
+                F(workExperienceController, 'Experiencia laboral (una por línea: Empresa | Cargo | Inicio | Fin/Actualidad | Funciones)', max: 6),
+                const Align(alignment: Alignment.centerLeft, child: Text('Niveles permitidos: Básico, Intermedio, Avanzado o Nativo. Separa los datos de cada experiencia con |.', style: TextStyle(color: muted, fontSize: 11))),
                 F(professionalSummary, 'Resumen profesional', max: 4),
                 F(experience, 'Años de experiencia', type: TextInputType.number, format: digits(2)),
                 F(skillsController, 'Habilidades (separadas por comas)', max: 3),
@@ -2835,7 +2838,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
           'university': university.text.trim(),
           'academicStatus': academicStatus.text.trim(),
           'complementaryEducation': complementaryEducation.text.trim(),
-          'languages': languagesController.text.split(',').map((item) => item.trim()).where((item) => item.isNotEmpty).take(20).toList(),
+          'languages': languagesController.text.split('\n').map((line) => line.split('|')).where((parts) => parts.isNotEmpty && parts.first.trim().isNotEmpty).map((parts) => {'name': parts.first.trim(), 'level': parts.length > 1 && ['Básico', 'Intermedio', 'Avanzado', 'Nativo'].contains(parts[1].trim()) ? parts[1].trim() : 'Básico'}).take(20).toList(),
+          'workExperience': workExperienceController.text.split('\n').map((line) => line.split('|')).where((parts) => parts.length >= 2 && (parts[0].trim().isNotEmpty || parts[1].trim().isNotEmpty)).map((parts) => {'company': parts[0].trim(), 'position': parts.length > 1 ? parts[1].trim() : '', 'startDate': parts.length > 2 ? parts[2].trim() : '', 'endDate': parts.length > 3 ? parts[3].trim() : '', 'functions': parts.length > 4 ? parts.sublist(4).join('|').trim() : ''}).take(20).toList(),
           'professionalSummary': professionalSummary.text.trim(),
           'experience': int.tryParse(experience.text.trim()) ?? 0,
           'skills': skillsController.text.split(',').map((skill) => skill.trim()).where((skill) => skill.isNotEmpty).take(40).toList(),
@@ -2862,6 +2866,7 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     academicStatus.dispose();
     complementaryEducation.dispose();
     languagesController.dispose();
+    workExperienceController.dispose();
     professionalSummary.dispose();
     experience.dispose();
     skillsController.dispose();
@@ -2881,7 +2886,8 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
     final university = (profile['university'] ?? '').toString().trim();
     final academicStatus = (profile['academicStatus'] ?? '').toString().trim();
     final complementaryEducation = (profile['complementaryEducation'] ?? '').toString().trim();
-    final languages = _profileEntryList(profile['languages']);
+    final languages = profile['languages'] is List ? (profile['languages'] as List).map((item) => item is Map ? '${item['name'] ?? ''} — ${item['level'] ?? 'Básico'}' : item.toString()).where((item) => item.trim().isNotEmpty).toList() : <String>[];
+    final workExperience = profile['workExperience'] is List ? (profile['workExperience'] as List).whereType<Map>().toList() : <Map>[];
     final summary = (profile['professionalSummary'] ?? '').toString().trim();
     final years = int.tryParse((profile['experience'] ?? 0).toString()) ?? 0;
     final doc = pw.Document();
@@ -2905,7 +2911,17 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         if (complementaryEducation.isNotEmpty) ...[heading('Formación complementaria'), paragraph(complementaryEducation)],
         if (summary.isNotEmpty) ...[heading('Perfil profesional'), paragraph(summary)],
         heading('Experiencia profesional'),
-        paragraph('$years años de experiencia declarados.'),
+        if (workExperience.isEmpty) paragraph('$years años de experiencia declarados.') else ...workExperience.map((item) {
+          final company = item['company']?.toString() ?? '';
+          final position = item['position']?.toString() ?? '';
+          final dates = [item['startDate']?.toString() ?? '', item['endDate']?.toString() ?? ''].where((value) => value.isNotEmpty).join(' – ');
+          final functions = item['functions']?.toString() ?? '';
+          return pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            paragraph([position, company].where((value) => value.isNotEmpty).join(' · ')),
+            if (dates.isNotEmpty) paragraph(dates),
+            if (functions.isNotEmpty) paragraph(functions),
+          ]);
+        }),
         if (skills.isNotEmpty) ...[heading('Habilidades'), paragraph(skills.join(' | '))],
         if (projects.isNotEmpty) ...[heading('Proyectos relevantes'), ...projects.map(paragraph)],
         if (certifications.isNotEmpty) ...[heading('Certificaciones y cursos'), ...certifications.map(paragraph)],
@@ -3145,7 +3161,9 @@ class _CandidateProfilePanelState extends State<CandidateProfilePanel> {
         ),
         const SizedBox(height: 14),
         const Section('Idiomas'),
-        _ProfileValue(icon: Icons.language_outlined, label: 'Idiomas', value: valueOf(profile['languages'] is List ? (profile['languages'] as List).join(', ') : '')),
+        _ProfileEntryCards(icon: Icons.language_outlined, items: profile['languages'] is List ? (profile['languages'] as List).map((item) => item is Map ? '${item['name'] ?? ''} — ${item['level'] ?? 'Básico'}' : item.toString()).toList() : <String>[], emptyMessage: 'Añade tus idiomas y nivel de dominio.'),
+        const Section('Experiencia laboral'),
+        _ProfileEntryCards(icon: Icons.work_history_outlined, items: profile['workExperience'] is List ? (profile['workExperience'] as List).whereType<Map>().map((item) => [item['position'], item['company'], [item['startDate'], item['endDate']].where((value) => value != null && value.toString().isNotEmpty).join(' – '), item['functions']].where((value) => value != null && value.toString().isNotEmpty).join(' · ')).toList() : <String>[], emptyMessage: 'Añade empresa, cargo, fechas y funciones de cada experiencia.'),
         const Section('Certificaciones y cursos'),
         _ProfileEntryCards(
           icon: Icons.workspace_premium_outlined,
