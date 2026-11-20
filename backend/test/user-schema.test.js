@@ -17,6 +17,12 @@ test('CV y foto quedan excluidos de las consultas normales de usuario', () => {
   assert.equal(photoSchema.path('data').options.select, false);
 });
 
+test('las cuentas nuevas requieren verificación de correo por defecto', () => {
+  const path = User.schema.path('emailVerified');
+  assert.ok(path, 'emailVerified debe existir');
+  assert.equal(path.options.default, false);
+});
+
 test('los tokens de verificación y recuperación no se seleccionan por defecto', () => {
   for (const path of [
     'emailVerificationTokenHash',
