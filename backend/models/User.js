@@ -196,7 +196,7 @@ async function extractProfileFromCv(buffer, fileName) {
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  emailVerified: { type: Boolean, default: true },
+  emailVerified: { type: Boolean, default: false },
   emailVerificationTokenHash: { type: String, select: false },
   emailVerificationExpires: { type: Date, select: false },
   emailVerificationRequestedAt: { type: Date, select: false },
