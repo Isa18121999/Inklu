@@ -556,7 +556,7 @@ class CandidateRegister extends StatefulWidget{const CandidateRegister({super.ke
 class _CandidateRegisterState extends State<CandidateRegister>{int step=0;final n=TextEditingController(),a=TextEditingController(),e=TextEditingController(),p=TextEditingController(),birth=TextEditingController(),phone=TextEditingController(),address=TextEditingController(text:'Lima, Perú'),conadis=TextEditingController();String? cvPath,cvName;bool terms=false,busy=false;DateTime? bd;
 Future<void> cv()async{final r=await FilePicker.platform.pickFiles(type:FileType.custom,allowedExtensions:['pdf','doc','docx'],withData:false);if(r!=null&&r.files.single.path!=null)setState((){cvPath=r.files.single.path;cvName=r.files.single.name;});}
 Future<void> date()async{final d=await showDatePicker(context:context,initialDate:DateTime(2000),firstDate:DateTime(1900),lastDate:DateTime.now(),cancelText:'Cancelar',confirmText:'Aceptar');if(d!=null){bd=d;birth.text='${d.day.toString().padLeft(2,'0')}/${d.month.toString().padLeft(2,'0')}/${d.year}';setState((){});}}
-Future<void> next()async{if(step==0&&(!validEmail(e.text)||!validPass(p.text)||n.text.trim().isEmpty||a.text.trim().isEmpty||!terms)){toast('Completa los datos y acepta los términos.');return;}if(step==1&&(bd==null||!RegExp(r'^\d{9}$').hasMatch(phone.text)||!RegExp(r'^\d{8}$').hasMatch(conadis.text.trim()))){toast('Completa la fecha, el teléfono de 9 dígitos y el carné CONADIS de 8 dígitos.');return;}if(step==2&&(cvPath==null)){toast('Selecciona tu CV.');return;}if(step<2){setState(()=>step++);return;}setState(()=>busy=true);try{final r=await api.registerCandidate(name:'${n.text.trim()} ${a.text.trim()}',email:e.text.trim(),phone:phone.text,password:p.text,conadisNumber:conadis.text.trim(),cvPath:cvPath);sessionToken=r['token'];sessionUser=r['user'];await api.updateProfile(sessionToken!,{'birth':birth.text,'address':address.text});if(mounted)Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>const CandidateHome()),(_)=>false);}catch(x){toast(x.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>busy=false);}}
+Future<void> next()async{if(step==0&&(!validEmail(e.text)||!validPass(p.text)||n.text.trim().isEmpty||a.text.trim().isEmpty||!terms)){toast('Completa los datos y acepta los términos.');return;}if(step==1&&(bd==null||!RegExp(r'^\d{9}$').hasMatch(phone.text)||!RegExp(r'^\d{8}$').hasMatch(conadis.text.trim()))){toast('Completa la fecha, el teléfono de 9 dígitos y el carné CONADIS de 8 dígitos.');return;}if(step==2&&(cvPath==null)){toast('Selecciona tu CV.');return;}if(step<2){setState(()=>step++);return;}setState(()=>busy=true);try{final r=await api.registerCandidate(name:'${n.text.trim()} ${a.text.trim()}',email:e.text.trim(),phone:phone.text,password:p.text,conadisNumber:conadis.text.trim(),cvPath:cvPath);sessionToken=r['token'];sessionUser=r['user'];await api.updateProfile(sessionToken!,{'birth':birth.text,'address':address.text});try{await api.requestEmailVerification(sessionToken!);toast('Cuenta creada. Revisa tu correo para verificar tu cuenta.');}catch(_){toast('Cuenta creada. No se pudo enviar el correo; podrás solicitar otro enlace al iniciar sesión.');}if(mounted)Navigator.pushAndRemoveUntil(context,MaterialPageRoute(builder:(_)=>const CandidateHome()),(_)=>false);}catch(x){toast(x.toString().replaceFirst('Exception: ',''));}finally{if(mounted)setState(()=>busy=false);}}
   @override
   Widget build(BuildContext c) => Shell(
         title: [
@@ -730,6 +730,12 @@ class _CompanyRegisterState extends State<CompanyRegister> {
       );
       sessionToken = r['token'];
       sessionUser = r['user'];
+      try {
+        await api.requestEmailVerification(sessionToken!);
+        toast('Cuenta creada. Revisa tu correo para verificar tu cuenta.');
+      } catch (_) {
+        toast('Cuenta creada. No se pudo enviar el correo; podrás solicitar otro enlace al iniciar sesión.');
+      }
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
@@ -809,6 +815,14 @@ Future<void> go() async {
       sessionToken = r['token'];
       sessionUser = r['user'];
       if (sessionToken != null) await _registerFcmTokenForSession(sessionToken!);
+      if (sessionToken != null && sessionUser?['emailVerified'] == false) {
+        try {
+          await api.requestEmailVerification(sessionToken!);
+          toast('Tu correo aún no está verificado. Te enviamos un nuevo enlace.');
+        } catch (_) {
+          toast('Tu correo aún no está verificado. No se pudo enviar el enlace; inténtalo más tarde.');
+        }
+      }
       await saveLoginSession(rememberSession);
       final company = sessionUser?['role'] == 'company';
       if (mounted) {
