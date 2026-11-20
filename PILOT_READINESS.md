@@ -1,45 +1,133 @@
 # INKLU — Lista de preparación para piloto
 
-**Estado:** MVP en desarrollo. Este documento separa funciones implementadas de pruebas y tareas que todavía bloquean un piloto externo. No equivale a una certificación de seguridad, accesibilidad ni cumplimiento legal.
+**Estado:** MVP en desarrollo; todavía no está autorizado para un piloto externo. Este documento separa lo identificado en el código, la evidencia automatizada disponible y las validaciones manuales pendientes. No equivale a certificación de seguridad, accesibilidad ni cumplimiento legal.
 
-## Estado de la hoja de ruta
+**Regla de evaluación:** una función se considera implementada cuando existe en el código; solo se considera validada cuando se completa el flujo esperado con cuentas y datos de prueba, se comprueban permisos y se registra evidencia reproducible.
 
-| Área | Estado en el código | Validación pendiente |
+## 1. Estado funcional y validación pendiente
+
+| Área | Estado identificado en el código | Validación pendiente |
 |---|---|---|
-| Recomendaciones | Motor determinista que combina carrera, texto del CV, habilidades, experiencia y preferencias; muestra los motivos y aclara que la puntuación es orientativa. | Revisar con perfiles sintéticos de distintas áreas y confirmar que las recomendaciones irrelevantes no se presenten como adecuadas. No es un modelo de IA entrenado. |
-| Perfiles de candidatos y empresas | Perfil de candidato con resumen, formación, experiencia, habilidades, proyectos y certificaciones; perfil de empresa y presentación pública en las ofertas. | Completar perfiles de prueba y comprobar su visualización en pantallas pequeñas y con texto ampliado. |
-| Ofertas, favoritos y filtros | Ofertas guardadas y búsquedas con filtros persistentes, incluido “solo con información de accesibilidad”. | Confirmar que guardar, aplicar y eliminar filtros se conserva al cerrar y volver a iniciar sesión. |
-| Postulaciones | Estados, historial visual, notificaciones de cambios, retirada de postulaciones y chat según la etapa. | Ejecutar la secuencia completa candidato–empresa y revisar las transiciones de estado. |
-| Alertas | Notificaciones dentro de la aplicación; alertas cuando una oferta nueva coincide con una búsqueda guardada y contador de no leídas. | Verificar coincidencias y no coincidencias con ofertas de prueba. No se consideran activadas notificaciones push ni avisos por correo. |
-| Accesibilidad | Ajuste de tamaño del texto, etiquetas/tooltip en acciones importantes y anuncios de mensajes temporales al lector de pantalla. | Pruebas manuales con TalkBack, aumento del texto del sistema, navegación sin precisión motora y revisión de contraste/lectura. Esto no es una certificación WCAG. |
-| Seguridad y privacidad | Hash de contraseñas, JWT, limitación de intentos, CV con descarga protegida por postulación y reducción de los datos personales expuestos a empresas en el listado de postulantes. | Verificar la configuración real de secretos de Render, limitar CORS, revisar consentimiento/retención y realizar pruebas de autorización entre cuentas. |
-| Pruebas | Tests de recomendación, coincidencia de búsquedas guardadas, esquema de usuario y widgets Flutter. | Esperar a que el último flujo de compilación y pruebas quede verde; ejecutar el guion manual de este documento. |
-| Preparación de piloto | Hay API desplegada y construcción automática del APK. | No abrir un piloto externo hasta cerrar los bloqueadores de la sección siguiente. |
+| Recomendaciones | Motor determinista que combina carrera, texto del CV, habilidades, experiencia y preferencias; presenta motivos y aclara que la puntuación es orientativa. | Probar perfiles sintéticos de distintas áreas y niveles. Comprobar que ofertas irrelevantes no aparezcan como adecuadas. No describirlo como modelo de IA entrenado. |
+| Perfil de candidato | Resumen, formación, experiencia, habilidades, proyectos y certificaciones; herramientas de análisis y edición de CV. | Completar perfiles de prueba y revisar extracción con PDF, DOC y DOCX variados, edición y descarga del CV. |
+| Perfil de empresa | Perfil de empresa y presentación pública asociada a las ofertas. | Comprobar edición, visibilidad, permisos y visualización en pantallas pequeñas. |
+| Ofertas, favoritos y filtros | Publicación y consulta de ofertas, favoritos, filtros y búsquedas guardadas, incluida información de accesibilidad. | Verificar persistencia al cerrar sesión, volver a ingresar, aplicar, editar y eliminar filtros. |
+| Postulaciones | Estados, historial, notificaciones internas y retiro; gestión desde el lado de la empresa. | Ejecutar recorrido integral candidato–empresa, validar transiciones permitidas, historial y notificaciones. |
+| Alertas | Notificaciones dentro de la aplicación y coincidencias de ofertas nuevas con búsquedas guardadas. | Probar coincidencias y no coincidencias. No asumir que existen notificaciones push o avisos por correo operativos. |
+| Accesibilidad | Preferencias visuales, ajustes de texto/contraste y etiquetas semánticas en controles relevantes. | Pruebas manuales con TalkBack, texto ampliado, navegación, foco, áreas táctiles y contraste en Android real. No es una certificación WCAG. |
+| Chat | Funcionalidad de chat identificada en el código. | Probar intercambio real entre cuentas distintas, persistencia, permisos, actualización de mensajes y manejo de errores. |
+| Verificación de empresas | Estados de verificación identificados en el modelo/código. | Definir y probar el proceso real de revisión, aprobación/rechazo, evidencia, trazabilidad y permisos administrativos. Un estado no prueba por sí mismo la verificación. |
+| Seguridad y privacidad | Hash de contraseñas, JWT, limitación de intentos, descarga de CV protegida por postulación y reducción de datos personales expuestos en listados empresariales. | Revisar configuración de secretos, CORS, autorización entre cuentas, consentimiento, retención y eliminación. Ejecutar pruebas negativas. |
+| Modelo de negocio | El esquema Freemium está definido como propuesta del producto. | No se identificó implementación integral de suscripciones ni pagos. Definir planes, periodo gratuito de postulantes, cobro a empresas, proveedor de pagos y gestión de cancelaciones. |
+| CI y compilación | Se observaron ejecuciones satisfactorias de backend, verificación Flutter y generación del APK Android. | Volver a ejecutar workflows tras cambios; conservar evidencia del commit exacto. Revisar duplicación de compilaciones y diferencias de versiones de Flutter. |
 
-## Bloqueadores previos a un piloto externo
+## 2. Evidencia de integración continua observada
 
-- **Secreto JWT:** el backend ahora se detiene si `JWT_SECRET` falta, es el valor de ejemplo o tiene menos de 32 caracteres. El último despliegue arrancó correctamente, pero una persona responsable aún debe confirmar en Render que la clave es aleatoria, privada y única, sin copiarla a capturas, issues ni chats. Rotarla invalida las sesiones actuales, por lo que debe coordinarse.
-- **Recuperación y verificación por correo:** pendientes. El relay de Google Apps Script no se ha validado y ya devolvió el error `Script function not found: doGet`. No comunicar que estas funciones están operativas hasta probar el envío y el enlace completo.
-- **Accesibilidad práctica:** realizar una sesión con TalkBack y con tamaño de texto ampliado en un Android real; corregir los problemas encontrados.
-- **Privacidad:** utilizar perfiles/CV ficticios en pruebas. Antes de recibir datos reales de discapacidad o currículums, revisar el aviso de privacidad, los consentimientos, el acceso por roles, la retención y el procedimiento de eliminación con asesoría apropiada.
-- **CORS y operación:** `FRONTEND_ORIGIN` en Render se ajustó al origen oficial `https://isa18121999.github.io`; después del despliegue no se observaron advertencias de CORS en los registros consultados. Falta probar que el frontend oficial funciona y que un origen web no autorizado no recibe cabeceras CORS, además de mantener el seguimiento de fallos del backend.
+En la revisión del repositorio se identificaron estas ejecuciones satisfactorias:
 
-## Guion de prueba con datos ficticios
+- **Flutter verification:** [Run 44776317144](https://github.com/Isa18121999/Inklu/actions/runs/44776317144). Incluyó dependencias, `flutter analyze --no-pub`, pruebas Flutter y compilación Android.
+- **Android APK build:** [Run 44776317149](https://github.com/Isa18121999/Inklu/actions/runs/44776317149). Incluyó configuración de Firebase y firma, análisis, pruebas, compilación release, limpieza del material de firma y publicación del artefacto.
+- **Backend checks:** [Run 44571447254](https://github.com/Isa18121999/Inklu/actions/runs/44571447254). Incluyó comprobación de sintaxis, carga de parsers de CV, auditoría de dependencias de producción y `npm test`.
 
-1. Crear un candidato de prueba del área de tecnología y otro de salud. Usar correos de prueba y CV ficticios, sin DNI, número real de CONADIS ni información clínica.
-2. Completar formación, resumen profesional, experiencia, habilidades, proyectos y cursos. Cargar un CV con texto seleccionable, ejecutar el análisis y revisar los motivos de cada recomendación. El perfil de salud no debe recibir una oferta tecnológica sin evidencia profesional relevante.
-3. En el candidato de tecnología, guardar una búsqueda “Remoto · Tecnología · accesibilidad”. Cerrar sesión y volver a entrar; verificar que la búsqueda sigue guardada, que puede aplicarse y que puede eliminarse.
-4. Desde una empresa de prueba, publicar una oferta que coincida con esos filtros y otra que no coincida. Confirmar que solo la primera genera una notificación de búsqueda guardada.
-5. Guardar una oferta y postularse. Confirmar que la postulación aparece una sola vez y que su historial muestra el estado inicial.
-6. Desde la empresa propietaria de la oferta, abrir el perfil profesional, descargar el CV autorizado y avanzar la postulación por “CV visto” y “En proceso”. Confirmar las notificaciones y el chat cuando se habilite.
-7. Verificar que una segunda cuenta de empresa no puede consultar ni descargar el CV de esa postulación. Confirmar también que el listado empresarial no expone teléfono, correo, dirección, fecha de nacimiento ni número CONADIS del candidato.
-8. Retirar una postulación activa desde el candidato. Confirmar el cierre, su registro en el historial y la notificación a la empresa. Comprobar que no se puede reactivar mediante una transición de empresa no permitida.
-9. Repetir el recorrido con TalkBack y texto ampliado. Verificar que cada control tiene nombre comprensible, foco visible, área táctil suficiente y que los mensajes de error/éxito se anuncian.
+Estas ejecuciones demuestran que esos workflows finalizaron correctamente en los commits que procesaron. No demuestran cobertura total, ausencia de vulnerabilidades ni que todos los recorridos manuales estén validados. Antes de cada piloto o release, comprobar que los workflows vuelvan a pasar en el commit candidato.
 
-## Criterios para detener la prueba
+## 3. Bloqueadores previos a un piloto externo
 
-No continuar con usuarios externos si ocurre cualquiera de estos casos: una cuenta accede a datos o CV de otra empresa; se expone información personal innecesaria; una postulación tiene estados contradictorios; se producen recomendaciones manifiestamente irrelevantes sin explicaciones; un paso esencial no puede completarse con lector de pantalla; o las acciones de recuperación/verificación de cuenta no funcionan.
+### 3.1 Correo: verificación de cuenta y recuperación de contraseña
+**Bloqueador.** El relay de Google Apps Script no se ha validado de extremo a extremo y anteriormente devolvió `Script function not found: doGet`.
 
-## Evidencia por recopilar
+Antes de habilitar usuarios externos:
+- Corregir y desplegar el endpoint del relay.
+- Probar envío real a una cuenta de prueba.
+- Verificar expiración, uso único y protección de los enlaces/tokens.
+- Probar verificación de cuenta, recuperación y cambio de contraseña desde el inicio hasta el final.
+- Confirmar mensajes de error seguros y que no se revele si una cuenta existe.
 
-Para cada prueba, anotar fecha, versión/commit, dispositivo, rol de la cuenta, resultado esperado, resultado real y captura con datos personales ocultos. Registrar los fallos como incidencias; no adjuntar tokens, contraseñas, CV reales ni números de acreditación.
+No comunicar estas funciones como operativas hasta completar y documentar las pruebas.
+
+### 3.2 Secreto JWT y configuración de despliegue
+**Bloqueador de confirmación operativa.** El backend se detiene si `JWT_SECRET` falta, es un valor de ejemplo o tiene menos de 32 caracteres. La revisión previa observó un despliegue que arrancó correctamente, pero la persona responsable debe confirmar en Render que la clave sea aleatoria, privada y exclusiva de producción.
+
+- No copiar secretos a capturas, issues, repositorios ni chats.
+- No compartir el valor para “verificarlo”; basta confirmar que cumple los requisitos.
+- Coordinar cualquier rotación porque invalida las sesiones existentes.
+- Confirmar que las demás variables de entorno requeridas estén configuradas en el entorno correcto.
+
+### 3.3 Privacidad y autorización
+**Bloqueador.** Antes de recibir CV reales o información relacionada con discapacidad:
+- Revisar aviso de privacidad y consentimiento informado.
+- Definir finalidad, acceso por roles, retención y eliminación de datos.
+- Verificar que una empresa solo acceda a CV y postulaciones autorizadas.
+- Probar que una segunda empresa no pueda consultar ni descargar el CV de una postulación ajena.
+- Comprobar que listados y respuestas de API no expongan teléfono, correo, dirección, fecha de nacimiento ni identificadores sensibles que no sean necesarios.
+- Realizar revisión legal y de protección de datos con asesoría competente.
+
+Usar perfiles y CV ficticios durante el desarrollo y las pruebas.
+
+### 3.4 Accesibilidad práctica
+**Bloqueador.** Completar pruebas en un dispositivo Android real con TalkBack y tamaño de texto ampliado. Verificar nombres accesibles, orden de lectura, foco, controles táctiles, contraste, mensajes de validación y recorridos principales. Registrar y corregir barreras que impidan completar tareas esenciales.
+
+### 3.5 CORS y operación
+**Bloqueador de validación.** La configuración de `FRONTEND_ORIGIN` en Render se ajustó al origen oficial `https://isa18121999.github.io`; en los registros revisados no se observaron advertencias de CORS posteriores al ajuste.
+
+Pendiente:
+- Confirmar que el frontend oficial puede completar los flujos necesarios.
+- Verificar que un origen no autorizado no reciba cabeceras CORS permisivas.
+- Revisar logs de errores, disponibilidad, reinicios y comportamiento ante fallos de servicios externos.
+- Definir responsable y procedimiento de respuesta ante incidentes.
+
+### 3.6 Chat y verificación de empresas
+**Bloqueador funcional.** Validar la comunicación entre cuentas y el procedimiento de verificación empresarial antes de presentarlos como servicios disponibles para el piloto. No aprobar empresas automáticamente por tener un estado o campo de verificación.
+
+### 3.7 Modelo Freemium y pagos
+No es necesariamente un bloqueador para un piloto cerrado y gratuito, pero sí para lanzar el modelo comercial definido. Antes de cobrar:
+- Definir con claridad los planes y beneficios.
+- Confirmar el periodo gratuito de tres meses para postulantes y el esquema de pago posterior.
+- Definir planes de pago para empresas.
+- Implementar y probar pagos, renovaciones, cancelaciones, comprobantes y atención de incidencias.
+- Comunicar precios y condiciones antes de que el usuario acepte.
+
+## 4. Guion de prueba con datos ficticios
+
+1. Crear dos candidatos de prueba de áreas diferentes (por ejemplo, tecnología y salud) y una empresa de prueba. Usar correos ficticios/controlados y CV sin datos personales reales.
+2. Completar el perfil profesional. Cargar un CV PDF con texto seleccionable y archivos DOC/DOCX; revisar el análisis, corregir los datos extraídos y descargar el CV generado.
+3. Comprobar que las recomendaciones se relacionan con carrera, experiencia y habilidades. Registrar ejemplos relevantes e irrelevantes y sus motivos.
+4. En el candidato de tecnología, guardar una búsqueda “Remoto · Tecnología · accesibilidad”. Cerrar sesión, volver a ingresar y comprobar que la búsqueda persiste, se puede aplicar y eliminar.
+5. Desde la empresa de prueba, publicar una oferta que coincida con los filtros y otra que no coincida. Confirmar que solo la coincidencia genera la alerta correspondiente.
+6. Guardar una oferta y postularse. Confirmar que la postulación aparece una sola vez y que el historial muestra el estado inicial.
+7. Desde la empresa propietaria de la oferta, abrir la postulación, consultar únicamente la información autorizada y descargar el CV permitido. Avanzar por los estados disponibles y confirmar el historial y las notificaciones.
+8. Desde una segunda cuenta empresarial, intentar acceder al CV y a la postulación ajena. La API debe denegar el acceso.
+9. Probar chat entre el candidato y la empresa con cuentas distintas. Confirmar envío, recepción, persistencia y restricciones de acceso.
+10. Retirar una postulación activa desde el candidato. Confirmar cierre, registro histórico y notificación a la empresa; probar que no se pueda reactivar mediante una transición no permitida.
+11. Probar registro, verificación de correo y recuperación de contraseña con cuentas controladas. Verificar expiración y uso único de enlaces.
+12. Repetir los recorridos principales con TalkBack y texto ampliado. Comprobar que los controles y mensajes sean comprensibles y utilizables.
+13. Probar CORS desde el origen oficial y desde un origen no autorizado. Revisar logs del backend durante el recorrido.
+
+## 5. Criterios para detener la prueba
+
+No continuar con usuarios externos si ocurre cualquiera de estos casos:
+
+- Una cuenta accede a datos, CV o postulaciones de otra empresa sin autorización.
+- Se expone información personal o sensible innecesaria.
+- Una postulación presenta estados contradictorios o transiciones no autorizadas.
+- Los enlaces de verificación o recuperación permiten reutilización, no expiran o no funcionan.
+- Un paso esencial no puede completarse con lector de pantalla.
+- El origen no autorizado puede acceder a la API por una configuración CORS permisiva.
+- Los workflows requeridos fallan en el commit candidato.
+- No existe un procedimiento claro para responder a incidentes o eliminar datos de prueba.
+
+## 6. Evidencia que debe registrarse
+
+Por cada prueba, anotar:
+- Fecha y hora.
+- Versión/commit de la aplicación y backend.
+- Dispositivo, versión de Android y configuración de accesibilidad.
+- Rol de la cuenta de prueba.
+- Resultado esperado y resultado real.
+- Estado: aprobado, fallido o bloqueado.
+- Captura o log con todos los datos personales ocultos.
+- Incidencia asociada y responsable de corregirla.
+
+Nunca adjuntar tokens, contraseñas, claves, CV reales, DNI ni números de acreditación.
+
+**Última revisión documental:** 20 de noviembre de 2026.
