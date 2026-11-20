@@ -15,6 +15,7 @@ class ApiService {
   }
   Future<Map<String, dynamic>> registerCompany({required String name, required String email, required String phone, required String password, required String ruc, String sector = '', String size = '', String address = '', String website = '', String description = ''}) => _post('/auth/register', {'name': name, 'email': email, 'phone': phone, 'password': password, 'role': 'company', 'country': 'PE', 'ruc': ruc, 'companyProfile': {'sector': sector, 'size': size, 'address': address, 'website': website, 'description': description}});
   Future<Map<String, dynamic>> login(String email, String password) => _post('/auth/login', {'email': email, 'password': password});
+  Future<Map<String, dynamic>> requestEmailVerification(String token) => _postAuth('/auth/request-email-verification', token, {});
   Future<Map<String, dynamic>> requestPasswordReset(String email) => _post('/auth/forgot-password', {'email': email.trim()});
   Future<Map<String, dynamic>> resetPassword({required String email, required String token, required String password}) => _post('/auth/reset-password', {'email': email.trim(), 'token': token, 'password': password});
 
