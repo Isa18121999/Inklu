@@ -103,7 +103,7 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       const SizedBox(width: 12),
                       const Expanded(
                         child: Text(
-                          'Esta acción es permanente. Se eliminará tu cuenta y los datos asociados de INKU, incluidas las postulaciones y conversaciones relacionadas.',
+                          'Esta acción es permanente. Se eliminará tu cuenta y los datos asociados de INKLU, incluidas las postulaciones y conversaciones relacionadas.',
                           style: TextStyle(height: 1.45),
                         ),
                       ),
@@ -143,27 +143,30 @@ class _DeleteAccountPageState extends State<DeleteAccountPage> {
                       : 'Escribe ELIMINAR exactamente.',
                 ),
                 const SizedBox(height: 28),
-                Row(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
-                        child: const Text('Cancelar'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    Semantics(
+                      label: _submitting ? 'Eliminando cuenta' : 'Eliminar cuenta',
+                      button: true,
+                      enabled: !_submitting,
                       child: FilledButton.icon(
                         onPressed: _submitting ? null : _deleteAccount,
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.red.shade700,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          minimumSize: const Size.fromHeight(48),
                         ),
                         icon: _submitting
                             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                             : const Icon(Icons.delete_forever_rounded),
                         label: Text(_submitting ? 'Eliminando…' : 'Eliminar cuenta'),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: _submitting ? null : () => Navigator.of(context).pop(false),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                      child: const Text('Cancelar'),
                     ),
                   ],
                 ),
