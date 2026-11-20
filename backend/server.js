@@ -439,7 +439,8 @@ app.post('/api/auth/register', authRateLimit, async (req, res) => {
       email: normalizedEmail,
       phone: String(phone || '').trim(),
       passwordHash,
-      emailVerified: true,
+      // La cuenta debe confirmar el control del correo antes de marcarlo como verificado.
+      emailVerified: false,
       role,
       country: country || 'PE',
       ruc: role === 'company' ? String(ruc || '').trim() : undefined,
