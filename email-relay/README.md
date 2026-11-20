@@ -33,6 +33,23 @@ En INKLU, inicia sesión y pulsa **Verificar / reenviar correo** en el aviso que
 
 Si no llega, abre los registros de Render y busca `relay de correo`. No pegues capturas que muestren el token ni compartas la clave.
 
+
+## 5. Si aparece `Script function not found: doGet`
+
+El archivo `email-relay/Code.gs` del repositorio ya incluye `doGet()`. Ese error suele indicar que la URL de Apps Script apunta a una implementación anterior o a otro proyecto.
+
+1. Abre el proyecto correcto en https://script.google.com/.
+2. Confirma que el editor de `Code.gs` contiene la función `doGet()` y guarda los cambios.
+3. En **Implementar** → **Gestionar implementaciones**, selecciona la implementación de tipo **Aplicación web** y pulsa **Editar**.
+4. En **Versión**, selecciona **Nueva versión** y pulsa **Implementar**. Autoriza de nuevo si Google lo solicita.
+5. Copia la URL de esa implementación, que debe terminar en `/exec`. No uses la URL de prueba `/dev`.
+6. Abre la URL `/exec` en una ventana del navegador. Debe responder un JSON similar a:
+   `{"service":"INKLU email relay","ready":true}`.
+7. Si la URL sigue mostrando el error, comprueba que estás editando el mismo proyecto al que pertenece la URL. No crees otra implementación sin actualizar también `EMAIL_RELAY_URL` en Render.
+8. Si la URL cambia, actualiza `EMAIL_RELAY_URL` en Render y espera el nuevo despliegue.
+
+La comprobación GET solo confirma que el endpoint publicado responde. La prueba real de envío se completa desde INKLU solicitando un correo de verificación y confirmando que llega a Recibidos o Spam.
+
 ## Seguridad
 
 - No pongas el token dentro de `Code.gs` ni en la aplicación Flutter.
