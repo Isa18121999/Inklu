@@ -231,11 +231,31 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
           Container(
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
             decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, -3))]),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: Semantics(label: 'Cancelar', button: true, child: OutlinedButton(onPressed: publishing ? null : () => Navigator.pop(context), child: const Text('Cancelar')))),
-                const SizedBox(width: 10),
-                Expanded(child: Semantics(label: publishing ? 'Publicando oferta' : 'Publicar oferta', button: true, enabled: !publishing, child: FilledButton(onPressed: publishing ? null : publish, style: FilledButton.styleFrom(backgroundColor: _primary), child: publishing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Publicar oferta')))),
+                Semantics(
+                  label: publishing ? 'Publicando oferta' : 'Publicar oferta',
+                  button: true,
+                  enabled: !publishing,
+                  child: FilledButton(
+                    onPressed: publishing ? null : publish,
+                    style: FilledButton.styleFrom(backgroundColor: _primary, minimumSize: const Size.fromHeight(48)),
+                    child: publishing
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Publicar oferta'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Semantics(
+                  label: 'Cancelar',
+                  button: true,
+                  child: OutlinedButton(
+                    onPressed: publishing ? null : () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
               ],
             ),
           ),
