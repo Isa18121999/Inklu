@@ -199,6 +199,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   padding: const EdgeInsets.only(top: 3),
                   child: Checkbox(
                     value: selected,
+                    semanticLabel: 'Seleccionar notificación: $title',
                     activeColor: _notificationsPrimary,
                     onChanged: id.isEmpty ? null : (_) => toggleSelection(id),
                   ),
@@ -238,7 +239,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           ),
                         IconButton(
                           tooltip: selected ? 'Quitar selección de $title' : 'Seleccionar $title',
-                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                           onPressed: id.isEmpty || deleting ? null : () => toggleSelection(id),
                           icon: Icon(
                             selected ? Icons.check_circle_rounded : Icons.check_circle_outline_rounded,
@@ -247,7 +248,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         ),
                         IconButton(
                           tooltip: 'Eliminar notificación $title',
-                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                           onPressed: id.isEmpty || deleting ? null : () => confirmDelete(id: id),
                           icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
                         ),
@@ -303,7 +304,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ),
       body: SafeArea(
         child: loading
-            ? const Center(child: CircularProgressIndicator(color: _notificationsPrimary))
+            ? const Center(
+                child: Semantics(
+                  label: 'Cargando notificaciones',
+                  liveRegion: true,
+                  child: CircularProgressIndicator(color: _notificationsPrimary),
+                ),
+              )
             : RefreshIndicator(
                 onRefresh: loadNotifications,
                 child: ListView(
@@ -320,7 +327,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           ),
                         ),
                         if (unreadCount > 0)
-                          Container(
+                          Semantics(
+                            label: '$unreadCount ${unreadCount == 1 ? 'notificación no leída' : 'notificaciones no leídas'}',
+                            liveRegion: true,
+                            child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                             decoration: BoxDecoration(
                               color: const Color(0xFFE7E2FF),
@@ -334,6 +344,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
+                          ),
                           ),
                       ],
                     ),
@@ -367,9 +378,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                '${selectedIds.length} seleccionada${selectedIds.length == 1 ? '' : 's'}',
-                                style: const TextStyle(fontWeight: FontWeight.w800, color: _notificationsInk),
+                              child: Semantics(
+                                label: '${selectedIds.length} notificaciones seleccionadas',
+                                liveRegion: true,
+                                child: Text(
+                                  '${selectedIds.length} seleccionada${selectedIds.length == 1 ? '' : 's'}',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, color: _notificationsInk),
+                                ),
                               ),
                             ),
                             TextButton.icon(
