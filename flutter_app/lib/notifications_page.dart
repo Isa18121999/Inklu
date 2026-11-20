@@ -304,7 +304,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ),
       body: SafeArea(
         child: loading
-            ? const Center(
+            ? Center(
                 child: Semantics(
                   label: 'Cargando notificaciones',
                   liveRegion: true,
